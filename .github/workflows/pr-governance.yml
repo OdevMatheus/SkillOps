@@ -72,3 +72,39 @@ jobs:
             } else {
               core.info('OK — no DOCS-DEV/ or sensitive files detected in PR.');
             }
+
+      - name: Checkout Repository for Deep Hygiene Audit
+        uses: actions/checkout@v4
+
+      - name: Verify Core Governance & Community Files Integrity
+        run: |
+          REQUIRED_FILES=(
+            "AGENTS.md"
+            "CLAUDE.md"
+            "GEMINI.md"
+            "README.md"
+            "LICENSE"
+            "CONTRIBUTING.md"
+            "CODE_OF_CONDUCT.md"
+            "CHANGELOG.md"
+            ".gitattributes"
+            ".editorconfig"
+          )
+          for file in "${REQUIRED_FILES[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "::error::Missing required repository governance file: $file"
+              exit 1
+            fi
+          done
+          echo "OK — All core AI and open-source governance files are present."
+
+      - name: Scan Tracked Files for Leaked Machine Paths
+        run: |
+          # Exclude the workflow file itself from pattern matching
+          MATCHES=$(git grep -I -E '(C:\\Users\\[A-Za-z0-9._-]+|/Users/[A-Za-z0-9._-]+|/home/[A-Za-z0-9._-]+)' -- ':!.github/workflows/pr-governance.yml' || true)
+          if [ -n "$MATCHES" ]; then
+            echo "::error::Detected hardcoded local machine user paths in tracked files:"
+            echo "$MATCHES"
+            exit 1
+          fi
+          echo "OK — Zero hardcoded local machine paths found."

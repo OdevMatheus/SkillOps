@@ -16,6 +16,10 @@
   - changed-files:
       - any-glob-to-any-file:
           - "README*.md"
+          - CONTRIBUTING.md
+          - CODE_OF_CONDUCT.md
+          - CHANGELOG.md
+          - LICENSE
           - docs/**
           - .github/SECURITY.md
 
@@ -27,8 +31,11 @@
 "⚙️ ci":
   - changed-files:
       - any-glob-to-any-file:
+          - .gitattributes
+          - .editorconfig
           - .github/workflows/**
           - .github/labeler.yml
+          - .github/release-drafter.yml
           - .github/dependabot.yml
           - .github/ISSUE_TEMPLATE/**
           - .github/PULL_REQUEST_TEMPLATE/**
