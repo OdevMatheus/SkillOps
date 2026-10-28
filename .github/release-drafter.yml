@@ -1,0 +1,49 @@
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
+categories:
+  - title: "✨ Features & Portfolio Capabilities"
+    labels:
+      - "✨ feat"
+  - title: "🔴 Core AI Architecture & Agent Rules"
+    labels:
+      - "🔴 core-architecture"
+      - "⚠️ agent-behavior"
+  - title: "🐛 Bug Fixes"
+    labels:
+      - "🐛 fix"
+  - title: "♻️ Refactoring & Internal Improvements"
+    labels:
+      - "♻️ refactor"
+      - "🔌 plugin"
+  - title: "🔒 Security & Privacy"
+    labels:
+      - "🔒 security"
+  - title: "📄 Documentation & Guides"
+    labels:
+      - "📄 docs"
+  - title: "⚙️ CI/CD & DevOps Governance"
+    labels:
+      - "⚙️ ci"
+change-template: "- $TITLE @$AUTHOR (#$NUMBER)"
+change-title-escapes: '\<*_&'
+version-resolver:
+  major:
+    labels:
+      - "breaking"
+  minor:
+    labels:
+      - "✨ feat"
+  patch:
+    labels:
+      - "🐛 fix"
+      - "📄 docs"
+      - "⚙️ ci"
+      - "♻️ refactor"
+  default: patch
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+  ---
+  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION

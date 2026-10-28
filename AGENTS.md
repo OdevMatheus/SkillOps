@@ -13,9 +13,10 @@
    - [`.github/copilot-instructions.md`](./.github/copilot-instructions.md): Core operational rules and boundaries.
    - [`.github/CODEOWNERS`](./.github/CODEOWNERS): Protected paths requiring maintainer review (`@OdevMatheus`).
    - [`.github/SECURITY.md`](./.github/SECURITY.md): Privacy, local data isolation, and prompt safety policies.
+   - [`CONTRIBUTING.md`](./CONTRIBUTING.md), [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md), [`CHANGELOG.md`](./CHANGELOG.md), & [`LICENSE`](./LICENSE): Open-source community and release standards.
 2. **Automated CI Validation Rules:**
-   - [`.github/workflows/pr-governance.yml`](./.github/workflows/pr-governance.yml): Exact regex rules enforced by CI for branch names, semantic PR titles, and blocked local files (`DOCS-DEV/`, `.env*`).
-   - [`.github/labeler.yml`](./.github/labeler.yml): Scope categories and automatic PR labeling rules.
+   - [`.github/workflows/pr-governance.yml`](./.github/workflows/pr-governance.yml): Exact regex rules enforced by CI for branch names, semantic PR titles, core file integrity, and blocked local files (`DOCS-DEV/`, `.env*`).
+   - [`.github/labeler.yml`](./.github/labeler.yml) & [`.github/release-drafter.yml`](./.github/release-drafter.yml): Scope categories, automatic PR labeling, and automated release note drafting.
 3. **Mandatory Templates (PRs & Issues):**
    - [`.github/PULL_REQUEST_TEMPLATE.md`](./.github/PULL_REQUEST_TEMPLATE.md) & [`.github/PULL_REQUEST_TEMPLATE/docs-and-agents.md`](./.github/PULL_REQUEST_TEMPLATE/docs-and-agents.md): Always use these exact templates when preparing or opening a Pull Request.
    - [`.github/ISSUE_TEMPLATE/`](./.github/ISSUE_TEMPLATE/): Always follow [`bug_report.yml`](./.github/ISSUE_TEMPLATE/bug_report.yml), [`feature_request.yml`](./.github/ISSUE_TEMPLATE/feature_request.yml), or [`agent_improvement.yml`](./.github/ISSUE_TEMPLATE/agent_improvement.yml) when creating or structuring issues.
@@ -46,13 +47,17 @@ Right now, **we are building the FolioOps engine/framework itself** — we are *
 
 ---
 
-## 3. Repository & Language Standards
+## 3. Repository, Formatting & Changelog Standards
 
 1. **Language Standard (`en-US` + `DOCS-DEV/` Mirror):**
    - All tracked files in the repository must be written in **English (`en-US`)**.
    - Every documentation/instruction file must have an up-to-date **Portuguese (`pt-BR`)** translated mirror inside the `DOCS-DEV/` folder (verified against `.github/agents/docs-sync.agent.md`).
    - `DOCS-DEV/` must always remain in `.gitignore`.
    - In chat, always communicate with the developer in the language they use (default: `pt-BR`).
+2. **Encoding & Line Endings (`.editorconfig` & `.gitattributes`):**
+   - Always write files in **UTF-8 (without BOM)** with **`LF` line endings** and **2-space indentation**, respecting [`.editorconfig`](./.editorconfig) and [`.gitattributes`](./.gitattributes).
+3. **Continuous Changelog Maintenance (`CHANGELOG.md`):**
+   - Whenever adding features, fixing bugs, or updating governance/CI rules, update the `## [Unreleased]` section in [`CHANGELOG.md`](./CHANGELOG.md) (and its mirror `DOCS-DEV/CHANGELOG.md`) following the *Keep a Changelog* format.
 
 ---
 
@@ -96,15 +101,15 @@ Right now, **we are building the FolioOps engine/framework itself** — we are *
 ### 4.5 Pull Request (PR), Issue, Label & Milestone Governance (via GitHub CLI `gh`)
 - Always use the **GitHub CLI (`gh`)** to open and manage Pull Requests and Issues so that templates, labels, and milestones are applied accurately.
 - **PR Structure:** Must strictly follow [`.github/PULL_REQUEST_TEMPLATE.md`](./.github/PULL_REQUEST_TEMPLATE.md) (or [`docs-and-agents.md`](./.github/PULL_REQUEST_TEMPLATE/docs-and-agents.md)) and pass [`.github/workflows/pr-governance.yml`](./.github/workflows/pr-governance.yml).
-- **Mandatory Labels on Every PR / Issue:**
+- **Mandatory Labels on Every PR / Issue (Drives `labeler.yml` & `release-drafter.yml`):**
   - **Scope Labels (matching `.github/labeler.yml`):** `🔴 core-architecture`, `⚠️ agent-behavior`, `📄 docs`, `🔌 plugin`, `⚙️ ci`
-  - **Type / Governance Labels:** `✨ feat`, `🐛 fix`, `♻️ refactor`, `🔒 security`, `🗺️ roadmap`, `🚧 work-in-progress`, `📌 pinned`
-- **Mandatory Milestone (Agile Sprint Tracking):**
-  - Every PR and Issue must be linked (`--milestone`) to its corresponding Sprint Milestone:
-    - `v0.1.0 — Foundation & AI Governance (Sprint 0)`
-    - `v0.2.0 — Onboarding & User Layer (Sprint 1)`
-    - `v0.3.0 — Design & Portfolio Engine (Sprint 2)`
-    - `v1.0.0 — Automated Deploy & Public Release (Sprint 3)`
+  - **Type / Governance Labels (used by `.github/release-drafter.yml`):** `✨ feat`, `🐛 fix`, `♻️ refactor`, `🔒 security`, `🗺️ roadmap`, `🚧 work-in-progress`, `📌 pinned`
+- **Mandatory Milestone & Epic Issue Linking (Agile Sprint Tracking):**
+  - Every PR and Issue must be linked (`--milestone`) to its corresponding Sprint Milestone and reference its Sprint Epic Issue (`Part of #<N>` or `Closes #<N>`):
+    - **Sprint 0 (`Milestone #1` / `Epic #7`):** `v0.1.0 — Foundation & AI Governance (Sprint 0)`
+    - **Sprint 1 (`Milestone #2` / `Epic #8`):** `v0.2.0 — Onboarding & User Layer (Sprint 1)`
+    - **Sprint 2 (`Milestone #3` / `Epic #9`):** `v0.3.0 — Design & Portfolio Engine (Sprint 2)`
+    - **Sprint 3 (`Milestone #4` / `Epic #10`):** `v1.0.0 — Automated Deploy & Public Release (Sprint 3)`
 
 ---
 
@@ -112,11 +117,17 @@ Right now, **we are building the FolioOps engine/framework itself** — we are *
 
 ```text
 FolioOps/
-├── .github/     # Mandatory governance rules, templates, agents & CI workflows (CHECK FIRST)
-├── AGENTS.md    # Developer-mode instructions for AI Agents building FolioOps
-├── CLAUDE.md    # Entry point for Claude Code (@AGENTS.md)
-├── GEMINI.md    # Entry point for Antigravity / Gemini (@AGENTS.md)
-├── README.md    # Project overview and current status
-├── .gitignore   # Git ignore rules (includes DOCS-DEV/)
-└── DOCS-DEV/    # Ignored folder with PT-BR translations and drafts
+├── .github/            # Mandatory governance rules, templates, agents & CI workflows (CHECK FIRST)
+├── AGENTS.md           # Developer-mode instructions for AI Agents building FolioOps
+├── CLAUDE.md           # Entry point for Claude Code (@AGENTS.md)
+├── GEMINI.md           # Entry point for Antigravity / Gemini (@AGENTS.md)
+├── README.md           # Project overview and current status
+├── CONTRIBUTING.md     # Contribution guidelines for humans and AI Agents
+├── CODE_OF_CONDUCT.md  # Contributor Covenant Code of Conduct (v2.1)
+├── CHANGELOG.md        # Keep a Changelog & SemVer release history
+├── LICENSE             # MIT License
+├── .gitattributes      # Enforces UTF-8 LF line endings across all OS environments
+├── .editorconfig       # Enforces UTF-8, LF, and 2-space indentation across IDEs
+├── .gitignore          # Git ignore rules (includes DOCS-DEV/)
+└── DOCS-DEV/           # Ignored folder with PT-BR translations and drafts
 ```
