@@ -1,0 +1,10 @@
+{
+  "name": "folio-ops",
+  "version": "0.1.0",
+  "description": "Open-source AI-guided initiative enabling any professional from any industry to create, customize, and publish their own Web portfolio using an AI Agent.",
+  "author": {
+    "name": "OdevMatheus",
+    "url": "https://github.com/OdevMatheus"
+  },
+  "repository": "https://github.com/OdevMatheus/FolioOps"
+}
