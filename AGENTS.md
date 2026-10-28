@@ -105,11 +105,9 @@ Right now, **we are building the FolioOps engine/framework itself** — we are *
   - **Scope Labels (matching `.github/labeler.yml`):** `🔴 core-architecture`, `⚠️ agent-behavior`, `📄 docs`, `🔌 plugin`, `⚙️ ci`
   - **Type / Governance Labels (used by `.github/release-drafter.yml`):** `✨ feat`, `🐛 fix`, `♻️ refactor`, `🔒 security`, `🗺️ roadmap`, `🚧 work-in-progress`, `📌 pinned`
 - **Mandatory Milestone & Epic Issue Linking (Agile Sprint Tracking):**
-  - Every PR and Issue must be linked (`--milestone`) to its corresponding Sprint Milestone and reference its Sprint Epic Issue (`Part of #<N>` or `Closes #<N>`):
-    - **Sprint 0 (`Milestone #1` / `Epic #7`):** `v0.1.0 — Foundation & AI Governance (Sprint 0)`
-    - **Sprint 1 (`Milestone #2` / `Epic #8`):** `v0.2.0 — Onboarding & User Layer (Sprint 1)`
-    - **Sprint 2 (`Milestone #3` / `Epic #9`):** `v0.3.0 — Design & Portfolio Engine (Sprint 2)`
-    - **Sprint 3 (`Milestone #4` / `Epic #10`):** `v1.0.0 — Automated Deploy & Public Release (Sprint 3)`
+  - Every PR and Issue must be linked (`--milestone`) to the active **Infra, DevOps & Architecture** Sprint Milestone (and reference its Epic Issue when applicable):
+    - **Active Milestone (`Milestone #1` / `Epic #7`):** `v0.1.0 — Infra, DevOps & Architecture Foundation (Sprint 0)`
+  - *Note:* Product/MVP Milestones will only be created once the Infrastructure, DevOps, and Software Architecture phase is fully concluded.
 
 ---
 

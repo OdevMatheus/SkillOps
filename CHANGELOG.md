@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Community & Open-Source Governance:** Added `LICENSE` (MIT), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `CHANGELOG.md`.
 - **Environment Standardization:** Added `.gitattributes` (enforcing UTF-8 `LF` line endings) and `.editorconfig`.
 - **DevOps Automation:**
-  - Configured GitHub CLI (`gh`) workflow, 12 standardized UTF-8 repository Labels, and 4 Sprint Milestones (`v0.1.0` to `v1.0.0`).
+  - Configured GitHub CLI (`gh`) workflow, 12 standardized UTF-8 repository Labels, and the `v0.1.0 — Infra, DevOps & Architecture Foundation (Sprint 0)` Milestone.
   - Added semantic PR title validation (Conventional Commits) to `.github/workflows/pr-governance.yml`.
   - Added automated release notes drafting via `.github/workflows/release-drafter.yml` and `.github/release-drafter.yml`.
 
