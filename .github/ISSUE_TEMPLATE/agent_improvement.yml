@@ -1,0 +1,31 @@
+name: AI Agent Behavior / Prompt Improvement
+description: Suggest improvements to AGENTS.md, CLAUDE.md, GEMINI.md, or agent workflows
+title: "docs(agents): "
+labels: ["⚠️ agent-behavior", "📄 docs"]
+body:
+  - type: dropdown
+    id: target_agent
+    attributes:
+      label: Target AI Agent(s)
+      options:
+        - All Agents (AGENTS.md)
+        - Antigravity / Gemini (GEMINI.md)
+        - Claude Code (CLAUDE.md)
+        - GitHub Copilot (.github/copilot-instructions.md)
+        - Custom Agent (.github/agents/*)
+    validations:
+      required: true
+  - type: textarea
+    id: current_behavior
+    attributes:
+      label: Current Agent Behavior
+      description: How is the AI agent currently behaving or misinterpreting instructions?
+    validations:
+      required: true
+  - type: textarea
+    id: desired_behavior
+    attributes:
+      label: Desired Agent Behavior
+      description: How should the agent behave instead, and what prompt/instruction adjustment do you suggest?
+    validations:
+      required: true

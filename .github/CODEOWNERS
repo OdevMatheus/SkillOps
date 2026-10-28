@@ -1,0 +1,21 @@
+# CODEOWNERS — Auto-requests maintainer review on critical repository paths.
+# Last matching pattern wins.
+
+# Repository documentation & core governance
+/README*.md                       @OdevMatheus
+/.gitignore                       @OdevMatheus
+/.github/CODEOWNERS               @OdevMatheus
+/.github/SECURITY.md              @OdevMatheus
+
+# AI Agent instructions & multi-CLI entry points (CI-blind prompt layer)
+/AGENTS.md                        @OdevMatheus
+/CLAUDE.md                        @OdevMatheus
+/GEMINI.md                        @OdevMatheus
+/.github/copilot-instructions.md  @OdevMatheus
+/.github/agents/                  @OdevMatheus
+
+# CI/CD workflows, templates & plugin manifest
+/.github/workflows/               @OdevMatheus
+/.github/ISSUE_TEMPLATE/          @OdevMatheus
+/.github/PULL_REQUEST_TEMPLATE*   @OdevMatheus
+/.github/plugin/                  @OdevMatheus

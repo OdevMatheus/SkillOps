@@ -1,0 +1,35 @@
+"🔴 core-architecture":
+  - changed-files:
+      - any-glob-to-any-file:
+          - AGENTS.md
+          - CLAUDE.md
+          - GEMINI.md
+
+"⚠️ agent-behavior":
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/copilot-instructions.md
+          - .github/agents/**
+          - modes/**
+
+"📄 docs":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "README*.md"
+          - docs/**
+          - .github/SECURITY.md
+
+"🔌 plugin":
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/plugin/**
+
+"⚙️ ci":
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/workflows/**
+          - .github/labeler.yml
+          - .github/dependabot.yml
+          - .github/ISSUE_TEMPLATE/**
+          - .github/PULL_REQUEST_TEMPLATE/**
+          - .github/PULL_REQUEST_TEMPLATE.md
