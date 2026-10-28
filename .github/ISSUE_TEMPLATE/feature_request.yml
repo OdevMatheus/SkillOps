@@ -1,0 +1,32 @@
+name: Feature Request
+description: Propose a new feature, workflow mode, or industry portfolio archetype
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: checkboxes
+    id: search
+    attributes:
+      label: Existing Issues
+      options:
+        - label: I have searched existing issues and discussions to ensure this hasn't been proposed yet.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Opportunity
+      description: What problem does this feature solve, or which professional field does it help?
+      placeholder: "e.g., Architects and photographers need a dedicated visual gallery archetype..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe how you envision this working within FolioOps (keeping our agile, low-complexity philosophy).
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative approaches or workarounds you've considered?
