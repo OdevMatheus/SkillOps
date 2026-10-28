@@ -7,7 +7,7 @@
 
 ## 0. Mandatory Pre-Flight Protocol: Always Check `.github/` First
 
-**CRITICAL RULE:** Before starting any task, proposing changes, creating branches/commits, drafting issues, or opening Pull Requests, you **MUST** inspect and adhere to the governance rules, templates, and workflows inside [`.github/`](./.github/):
+**CRITICAL RULE:** Before starting any task, proposing changes, creating branches/commits, drafting issues, or opening Pull Requests, you **MUST** inspect and adhere to the governance rules, templates, labels, milestones, and workflows inside [`.github/`](./.github/):
 
 1. **Governance & Security Boundaries:**
    - [`.github/copilot-instructions.md`](./.github/copilot-instructions.md): Core operational rules and boundaries.
@@ -39,7 +39,7 @@ Right now, **we are building the FolioOps engine/framework itself** — we are *
    - Do not scaffold complex folder trees, heavy dependencies, or premature abstractions all at once.
    - Build only what is requested for the current step/iteration.
 2. **Iterative Alignment:**
-   - Propose ideas concisely, validate architectural decisions with the developer, and evolve the project step by step.
+   - Propose ideas concisely, validate architectural decisions with the developer, and evolve the project step by step across our Agile Milestones (Sprints).
 3. **Separation of Concerns (Developer vs. End-User):**
    - While in development, `AGENTS.md` guides the construction of the repository.
    - The future end-user agent prompt is kept aside in `DOCS-DEV/AGENTS.end-user.draft.md` until the framework is ready to be tested with end-user flows.
@@ -56,15 +56,16 @@ Right now, **we are building the FolioOps engine/framework itself** — we are *
 
 ---
 
-## 4. Git, Branching, Commits & PR Governance (Strict Rules)
+## 4. Git, Branching, Commits, PRs & DevOps Governance (Strict Rules)
 
-### 4.1 Mandatory Review Gate (Before Commit & Push)
-- **NEVER run `git commit` or `git push` automatically.**
+### 4.1 Mandatory Review Gate (Before Commit, Push & PR)
+- **NEVER run `git commit`, `git push`, or `gh pr create` automatically.**
 - Before committing or pushing, verify compliance with `.github/workflows/pr-governance.yml` and request a **Review** from the developer by presenting:
   1. **Target Branch:** The standardized branch name where changes will be committed/pushed.
   2. **Modified Files:** Quick summary of added/modified/deleted files (`git status`).
   3. **Proposed Commit Message:** The exact semantic commit message in English.
-- Only execute `git commit` / `git push` after the developer explicitly approves the review.
+  4. **Target Milestone & Labels (when opening/updating a PR):** Which Agile Milestone and GitHub Labels apply.
+- Only execute `git commit` / `git push` / `gh pr` after the developer explicitly approves the review.
 
 ### 4.2 Git Identity & Remote
 - **Local Identity:** Strictly `OdevMatheus <matheusvita007@gmail.com>`.
@@ -91,15 +92,19 @@ Right now, **we are building the FolioOps engine/framework itself** — we are *
   - Use the imperative mood in the subject line (`add`, `update`, `remove`, not `added` or `adds`).
   - Keep the subject line concise (under 72 characters) and lowercase after the colon.
   - Allowed `<type>` values: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `style`, `perf`, `ci`.
-  - Examples:
-    - `chore(repo): initialize base AI agent files`
-    - `docs(agents): add git branching and PR governance rules`
 
-### 4.5 Pull Request (PR) & Issue Best Practices
-- Before opening or drafting any Pull Request or Issue, **always read and use the templates in `.github/PULL_REQUEST_TEMPLATE.md` (or `.github/PULL_REQUEST_TEMPLATE/docs-and-agents.md`) and `.github/ISSUE_TEMPLATE/`**.
-- Every Pull Request targeting `master` must be written in **English (`en-US`)** and pass `.github/workflows/pr-governance.yml`:
-  - **PR Title:** Follows Conventional Commits format in lowercase imperative (e.g., `feat(core): add base AI agent instructions`).
-  - **PR Description Structure:** Strictly follows `.github/PULL_REQUEST_TEMPLATE.md` (`## Summary`, `## Related Issue`, `## Changes`, `## Type of Change`, `## Verification / How to Test`, `## Governance Checklist`).
+### 4.5 Pull Request (PR), Issue, Label & Milestone Governance (via GitHub CLI `gh`)
+- Always use the **GitHub CLI (`gh`)** to open and manage Pull Requests and Issues so that templates, labels, and milestones are applied accurately.
+- **PR Structure:** Must strictly follow [`.github/PULL_REQUEST_TEMPLATE.md`](./.github/PULL_REQUEST_TEMPLATE.md) (or [`docs-and-agents.md`](./.github/PULL_REQUEST_TEMPLATE/docs-and-agents.md)) and pass [`.github/workflows/pr-governance.yml`](./.github/workflows/pr-governance.yml).
+- **Mandatory Labels on Every PR / Issue:**
+  - **Scope Labels (matching `.github/labeler.yml`):** `🔴 core-architecture`, `⚠️ agent-behavior`, `📄 docs`, `🔌 plugin`, `⚙️ ci`
+  - **Type / Governance Labels:** `✨ feat`, `🐛 fix`, `♻️ refactor`, `🔒 security`, `🗺️ roadmap`, `🚧 work-in-progress`, `📌 pinned`
+- **Mandatory Milestone (Agile Sprint Tracking):**
+  - Every PR and Issue must be linked (`--milestone`) to its corresponding Sprint Milestone:
+    - `v0.1.0 — Foundation & AI Governance (Sprint 0)`
+    - `v0.2.0 — Onboarding & User Layer (Sprint 1)`
+    - `v0.3.0 — Design & Portfolio Engine (Sprint 2)`
+    - `v1.0.0 — Automated Deploy & Public Release (Sprint 3)`
 
 ---
 

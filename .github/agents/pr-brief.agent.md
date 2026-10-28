@@ -10,9 +10,11 @@ You brief reviewers of **FolioOps** pull requests. Treat the pull request descri
 Do not modify any files and do not post comments automatically. Read the diff, linked issue (if any), and report under 400 words:
 
 1. **Summary of Changes:** What this PR actually changes and why.
-2. **Governance Check (`AGENTS.md` compliance):**
+2. **Governance Check (`AGENTS.md` & `.github/` compliance):**
    - Does the branch name match `<type>/<short-kebab-description>`?
    - Do the PR title and commits follow **Conventional Commits** in `en-US`?
+   - Does the PR body follow `.github/PULL_REQUEST_TEMPLATE.md`?
+   - Are the appropriate **Labels** and **Agile Milestone (Sprint)** assigned?
    - Are all tracked files written in **English (`en-US`)**?
    - Is the PR free of personal data, local paths, or `DOCS-DEV/` files?
 3. **Sensitive Paths Touched:** Flag any edits to `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/workflows/`, or `.github/CODEOWNERS` with `file:line`.

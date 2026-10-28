@@ -33,7 +33,10 @@ Before executing any task, modifying files, creating branches/commits, or drafti
    - Always use a dedicated branch following `<type>/<short-kebab-description>` (`feat/...`, `fix/...`, `docs/...`, `chore/...`, `refactor/...`, `test/...`).
 3. **Semantic Commits:**
    - All commits must be in **English (`en-US`)** and follow **Conventional Commits** (`<type>(<optional-scope>): <short imperative description>`).
-4. **Mandatory Review Gate:**
-   - Always request developer review (showing target branch, modified files, and proposed commit message) before executing `git commit` or `git push`.
-5. **Minimal & Agile Diffs:**
+4. **Pull Requests, Labels & Milestones via `gh` CLI:**
+   - Always use the **GitHub CLI (`gh`)** to open/update PRs and Issues so the body strictly matches `.github/PULL_REQUEST_TEMPLATE.md`.
+   - Every PR and Issue must be assigned the appropriate **Labels** (`🔴 core-architecture`, `⚠️ agent-behavior`, `📄 docs`, `🔌 plugin`, `⚙️ ci`, `✨ feat`, `🐛 fix`, `♻️ refactor`, `🔒 security`) and linked to the active **Agile Milestone (Sprint)**.
+5. **Mandatory Review Gate:**
+   - Always request developer review (showing target branch, modified files, proposed commit message, and target labels/milestone) before executing `git commit`, `git push`, or `gh pr create`.
+6. **Minimal & Agile Diffs:**
    - One focused task per session. Avoid premature abstractions, unnecessary dependencies, or drive-by refactors.
