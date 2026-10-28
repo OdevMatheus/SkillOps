@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check Branch Naming & Semantic PR Title
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const pr = context.payload.pull_request;
@@ -42,7 +42,7 @@ jobs:
             core.info(`Branch "${branch}" and PR title "${title}" passed governance validation.`);
 
       - name: Block Local Developer Docs (DOCS-DEV) & Sensitive Files
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const { owner, repo } = context.repo;
