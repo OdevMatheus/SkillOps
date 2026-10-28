@@ -37,7 +37,7 @@ Before executing any task, modifying files, creating branches/commits, or drafti
    - Keep `## [Unreleased]` in [`/CHANGELOG.md`](../CHANGELOG.md) (and `DOCS-DEV/CHANGELOG.md`) updated with notable changes.
 4. **Pull Requests, Labels, Milestones & Epics via `gh` CLI:**
    - Always use the **GitHub CLI (`gh`)** to open/update PRs and Issues so the body strictly matches `.github/PULL_REQUEST_TEMPLATE.md`.
-   - Every PR and Issue must be assigned the appropriate **Labels** (`🔴 core-architecture`, `⚠️ agent-behavior`, `📄 docs`, `🔌 plugin`, `⚙️ ci`, `✨ feat`, `🐛 fix`, `♻️ refactor`, `🔒 security`) and linked to the active **Agile Milestone (Sprint)** and **Sprint Epic Issue (`#7`–`#10`)**.
+   - Every PR and Issue must be assigned the appropriate **Labels** (`🔴 core-architecture`, `⚠️ agent-behavior`, `📄 docs`, `🔌 plugin`, `⚙️ ci`, `✨ feat`, `🐛 fix`, `♻️ refactor`, `🔒 security`) and linked to the active **Infra, DevOps & Architecture Milestone** (`v0.1.0 — Infra, DevOps & Architecture Foundation (Sprint 0)`).
 5. **Mandatory Review Gate:**
    - Always request developer review (showing target branch, modified files, proposed commit message, and target labels/milestone) before executing `git commit`, `git push`, or `gh pr create`.
 6. **Minimal & Agile Diffs:**

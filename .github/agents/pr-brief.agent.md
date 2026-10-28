@@ -14,7 +14,7 @@ Do not modify any files and do not post comments automatically. Read the diff, l
    - Does the branch name match `<type>/<short-kebab-description>`?
    - Do the PR title and commits follow **Conventional Commits** in `en-US`?
    - Does the PR body follow `.github/PULL_REQUEST_TEMPLATE.md`?
-   - Are the appropriate **Labels**, **Agile Milestone (Sprint)**, and **Sprint Epic Issue (`#7`–`#10`)** assigned/linked?
+   - Are the appropriate **Labels** and **Agile Milestone (Sprint)** assigned/linked?
    - Is `CHANGELOG.md` (`## [Unreleased]`) updated if the PR introduces notable changes?
    - Are all tracked files written in **English (`en-US`)**?
    - Is the PR free of personal data, local paths, or `DOCS-DEV/` files?
