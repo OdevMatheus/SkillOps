@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Agile Sprint Roadmap & Atomic Backlog (`Sprints 1–5`):**
+  - Created Milestones `#5` through `#9` (`v0.2.0` to `v1.0.0`), 5 Sprint Epic Issues (`#16`, `#21`, `#26`, `#31`, `#36`), and 20 atomic implementation Issues (`#17`–`#20`, `#22`–`#25`, `#27`–`#30`, `#32`–`#35`, `#37`–`#40`) mapped directly to the approved System Architecture and ADRs.
 - **System Architecture & ADRs (`docs/architecture/`):**
   - Added master System Architecture & Design Specification (`docs/architecture/README.md`) with Mermaid component and sequence diagrams.
   - Added `ADR-0001` (`career-ops`-Style Mode Router, Embedded Mandatory Rules, and AI-Executed Scripts).
