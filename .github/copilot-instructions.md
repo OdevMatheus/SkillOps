@@ -7,12 +7,12 @@ First, read and follow [`/AGENTS.md`](../AGENTS.md) and [`/SKILL_CONTRACT.md`](.
 ## 0. Mandatory Pre-Flight Check (`.github/` & Root Governance First)
 
 Before executing any task, modifying files, creating branches/commits, or drafting issues/PRs, you **must** inspect the rules and templates in `.github/` and the repository root:
-- **Workflows & CI Gates:** [`.github/workflows/pr-governance.yml`](./workflows/pr-governance.yml), [`.github/labeler.yml`](./labeler.yml), and [`.github/release-drafter.yml`](./release-drafter.yml)
-- **PR Templates:** [`.github/PULL_REQUEST_TEMPLATE.md`](./PULL_REQUEST_TEMPLATE.md) and [`.github/PULL_REQUEST_TEMPLATE/docs-and-agents.md`](./PULL_REQUEST_TEMPLATE/docs-and-agents.md)
+- **Workflows & CI Gates:** [`.github/workflows/pr-governance.yml`](./workflows/pr-governance.yml), [`.github/workflows/ai-ci.yml`](./workflows/ai-ci.yml), [`.github/labeler.yml`](./labeler.yml), and [`.github/release-drafter.yml`](./release-drafter.yml)
+- **PR Template:** [`.github/PULL_REQUEST_TEMPLATE.md`](./PULL_REQUEST_TEMPLATE.md)
 - **Issue Templates:** [`.github/ISSUE_TEMPLATE/`](./ISSUE_TEMPLATE/) (`bug_report.yml`, `feature_request.yml`, `agent_improvement.yml`)
 - **Ownership, Security & Community:** [`.github/CODEOWNERS`](./CODEOWNERS), [`.github/SECURITY.md`](./SECURITY.md), [`/CONTRIBUTING.md`](../CONTRIBUTING.md), [`/CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md), and [`/CHANGELOG.md`](../CHANGELOG.md)
-- **Formatting & Encoding:** [`/.editorconfig`](../.editorconfig) and [`/.gitattributes`](../.gitattributes) (`UTF-8` encoding, `LF` line endings)
-- **Specialized Agents:** [`.github/agents/`](./agents/) (`pr-brief.agent.md`, `docs-sync.agent.md`, `address-review.agent.md`)
+- **Formatting & Environment:** [`/.gitattributes`](../.gitattributes) (`UTF-8` encoding, `LF` line endings) and [`/.env.example`](../.env.example)
+- **Specialized Subagents:** [`.github/agents/`](./agents/) (`pr-brief.agent.md`, `docs-sync.agent.md`, `address-review.agent.md`, `skill-auditor.agent.md`)
 
 ---
 
@@ -30,7 +30,7 @@ Before executing any task, modifying files, creating branches/commits, or drafti
    - Every documentation/instruction file must have an up-to-date **Portuguese (`pt-BR`)** translated mirror inside `DOCS-DEV/` (which is gitignored).
 2. **Branching & Protected `master`:**
    - **NEVER push directly to `master` (or `main`)**.
-   - Always use a dedicated branch following `<type>/<short-kebab-description>` (`feat/...`, `fix/...`, `docs/...`, `chore/...`, `refactor/...`, `test/...`).
+   - Always use a dedicated branch following `<type>/<short-kebab-description>` (`feat/...`, `fix/...`, `docs/...`, `chore/...`, `refactor/...`, `test/...`, `ci/...`).
 3. **Semantic Commits & Changelog:**
    - All commits and PR titles must be in **English (`en-US`)** and follow **Conventional Commits** (`<type>(<optional-scope>): <short imperative description>`).
    - Keep `## [Unreleased]` in [`/CHANGELOG.md`](../CHANGELOG.md) (and `DOCS-DEV/CHANGELOG.md`) updated with notable changes.

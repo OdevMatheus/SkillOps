@@ -1,15 +1,22 @@
-# Environment variables
+# Environment variables & AI Provider Credentials
 .env
 .env.*
 !.env.example
 
-# Python 3.12+ Bytecode, Virtual Environments & Tooling Caches
+# Python 3.12+ Bytecode, Virtual Environments & Package Artifacts
 __pycache__/
 *.py[cod]
 *$py.class
 .venv/
 venv/
 env/
+dist/
+build/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Python Quality & Type-Checking Caches (Pytest, Ruff, Mypy, Coverage)
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -17,18 +24,14 @@ env/
 .coverage.*
 coverage.xml
 htmlcov/
-*.egg-info/
-.installed.cfg
-*.egg
 
-# Dependencies & Build outputs
-node_modules/
-dist/
-build/
-.next/
-out/
+# SkillOps Local Runtime, TDD Eval Traces & Agent Harness Artifacts
+.skillops/
+.eval_cache/
+.eval_runs/
+.mcp_cache/
 
-# OS & Editor files
+# OS & IDE Scratch Files
 .DS_Store
 Thumbs.db
 *.swp
@@ -36,16 +39,10 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea/
-
-# Logs & Temp
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
 tmp/
 temp/
 
-# Local Developer Docs (PT-BR mirror)
+# Local Developer Docs (PT-BR mirror — never committed)
 DOCS-DEV/
 docs-dev/

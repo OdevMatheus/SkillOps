@@ -30,7 +30,7 @@ Before writing code, modifying documentation, or opening an Issue/Pull Request, 
   - `feat/<short-slug>` — New CLI commands, engine modules, or hybrid executable skills
   - `fix/<short-slug>` — Bug fixes, schema fixes, or false-positive corrections
   - `docs/<short-slug>` — Documentation, ADRs, and governance updates
-  - `chore/<short-slug>` — Repository tooling, CI/CD, or `.github/` maintenance
+  - `chore/<short-slug>` / `ci/<short-slug>` — Repository tooling, CI/CD, or `.github/` maintenance
   - `refactor/<short-slug>` — Structural refactoring without behavior changes
   - `test/<short-slug>` — Unit, contract, or TDD benchmark evaluation suites
 
@@ -39,7 +39,7 @@ All commit messages and Pull Request titles **must** follow [Conventional Commit
 - `feat(auditor): implement pairwise cosine similarity collision detector`
 - `feat(catalog-ai): add mcp-architect hybrid skill and inspector script`
 - `docs(architecture): define SKILL_CONTRACT.md and ADRs 0001-0004`
-- `ci(python): add GitHub Actions workflow for ruff, mypy --strict, and pytest`
+- `ci(devops): align AI governance and remove legacy bloat`
 
 ---
 
@@ -66,8 +66,8 @@ gh pr create \
 
 ## 5. Privacy, Security & Sanitization Checklist
 
-Every contribution is automatically audited by [`.github/workflows/pr-governance.yml`](./.github/workflows/pr-governance.yml):
+Every contribution is automatically audited by [`.github/workflows/pr-governance.yml`](./.github/workflows/pr-governance.yml) and [`.github/workflows/ai-ci.yml`](./.github/workflows/ai-ci.yml):
 1. **No Absolute Machine Paths:** Never include `C:\Users\...`, `/Users/...`, or `/home/...` in any tracked file. Always use relative paths (`./...`).
 2. **No Environment or Corporate Metadata:** Never expose OS usernames, internal domains, or non-public references.
-3. **No Secrets or Credentials:** Never commit `.env` files, API tokens, or private keys.
-4. **Line Endings & Formatting:** Respect [`.editorconfig`](./.editorconfig) and [`.gitattributes`](./.gitattributes) (`UTF-8` encoding and `LF` line endings).
+3. **No Secrets or AI API Keys:** Never commit `.env` files, AI provider keys (`sk-proj-...`, `sk-ant-...`, `AIzaSy...`, `hf_...`), or private tokens.
+4. **Line Endings & Formatting:** Respect [`.gitattributes`](./.gitattributes) (`UTF-8` encoding and `LF` line endings) and `ruff format` for Python 3.12+ files.

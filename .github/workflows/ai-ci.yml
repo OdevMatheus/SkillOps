@@ -1,0 +1,85 @@
+name: SkillOps AI Engine & Catalog CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  agent-and-skill-contract-gate:
+    name: Audit Subagents & Hybrid Skill Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Validate Subagents Frontmatter (.github/agents/*.agent.md)
+        run: |
+          for agent_file in .github/agents/*.agent.md; do
+            if [ ! -f "$agent_file" ]; then
+              echo "::error::No subagent definitions found in .github/agents/"
+              exit 1
+            fi
+            head -n 1 "$agent_file" | grep -q "^---$" || {
+              echo "::error::Missing YAML frontmatter start in $agent_file"
+              exit 1
+            }
+            grep -q "^name:" "$agent_file" || {
+              echo "::error::Missing 'name:' field in $agent_file"
+              exit 1
+            }
+            grep -q "^description:" "$agent_file" || {
+              echo "::error::Missing 'description:' field in $agent_file"
+              exit 1
+            }
+          done
+          echo "OK — All .github/agents/*.agent.md definitions passed frontmatter audit."
+
+      - name: Validate Catalog Skill Line Budgets (INV-SKILL-01 <= 250 lines)
+        run: |
+          if [ -d "catalog" ]; then
+            while IFS= read -r -d '' skill_file; do
+              LINE_COUNT=$(wc -l < "$skill_file")
+              if [ "$LINE_COUNT" -gt 250 ]; then
+                echo "::error file=$skill_file::SKILL.md exceeds Level 2 progressive disclosure budget ($LINE_COUNT > 250 lines)."
+                exit 1
+              fi
+            done < <(find catalog -name "SKILL.md" -print0)
+            echo "OK — All catalog SKILL.md files respect INV-SKILL-01 (<= 250 lines)."
+          else
+            echo "OK — Catalog directory not yet populated (pre-development readiness phase)."
+          fi
+
+  python-engine-qa:
+    name: Python ${{ matrix.python-version }} QA & Deterministic Eval Gate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv & Python ${{ matrix.python-version }}
+        uses: astral-sh/setup-uv@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run Ruff, Mypy (--strict), Pytest & Deterministic SkillOps Audit
+        run: |
+          if [ -f "pyproject.toml" ]; then
+            uv sync --all-extras --dev
+            uv run ruff check src tests
+            uv run ruff format --check src tests
+            uv run mypy --strict src tests
+            uv run pytest --cov=skillops --cov-report=term-missing
+          else
+            echo "OK — Python 3.12+ CI pipeline ready (awaiting pyproject.toml in Sprint 1 Issue #45)."
+          fi
