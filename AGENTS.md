@@ -22,9 +22,10 @@
    - [`.github/ISSUE_TEMPLATE/`](./.github/ISSUE_TEMPLATE/): Always follow [`bug_report.yml`](./.github/ISSUE_TEMPLATE/bug_report.yml), [`feature_request.yml`](./.github/ISSUE_TEMPLATE/feature_request.yml), or [`agent_improvement.yml`](./.github/ISSUE_TEMPLATE/agent_improvement.yml) when creating or structuring issues.
 4. **Specialized Maintenance Agents:**
    - [`.github/agents/`](./.github/agents/): Reference [`pr-brief.agent.md`](./.github/agents/pr-brief.agent.md), [`docs-sync.agent.md`](./.github/agents/docs-sync.agent.md), and [`address-review.agent.md`](./.github/agents/address-review.agent.md) when reviewing PRs, auditing `DOCS-DEV/` synchronization, or addressing review feedback.
-5. **System Architecture & ADRs (`docs/architecture/`):**
+5. **System Architecture, ADRs & Data Contract (`docs/architecture/` & `DATA_CONTRACT.md`):**
    - [`docs/architecture/README.md`](./docs/architecture/README.md): Master System Architecture & Design Specification (`career-ops` Mode Router, 6-Block `auto-pipeline`, Two-Stage `inbox/` → `profile/` Data Layer, Next.js Static Export Stack, and Multi-Stage Quality Gates).
    - [`docs/architecture/adr/`](./docs/architecture/adr/): Architecture Decision Records (`ADR-0001` through `ADR-0004`).
+   - [`DATA_CONTRACT.md`](./DATA_CONTRACT.md): Canonical separation between `PROJECT_ROOT` (System Layer) and `DATA_ROOT` (User Layer), schemas for `profile/_profile.md`, `profile/_design.md`, `profile/_custom.md`, `config/profile.yml`, and EARS functional invariants.
 
 ---
 
@@ -128,6 +129,7 @@ FolioOps/
 ├── AGENTS.md           # Developer-mode instructions for AI Agents building FolioOps
 ├── CLAUDE.md           # Entry point for Claude Code (@AGENTS.md)
 ├── GEMINI.md           # Entry point for Antigravity / Gemini (@AGENTS.md)
+├── DATA_CONTRACT.md    # Canonical boundary (PROJECT_ROOT vs DATA_ROOT) & profile/design schemas
 ├── README.md           # Project overview and current status
 ├── CONTRIBUTING.md     # Contribution guidelines for humans and AI Agents
 ├── CODE_OF_CONDUCT.md  # Contributor Covenant Code of Conduct (v2.1)
