@@ -168,7 +168,7 @@ def test_eval_suite_and_benchmark_report_regression_guard() -> None:
 
     certified = BenchmarkReport.from_runs(
         skill_name="mcp-architect",
-        model="gpt-4.1-mini",
+        runner="deterministic-ast",
         timestamp="2026-10-29T14:00:00Z",
         with_skill=BenchmarkRunStats(pass_rate_mean=0.95, tokens_mean=2800, latency_ms_mean=3100),
         without_skill=BenchmarkRunStats(
@@ -179,7 +179,7 @@ def test_eval_suite_and_benchmark_report_regression_guard() -> None:
 
     regressed = BenchmarkReport.from_runs(
         skill_name="bad-skill",
-        model="gpt-4.1-mini",
+        runner="deterministic-ast",
         timestamp="2026-10-29T14:00:00Z",
         with_skill=BenchmarkRunStats(pass_rate_mean=0.50, tokens_mean=6000, latency_ms_mean=5000),
         without_skill=BenchmarkRunStats(
@@ -192,7 +192,7 @@ def test_eval_suite_and_benchmark_report_regression_guard() -> None:
         BenchmarkReport.model_validate(
             {
                 "skill_name": "dishonest-skill",
-                "model": "gpt-4.1-mini",
+                "runner": "deterministic-ast",
                 "timestamp": "2026-10-29T14:00:00Z",
                 "with_skill": {
                     "pass_rate_mean": 0.50,

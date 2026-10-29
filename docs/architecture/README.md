@@ -1,6 +1,6 @@
 # SkillOps — Architecture Documentation (`v0.2.0`)
 
-Welcome to the architectural documentation for **SkillOps**, the **Python 3.12+ Engine & Benchmark-Verified Library for AI Coding Agent Skills & Subagents**.
+Welcome to the architectural documentation for **SkillOps**, the **Zero-API Python 3.12+ Engine & Benchmark-Verified Library for AI Coding Agent Skills & Subagents**.
 
 ---
 
@@ -13,8 +13,8 @@ Modern AI coding assistants (Claude Code, Antigravity/Gemini CLI, Cursor, OpenAI
 2. **Skill-Induced Failures (`arXiv:2608.11888` — *Agent Skills Can Be Harmful*):**
    Static markdown skills without executable verification tools or comparative `with_skill` vs. `without_skill` benchmarks frequently **reduce** task pass rates while inflating token usage by 30%–200%.
 
-**SkillOps** solves both problems through a two-pillar architecture:
-- **Pillar 1 — The `SkillOps` Core Engine (`src/skillops/`):** A strict Python 3.12+ CLI, FastAPI server, and FastMCP server that audits skill catalogs for semantic collisions and token budgets (`skillops audit`), routes optimal 5–12 skill bundles per repository (`skillops route`), transpiles and syncs skills across 5 runtimes (`skillops sync`), and runs TDD `with_skill` vs. `without_skill` benchmarks via the OpenAI Agents SDK (`skillops eval`).
+**SkillOps** solves both problems through a **100% Zero-API, Offline-First** two-pillar architecture:
+- **Pillar 1 — The `SkillOps` Core Engine (`src/skillops/`):** A pure Python 3.12+ CLI and local JSON-RPC 2.0 `stdio` MCP server with **zero external API keys and zero HTTP servers**. It audits skill catalogs for semantic collisions and token budgets (`skillops audit`), routes optimal 5–12 skill bundles per repository (`skillops route`), transpiles and syncs skills across 5 runtimes (`skillops sync`), and runs deterministic AST & subprocess TDD `with_skill` vs. `without_skill` benchmarks (`skillops eval`).
 - **Pillar 2 — The Elite Executable Skill Catalog (`catalog/`):** 13 hybrid executable skills across 3 tracks (`ai-engineering`, `python-backend`, `arch-quality`), where every skill pairs a concise `< 250`-line `SKILL.md` with a deterministic Python 3.12+ CLI tool (`scripts/*.py`) and a TDD evaluation suite (`evals/evals.json` + `evals/benchmark.json`).
 
 ---
@@ -29,13 +29,13 @@ flowchart TB
         T3["Track 3: Architecture & Quality\n(ast-blast-radius, bug-reproducer-tdd,\nsecurity-sast-gate, adr-enforcer)"]
     end
 
-    subgraph Engine["Pillar 1: SkillOps Core Engine (src/skillops/ — Python 3.12+)"]
+    subgraph Engine["Pillar 1: Zero-API SkillOps Core Engine (src/skillops/ — Python 3.12+)"]
         Models["Pydantic v2 Contracts\n(SkillManifest, EvalSuite,\nCollisionReport, BenchmarkReport)"]
-        Auditor["Semantic Collision & Budget Auditor\n(skillops audit)"]
+        Auditor["Lexical/TF-IDF Collision & Budget Auditor\n(skillops audit)"]
         Router["Context-Aware Repo Router\n(skillops route)"]
         Sync["Multi-Runtime Transpiler\n(skillops sync)"]
-        Eval["TDD Eval Engine (OpenAI Agents SDK)\n(skillops eval)"]
-        Server["FastAPI Viewer & FastMCP Server\n(skillops serve / skillops mcp)"]
+        Eval["Zero-API Deterministic TDD Eval Engine\n(skillops eval)"]
+        Mcp["Local JSON-RPC 2.0 Stdio MCP Server\n(skillops mcp)"]
     end
 
     subgraph Runtimes["Target Agent Harnesses"]
@@ -52,7 +52,7 @@ flowchart TB
     Models --> Eval
     Router --> Sync
     Sync --> R1 & R2 & R3 & R4 & R5
-    Auditor & Eval --> Server
+    Auditor & Eval --> Mcp
 ```
 
 ---
@@ -63,11 +63,11 @@ All architectural invariants and design trade-offs are documented in our normati
 
 | Document | Title | Summary |
 | :--- | :--- | :--- |
-| **[`SKILL_CONTRACT.md`](../../SKILL_CONTRACT.md)** | **Normative Skill, Audit & Benchmark Contract** | Defines the hybrid skill layout, 3-level token budgets (`L1 <= 90 tokens`, `L2 <= 250 lines`), `evals.json` & `benchmark.json` schemas, and the `SkillOps` CLI interface. |
+| **[`SKILL_CONTRACT.md`](../../SKILL_CONTRACT.md)** | **Normative Skill, Audit & Benchmark Contract** | Defines the hybrid skill layout, 3-level token budgets (`L1 <= 160 tokens`, `L2 <= 250 lines`), `evals.json` & `benchmark.json` schemas, and the `SkillOps` CLI interface. |
 | **[`ADR-0001`](./adr/0001-hybrid-executable-skills-architecture.md)** | **Hybrid Executable Skills Architecture** | Explains why every skill pairs a concise `SKILL.md` with a deterministic Python 3.12+ CLI tool (`scripts/*.py`) and `evals/`. |
-| **[`ADR-0002`](./adr/0002-semantic-collision-auditor-and-token-budgeting.md)** | **Semantic Collision Auditor & Token Budgeting** | Details the pairwise cosine similarity audit (`>= 0.78` warning, `>= 0.85` error) and 3-level progressive disclosure token limits. |
+| **[`ADR-0002`](./adr/0002-semantic-collision-auditor-and-token-budgeting.md)** | **Semantic Collision Auditor & Token Budgeting** | Details the zero-API pairwise cosine similarity audit (`>= 0.72` high-risk, `>= 0.85` error) and 3-level progressive disclosure token limits. |
 | **[`ADR-0003`](./adr/0003-context-aware-dynamic-router-and-multi-runtime-sync.md)** | **Context-Aware Dynamic Router & Multi-Runtime Sync** | Describes repository stack fingerprinting (`skillops route`) and multi-runtime transpilation (`skillops sync`). |
-| **[`ADR-0004`](./adr/0004-tdd-skill-evaluation-engine-openai-agents-sdk.md)** | **TDD Skill Evaluation Engine via OpenAI Agents SDK** | Specifies dual-mode (`deterministic` + `live`) `with_skill` vs. `without_skill` benchmarking (`skillops eval`), FastAPI viewer, and FastMCP server. |
+| **[`ADR-0004`](./adr/0004-tdd-skill-evaluation-engine-openai-agents-sdk.md)** | **Zero-API Deterministic TDD Skill Evaluation Engine & Stdio MCP** | Specifies offline deterministic AST/subprocess `with_skill` vs. `without_skill` benchmarking (`skillops eval`) and local JSON-RPC 2.0 `stdio` MCP server (`skillops mcp`). |
 
 ---
 
@@ -76,19 +76,18 @@ All architectural invariants and design trade-offs are documented in our normati
 ```text
 SkillOps/
 ├── SKILL_CONTRACT.md            # Normative specification for Skills, Audits, Routing & Evals
-├── pyproject.toml               # Python 3.12+ package, ruff, mypy --strict, pytest config
+├── pyproject.toml               # Zero-API Python 3.12+ package, ruff, mypy --strict, pytest config
 ├── src/
 │   └── skillops/
 │       ├── __init__.py
-│       ├── cli.py               # Typer + Rich CLI entrypoint (audit, route, sync, eval, serve, mcp)
+│       ├── cli.py               # Typer + Rich CLI entrypoint (init, audit, route, sync, eval, mcp)
 │       ├── models.py            # Pydantic v2 strict models (SkillManifest, EvalSuite, CollisionReport, etc.)
-│       ├── auditor/             # Semantic collision detector & 3-level token budget linter
+│       ├── auditor/             # Zero-API lexical/TF-IDF collision detector & 3-level token budget linter
 │       ├── router/              # Repository stack fingerprinter & greedy bundle compiler
 │       ├── sync/                # Multi-runtime transpilers (Claude, Antigravity, Cursor, Codex, Copilot)
-│       ├── eval_engine/         # TDD with_skill vs without_skill runner (OpenAI Agents SDK + deterministic graders)
-│       ├── server/              # FastAPI benchmark & audit dashboard (skillops serve)
-│       └── mcp/                 # FastMCP server exposing SkillOps tools to AI agents (skillops mcp)
-├── catalog/                     # 13 Benchmark-Verified Hybrid Executable Skills
+│       ├── eval_engine/         # Zero-API deterministic TDD with_skill vs without_skill runner
+│       └── mcp/                 # Local JSON-RPC 2.0 stdio MCP server exposing SkillOps tools (skillops mcp)
+├── catalog/                     # Benchmark-Verified Hybrid Executable Skills
 │   ├── ai-engineering/
 │   ├── python-backend/
 │   └── arch-quality/

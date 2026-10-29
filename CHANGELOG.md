@@ -47,6 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added automated release notes drafting via `.github/workflows/release-drafter.yml` and `.github/release-drafter.yml`.
 
 ### Removed
+- **Zero-API Architecture Simplification (`Sprint 1 / Issue #46`):**
+  - Removed all external LLM API and HTTP web server dependencies (`openai-agents`, `fastapi`, `uvicorn`, `httpx`, `mcp` HTTP stack, `.env.example`, and `skillops serve`) so **SkillOps** runs 100% locally and offline with only 4 core Python packages (`pydantic`, `typer`, `rich`, `pyyaml`).
 - **Architectural Bloat Cleanup (`Sprint 1 / Issue #47`):**
   - Removed unnecessary `.editorconfig`, `.github/FUNDING.yml`, `.github/PULL_REQUEST_TEMPLATE/docs-and-agents.md`, and `.github/plugin/plugin.json`, as well as legacy web/Node.js rules from `.gitattributes` and `.gitignore`.
 

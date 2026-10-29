@@ -66,13 +66,6 @@ class OutputFormat(StrEnum):
     MARKDOWN = "markdown"
 
 
-class EvalMode(StrEnum):
-    """Supported TDD evaluation execution modes."""
-
-    DETERMINISTIC = "deterministic"
-    LIVE = "live"
-
-
 class RuntimeTarget(StrEnum):
     """Supported AI coding agent harnesses for multi-runtime transpilation."""
 
@@ -84,10 +77,9 @@ class RuntimeTarget(StrEnum):
 
 
 class McpTransport(StrEnum):
-    """Supported Model Context Protocol (MCP) transports."""
+    """Supported zero-API Model Context Protocol (MCP) transports."""
 
     STDIO = "stdio"
-    SSE = "sse"
 
 
 app = typer.Typer(
@@ -463,28 +455,13 @@ def eval_command(
             help="Evaluate all Hybrid Executable Skills in the catalog.",
         ),
     ] = False,
-    mode: Annotated[
-        EvalMode,
-        typer.Option(
-            "--mode",
-            "-m",
-            help="Evaluation execution mode (deterministic offline CI or live OpenAI Agents SDK).",
-        ),
-    ] = EvalMode.DETERMINISTIC,
-    model: Annotated[
-        str,
-        typer.Option(
-            "--model",
-            help="Target LLM identifier for live OpenAI Agents SDK trials.",
-        ),
-    ] = "gpt-4.1-mini",
     trials: Annotated[
         int,
         typer.Option(
             "--trials",
             min=1,
             max=10,
-            help="Number of evaluation trials per scenario.",
+            help="Number of deterministic evaluation trials per scenario.",
         ),
     ] = 3,
     output_format: Annotated[
@@ -496,81 +473,20 @@ def eval_command(
         ),
     ] = OutputFormat.TABLE,
 ) -> None:
-    """Run comparative with_skill vs. without_skill TDD evaluations."""
+    """Run zero-API comparative with_skill vs. without_skill TDD evaluations."""
     payload: dict[str, Any] = {
         "command": "eval",
         "version": __version__,
         "skill": skill or ("*" if run_all else "all"),
-        "mode": mode.value,
-        "model": model,
+        "runner": "deterministic-ast",
         "trials": trials,
         "status": "ok",
     }
     _emit_output(
         output_format,
         payload,
-        title="SkillOps TDD Evaluation Engine (OpenAI Agents SDK)",
+        title="SkillOps Zero-API TDD Evaluation Engine",
         markdown_heading="SkillOps Benchmark Report",
-    )
-
-
-@app.command("serve")
-def serve_command(
-    host: Annotated[
-        str,
-        typer.Option(
-            "--host",
-            help="Bind address (strictly restricted to 127.0.0.1 or localhost).",
-        ),
-    ] = "127.0.0.1",
-    port: Annotated[
-        int,
-        typer.Option(
-            "--port",
-            "-p",
-            min=1024,
-            max=65535,
-            help="Local TCP port for the FastAPI benchmark & collision viewer.",
-        ),
-    ] = 8080,
-    dry_run: Annotated[
-        bool,
-        typer.Option(
-            "--dry-run",
-            help="Validate server configuration without blocking the terminal.",
-        ),
-    ] = False,
-    output_format: Annotated[
-        OutputFormat,
-        typer.Option(
-            "--format",
-            "-f",
-            help="Output format (table, json, or markdown).",
-        ),
-    ] = OutputFormat.TABLE,
-) -> None:
-    """Launch the local FastAPI benchmark and collision matrix viewer."""
-    if host not in {"127.0.0.1", "localhost"}:
-        err_console.print(
-            "[bold red]Security Policy Violation:[/bold red] "
-            "`skillops serve` must bind exclusively to `127.0.0.1` or `localhost`."
-        )
-        raise typer.Exit(int(ExitCode.ERROR))
-
-    payload: dict[str, Any] = {
-        "command": "serve",
-        "version": __version__,
-        "host": host,
-        "port": port,
-        "dry_run": dry_run,
-        "url": f"http://{host}:{port}",
-        "status": "ok",
-    }
-    _emit_output(
-        output_format,
-        payload,
-        title="SkillOps FastAPI Benchmark Viewer",
-        markdown_heading="SkillOps Server Configuration",
     )
 
 
@@ -580,7 +496,7 @@ def mcp_command(
         McpTransport,
         typer.Option(
             "--transport",
-            help="MCP transport protocol (stdio or sse).",
+            help="Zero-API local MCP transport protocol (stdio).",
         ),
     ] = McpTransport.STDIO,
     dry_run: Annotated[
@@ -599,7 +515,7 @@ def mcp_command(
         ),
     ] = OutputFormat.TABLE,
 ) -> None:
-    """Start the FastMCP server exposing SkillOps tools to AI coding agents."""
+    """Start the local JSON-RPC 2.0 stdio MCP server exposing SkillOps tools to AI agents."""
     payload: dict[str, Any] = {
         "command": "mcp",
         "version": __version__,
@@ -616,8 +532,8 @@ def mcp_command(
     _emit_output(
         output_format,
         payload,
-        title="SkillOps FastMCP Server",
-        markdown_heading="SkillOps FastMCP Capabilities",
+        title="SkillOps Local MCP Stdio Server",
+        markdown_heading="SkillOps MCP Capabilities",
     )
 
 

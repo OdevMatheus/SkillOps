@@ -254,13 +254,13 @@ class ScriptOutput(BaseModel):
 
 
 class AssertionType(StrEnum):
-    """Supported TDD evaluation assertion types in ``evals/evals.json``."""
+    """Supported deterministic TDD evaluation assertion types in ``evals/evals.json``."""
 
     TOOL_CALL_CONTAINS = "tool_call_contains"
     REGEX_MATCH = "regex_match"
     JSON_FIELD_EQUALS = "json_field_equals"
     EXIT_CODE_ZERO = "exit_code_zero"
-    LLM_RUBRIC = "llm_rubric"
+    AST_CONTAINS = "ast_contains"
 
 
 class EvalAssertion(BaseModel):
@@ -434,7 +434,11 @@ class BenchmarkReport(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     skill_name: str = Field(..., min_length=1)
-    model: str = Field(..., min_length=1)
+    runner: str = Field(
+        default="deterministic-ast",
+        min_length=1,
+        description="Zero-API local evaluation runner identifier.",
+    )
     timestamp: str = Field(..., min_length=10)
     with_skill: BenchmarkRunStats
     without_skill: BenchmarkRunStats
@@ -466,10 +470,10 @@ class BenchmarkReport(BaseModel):
         cls,
         *,
         skill_name: str,
-        model: str,
         timestamp: str,
         with_skill: BenchmarkRunStats,
         without_skill: BenchmarkRunStats,
+        runner: str = "deterministic-ast",
     ) -> BenchmarkReport:
         """Compute delta and verdict from ``with_skill`` and ``without_skill`` runs."""
         gain = round(with_skill.pass_rate_mean - without_skill.pass_rate_mean, 4)
@@ -487,7 +491,7 @@ class BenchmarkReport(BaseModel):
 
         return cls(
             skill_name=skill_name,
-            model=model,
+            runner=runner,
             timestamp=timestamp,
             with_skill=with_skill,
             without_skill=without_skill,

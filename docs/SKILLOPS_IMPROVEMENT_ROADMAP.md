@@ -47,9 +47,9 @@ While CLI entrypoints ([`src/skillops/cli.py`](../src/skillops/cli.py)), strict 
   - **Codex CLI / GitHub Copilot:** Transpile to `.agents/skills/<skill-name>/` & `.github/instructions/<skill-name>.instructions.md`
 - [ ] **Atomic Synchronization:** Ensure clean file writes and dry-run diff capabilities (`skillops sync --dry-run`).
 
-### 1.3 `skillops.eval` (TDD Benchmark Runner — `Sprint 3 / Issue #54–#55`)
+### 1.3 `skillops.eval` (Zero-API TDD Benchmark Runner — `Sprint 3 / Issue #54–#55`)
 - [x] **Pydantic v2 `EvalSuite` & `BenchmarkReport` Contracts (`src/skillops/models.py`):** Enforces `INV-SKILL-05` (`REJECTED_REGRESSION` if `with_skill` pass rate $\le$ `without_skill` or token consumption increases by $> 25\%$ without accuracy gains).
-- [ ] **Isolated Execution Runner:** Implement `with_skill` vs `without_skill` execution loop using the `openai-agents` SDK (`Runner.run`) and deterministic offline fixtures.
+- [ ] **Zero-API Deterministic Execution Runner:** Implement `with_skill` vs `without_skill` execution loop using pure Python 3.12+ AST & subprocess sandboxes against offline fixtures (`0` external API keys required).
 
 ---
 
@@ -92,6 +92,6 @@ While CLI entrypoints ([`src/skillops/cli.py`](../src/skillops/cli.py)), strict 
 | 🔥 **High** | Strict Pydantic v2 Schemas & Lexical Auditor | `skillops.models` / `cli` | Medium | ✅ **Done (`#46`)** | **Extreme (Contract Safety)** |
 | 🔥 **High** | Reference Hybrid Executable Skills (4 Skills) | `catalog/` | Medium | ✅ **Done (`#46`)** | **Extreme (Real Utility)** |
 | 🔥 **High** | `skillops init` + `.skillops.yml` + Composite Action | `skillops.cli` / `.github` | Low | ✅ **Done (`#46`)** | **High (Zero-Config DX)** |
-| 🔥 **High** | Offline Embedding Engine (`fastembed` / ONNX) | `skillops.auditor` | Medium | ⏳ **Sprint 2 (`#50`)** | **Extreme (Zero-Config)** |
+| 🔥 **High** | Zero-API TF-IDF / N-Gram Collision Matrix | `skillops.auditor` | Medium | ⏳ **Sprint 2 (`#50`)** | **Extreme (Zero-Config)** |
 | 🔥 **High** | Multi-Runtime Transpiler Engine | `skillops.sync` | Medium | ⏳ **Sprint 2 (`#52`)** | **Extreme (Practical Utility)** |
-| ⚡ **Medium** | TDD Eval Runner (`openai-agents` SDK) | `skillops.eval` | Medium | ⏳ **Sprint 3 (`#55`)** | **High (Empirical Proof)** |
+| ⚡ **Medium** | Zero-API Deterministic AST TDD Eval Runner | `skillops.eval` | Medium | ⏳ **Sprint 3 (`#55`)** | **High (Empirical Proof)** |

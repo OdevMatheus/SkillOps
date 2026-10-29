@@ -1,6 +1,6 @@
 {
   "skill_name": "ast-blast-radius",
-  "model": "gpt-4.1-mini",
+  "runner": "deterministic-ast",
   "timestamp": "2026-10-29T14:00:00Z",
   "with_skill": {
     "pass_rate_mean": 0.95,
