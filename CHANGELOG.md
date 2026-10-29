@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **System Architecture & ADRs (`docs/architecture/`):**
+  - Added master System Architecture & Design Specification (`docs/architecture/README.md`) with Mermaid component and sequence diagrams.
+  - Added `ADR-0001` (`career-ops`-Style Mode Router, Embedded Mandatory Rules, and AI-Executed Scripts).
+  - Added `ADR-0002` (Two-Stage User Data Layer: `inbox/` Raw Dropzone to `profile/` Canonical Source of Truth).
+  - Added `ADR-0003` (Top-Tier Portfolio Frontend Stack: Next.js Static Export, React 19, Tailwind CSS, ShadCN UI, and Motion).
+  - Added `ADR-0004` (Multi-Stage Quality Gates: Visual Anti-Slop Polish via Playwright + Automated SEO, WCAG 2.2, and Core Web Vitals Audits).
 - **Community & Open-Source Governance:** Added `LICENSE` (MIT), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `CHANGELOG.md`.
 - **Environment Standardization:** Added `.gitattributes` (enforcing UTF-8 `LF` line endings) and `.editorconfig`.
 - **DevOps Automation:**
