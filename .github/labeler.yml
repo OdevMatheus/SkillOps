@@ -4,32 +4,57 @@
           - AGENTS.md
           - CLAUDE.md
           - GEMINI.md
-          - DATA_CONTRACT.md
+          - SKILL_CONTRACT.md
           - docs/architecture/**
+
+"🐍 core-engine":
+  - changed-files:
+      - any-glob-to-any-file:
+          - pyproject.toml
+          - src/skillops/**
+
+"🧠 skill-catalog":
+  - changed-files:
+      - any-glob-to-any-file:
+          - catalog/**
+
+"🧪 eval-benchmark":
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/skillops/eval_engine/**
+          - catalog/**/evals/**
+          - tests/**
+
+"🔄 multi-runtime":
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/skillops/router/**
+          - src/skillops/sync/**
+
+"🔌 mcp-server":
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/skillops/mcp/**
+          - src/skillops/server/**
+          - .github/plugin/**
 
 "⚠️ agent-behavior":
   - changed-files:
       - any-glob-to-any-file:
           - .github/copilot-instructions.md
           - .github/agents/**
-          - modes/**
 
 "📄 docs":
   - changed-files:
       - any-glob-to-any-file:
           - "README*.md"
-          - DATA_CONTRACT.md
+          - SKILL_CONTRACT.md
           - CONTRIBUTING.md
           - CODE_OF_CONDUCT.md
           - CHANGELOG.md
           - LICENSE
           - docs/**
           - .github/SECURITY.md
-
-"🔌 plugin":
-  - changed-files:
-      - any-glob-to-any-file:
-          - .github/plugin/**
 
 "⚙️ ci":
   - changed-files:

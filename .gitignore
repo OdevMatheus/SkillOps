@@ -3,6 +3,24 @@
 .env.*
 !.env.example
 
+# Python 3.12+ Bytecode, Virtual Environments & Tooling Caches
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.egg-info/
+.installed.cfg
+*.egg
+
 # Dependencies & Build outputs
 node_modules/
 dist/
@@ -31,4 +49,3 @@ temp/
 # Local Developer Docs (PT-BR mirror)
 DOCS-DEV/
 docs-dev/
-

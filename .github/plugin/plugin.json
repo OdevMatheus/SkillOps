@@ -1,10 +1,10 @@
 {
-  "name": "folio-ops",
-  "version": "0.1.0",
-  "description": "Open-source AI-guided initiative enabling any professional from any industry to create, customize, and publish their own Web portfolio using an AI Agent.",
+  "name": "skillops",
+  "version": "0.2.0",
+  "description": "The Python 3.12+ Engine & Benchmark-Verified Library for AI Coding Agent Skills & Subagents (Semantic Collision Auditor, Dynamic Repo Router, Multi-Runtime Sync, and OpenAI Agents SDK TDD Evaluation Engine).",
   "author": {
     "name": "OdevMatheus",
     "url": "https://github.com/OdevMatheus"
   },
-  "repository": "https://github.com/OdevMatheus/FolioOps"
+  "repository": "https://github.com/OdevMatheus/SkillOps"
 }

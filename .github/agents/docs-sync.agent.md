@@ -5,7 +5,7 @@ tools: [read, search]
 user-invocable: true
 ---
 
-You audit documentation and AI instruction consistency in **FolioOps**.
+You audit documentation and AI instruction consistency in **SkillOps**.
 
 Check and report on the following:
 

@@ -1,6 +1,6 @@
-# Contributing to FolioOps
+# Contributing to SkillOps
 
-Thank you for contributing to **FolioOps**! Because FolioOps is an **AI-Agent-first** open-source project, these guidelines apply equally to **human contributors** and **AI coding agents** (Claude Code, Antigravity, Cursor, GitHub Copilot, Gemini CLI, Windsurf, etc.).
+Thank you for contributing to **SkillOps**! Because SkillOps is an **AI-Agent-first** Python 3.12+ open-source platform, these guidelines apply equally to **human contributors** and **AI coding agents** (Claude Code, Antigravity, Cursor, OpenAI Codex CLI, GitHub Copilot, Gemini CLI, etc.).
 
 ---
 
@@ -9,14 +9,15 @@ Thank you for contributing to **FolioOps**! Because FolioOps is an **AI-Agent-fi
 Before writing code, modifying documentation, or opening an Issue/Pull Request, read:
 
 1. [`AGENTS.md`](./AGENTS.md) — The canonical architecture and development governance contract.
-2. [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) — Repository-wide coding and sanitization rules.
-3. [`.github/PULL_REQUEST_TEMPLATE.md`](./.github/PULL_REQUEST_TEMPLATE.md) — Required structure for all Pull Requests.
+2. [`SKILL_CONTRACT.md`](./SKILL_CONTRACT.md) — The normative specification for Hybrid Executable Skills, 3-level token budgets, semantic collision audits, and TDD evaluations.
+3. [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) — Repository-wide coding and sanitization rules.
+4. [`.github/PULL_REQUEST_TEMPLATE.md`](./.github/PULL_REQUEST_TEMPLATE.md) — Required structure for all Pull Requests.
 
 ---
 
 ## 2. Language & Bilingual Mirror Policy
 
-- **Tracked Repository Files (`en-US`):** All files tracked by Git (`README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `.github/**`, workflows, code comments, commit messages, and Pull Request descriptions) **must be written in English (`en-US`)**.
+- **Tracked Repository Files (`en-US`):** All files tracked by Git (`README.md`, `AGENTS.md`, `SKILL_CONTRACT.md`, `CONTRIBUTING.md`, `.github/**`, workflows, Python docstrings/comments, commit messages, and Pull Request descriptions) **must be written in English (`en-US`)**.
 - **Local Developer Mirror (`DOCS-DEV/` in `pt-BR`):** Every documentation or governance file created/updated in the repository must have a synchronized **Portuguese (`pt-BR`)** counterpart inside `DOCS-DEV/` (which is ignored by Git via `.gitignore`).
 
 ---
@@ -26,18 +27,19 @@ Before writing code, modifying documentation, or opening an Issue/Pull Request, 
 ### 3.1 Branch Protection & Naming
 - **Never commit or push directly to `master`.**
 - Create a descriptive branch from `master`:
-  - `feat/<short-slug>` — New features, modes, or portfolio archetypes
-  - `fix/<short-slug>` — Bug fixes or prompt corrections
-  - `docs/<short-slug>` — Documentation and governance updates
+  - `feat/<short-slug>` — New CLI commands, engine modules, or hybrid executable skills
+  - `fix/<short-slug>` — Bug fixes, schema fixes, or false-positive corrections
+  - `docs/<short-slug>` — Documentation, ADRs, and governance updates
   - `chore/<short-slug>` — Repository tooling, CI/CD, or `.github/` maintenance
   - `refactor/<short-slug>` — Structural refactoring without behavior changes
+  - `test/<short-slug>` — Unit, contract, or TDD benchmark evaluation suites
 
 ### 3.2 Conventional Commits
 All commit messages and Pull Request titles **must** follow [Conventional Commits](https://www.conventionalcommits.org/):
-- `feat(onboarding): add guided interview mode for non-tech professionals`
-- `fix(site): resolve mobile navigation contrast issue`
-- `docs(governance): add contributing guide and release drafter`
-- `chore(ci): enforce semantic PR titles in governance workflow`
+- `feat(auditor): implement pairwise cosine similarity collision detector`
+- `feat(catalog-ai): add mcp-architect hybrid skill and inspector script`
+- `docs(architecture): define SKILL_CONTRACT.md and ADRs 0001-0004`
+- `ci(python): add GitHub Actions workflow for ruff, mypy --strict, and pytest`
 
 ---
 
@@ -56,7 +58,7 @@ gh pr create \
 ```
 
 ### Official Repository Labels
-- **Scope:** `🔴 core-architecture`, `⚠️ agent-behavior`, `📄 docs`, `🔌 plugin`, `⚙️ ci`
+- **Scope:** `🔴 core-architecture`, `🐍 core-engine`, `🧠 skill-catalog`, `🧪 eval-benchmark`, `🔄 multi-runtime`, `🔌 mcp-server`, `⚠️ agent-behavior`, `📄 docs`, `⚙️ ci`
 - **Type:** `✨ feat`, `🐛 fix`, `♻️ refactor`, `🔒 security`
 - **Lifecycle:** `🗺️ roadmap`, `🚧 work-in-progress`, `📌 pinned`
 

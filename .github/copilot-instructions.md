@@ -1,6 +1,6 @@
-# GitHub Copilot Instructions for FolioOps
+# GitHub Copilot Instructions for SkillOps
 
-First, read and follow [`/AGENTS.md`](../AGENTS.md), which is the central source of truth for AI agent behavior in this repository.
+First, read and follow [`/AGENTS.md`](../AGENTS.md) and [`/SKILL_CONTRACT.md`](../SKILL_CONTRACT.md), which are the central sources of truth for AI agent behavior and technical contracts in this repository.
 
 ---
 
@@ -11,16 +11,15 @@ Before executing any task, modifying files, creating branches/commits, or drafti
 - **PR Templates:** [`.github/PULL_REQUEST_TEMPLATE.md`](./PULL_REQUEST_TEMPLATE.md) and [`.github/PULL_REQUEST_TEMPLATE/docs-and-agents.md`](./PULL_REQUEST_TEMPLATE/docs-and-agents.md)
 - **Issue Templates:** [`.github/ISSUE_TEMPLATE/`](./ISSUE_TEMPLATE/) (`bug_report.yml`, `feature_request.yml`, `agent_improvement.yml`)
 - **Ownership, Security & Community:** [`.github/CODEOWNERS`](./CODEOWNERS), [`.github/SECURITY.md`](./SECURITY.md), [`/CONTRIBUTING.md`](../CONTRIBUTING.md), [`/CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md), and [`/CHANGELOG.md`](../CHANGELOG.md)
-- **Formatting & Encoding:** [`/.editorconfig`](../.editorconfig) and [`/.gitattributes`](../.gitattributes) (`UTF-8` encoding, `LF` line endings, 2-space indentation)
+- **Formatting & Encoding:** [`/.editorconfig`](../.editorconfig) and [`/.gitattributes`](../.gitattributes) (`UTF-8` encoding, `LF` line endings)
 - **Specialized Agents:** [`.github/agents/`](./agents/) (`pr-brief.agent.md`, `docs-sync.agent.md`, `address-review.agent.md`)
 
 ---
 
 ## 1. Repository Context & Mode
 
-**FolioOps** is currently in its **Initial Development Phase (Developer Mode)**.
-- When working on this repository, you are assisting the **Developer/Maintainer** in building the FolioOps framework itself.
-- Do **not** treat the developer as an end-user trying to generate a personal portfolio unless explicitly running an end-user simulation test.
+**SkillOps** is the **Python 3.12+ Engine & Benchmark-Verified Library for AI Coding Agent Skills & Subagents**.
+- When working on this repository, you are assisting the **Developer/Maintainer** (`@OdevMatheus`) in building the `SkillOps` Core Engine (`src/skillops/`) and the Hybrid Executable Skill Catalog (`catalog/`).
 
 ---
 
@@ -37,8 +36,8 @@ Before executing any task, modifying files, creating branches/commits, or drafti
    - Keep `## [Unreleased]` in [`/CHANGELOG.md`](../CHANGELOG.md) (and `DOCS-DEV/CHANGELOG.md`) updated with notable changes.
 4. **Pull Requests, Labels, Milestones & Epics via `gh` CLI:**
    - Always use the **GitHub CLI (`gh`)** to open/update PRs and Issues so the body strictly matches `.github/PULL_REQUEST_TEMPLATE.md`.
-   - Every PR and Issue must be assigned the appropriate **Labels** (`🔴 core-architecture`, `⚠️ agent-behavior`, `📄 docs`, `🔌 plugin`, `⚙️ ci`, `✨ feat`, `🐛 fix`, `♻️ refactor`, `🔒 security`) and linked to the active **Infra, DevOps & Architecture Milestone** (`v0.1.0 — Infra, DevOps & Architecture Foundation (Sprint 0)`).
+   - Every PR and Issue must be assigned the appropriate **Labels** (`🔴 core-architecture`, `🐍 core-engine`, `🧠 skill-catalog`, `🧪 eval-benchmark`, `🔄 multi-runtime`, `🔌 mcp-server`, `⚠️ agent-behavior`, `📄 docs`, `⚙️ ci`, `✨ feat`, `🐛 fix`, `♻️ refactor`, `🔒 security`) and linked to the active Sprint Milestone.
 5. **Mandatory Review Gate:**
    - Always request developer review (showing target branch, modified files, proposed commit message, and target labels/milestone) before executing `git commit`, `git push`, or `gh pr create`.
-6. **Minimal & Agile Diffs:**
-   - One focused task per session. Avoid premature abstractions, unnecessary dependencies, or drive-by refactors.
+6. **Minimal & Agile Diffs (`1 Issue = 1 PR`):**
+   - One focused task per PR. Avoid premature abstractions, unnecessary dependencies, or drive-by refactors.
