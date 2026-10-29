@@ -22,6 +22,9 @@
    - [`.github/ISSUE_TEMPLATE/`](./.github/ISSUE_TEMPLATE/): Always follow [`bug_report.yml`](./.github/ISSUE_TEMPLATE/bug_report.yml), [`feature_request.yml`](./.github/ISSUE_TEMPLATE/feature_request.yml), or [`agent_improvement.yml`](./.github/ISSUE_TEMPLATE/agent_improvement.yml) when creating or structuring issues.
 4. **Specialized Maintenance Agents:**
    - [`.github/agents/`](./.github/agents/): Reference [`pr-brief.agent.md`](./.github/agents/pr-brief.agent.md), [`docs-sync.agent.md`](./.github/agents/docs-sync.agent.md), and [`address-review.agent.md`](./.github/agents/address-review.agent.md) when reviewing PRs, auditing `DOCS-DEV/` synchronization, or addressing review feedback.
+5. **System Architecture & ADRs (`docs/architecture/`):**
+   - [`docs/architecture/README.md`](./docs/architecture/README.md): Master System Architecture & Design Specification (`career-ops` Mode Router, 6-Block `auto-pipeline`, Two-Stage `inbox/` → `profile/` Data Layer, Next.js Static Export Stack, and Multi-Stage Quality Gates).
+   - [`docs/architecture/adr/`](./docs/architecture/adr/): Architecture Decision Records (`ADR-0001` through `ADR-0004`).
 
 ---
 
@@ -116,6 +119,8 @@ Right now, **we are building the FolioOps engine/framework itself** — we are *
 ```text
 FolioOps/
 ├── .github/            # Mandatory governance rules, templates, agents & CI workflows (CHECK FIRST)
+├── docs/
+│   └── architecture/   # System Architecture Specification & Architecture Decision Records (ADRs)
 ├── AGENTS.md           # Developer-mode instructions for AI Agents building FolioOps
 ├── CLAUDE.md           # Entry point for Claude Code (@AGENTS.md)
 ├── GEMINI.md           # Entry point for Antigravity / Gemini (@AGENTS.md)
