@@ -4,6 +4,7 @@
           - AGENTS.md
           - CLAUDE.md
           - GEMINI.md
+          - DATA_CONTRACT.md
           - docs/architecture/**
 
 "⚠️ agent-behavior":
@@ -17,6 +18,7 @@
   - changed-files:
       - any-glob-to-any-file:
           - "README*.md"
+          - DATA_CONTRACT.md
           - CONTRIBUTING.md
           - CODE_OF_CONDUCT.md
           - CHANGELOG.md

@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Data Contract & Canonical Schemas (`DATA_CONTRACT.md` — Sprint 1 / Issue #17):**
+  - Defined strict isolation boundaries between `PROJECT_ROOT` (System Layer) and `DATA_ROOT` (User Data Layer) with safe framework upgrade policies (`modes/update.md`).
+  - Specified canonical YAML frontmatter + Markdown schemas for `profile/_profile.md` (with `source_ref` provenance tracking, `Schema.org` JSON-LD metadata, and image `width`/`height`/`alt` invariants), `profile/_design.md` (with `impeccable` surface modes, 4 visual archetypes, 6-token hex palette, and anti-slop guardrails), `profile/_custom.md`, and `config/profile.yml`.
+  - Documented 6 EARS-format functional invariants (`INV-DATA-01` through `INV-DATA-06`) for automated enforcement across modes and scripts.
 - **Agile Sprint Roadmap & Atomic Backlog (`Sprints 1–5`):**
   - Created Milestones `#5` through `#9` (`v0.2.0` to `v1.0.0`), 5 Sprint Epic Issues (`#16`, `#21`, `#26`, `#31`, `#36`), and 20 atomic implementation Issues (`#17`–`#20`, `#22`–`#25`, `#27`–`#30`, `#32`–`#35`, `#37`–`#40`) mapped directly to the approved System Architecture and ADRs.
 - **System Architecture & ADRs (`docs/architecture/`):**
