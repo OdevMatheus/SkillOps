@@ -4,6 +4,8 @@
 # Repository documentation & core governance
 /README*.md                       @OdevMatheus
 /.gitignore                       @OdevMatheus
+/.gitattributes                   @OdevMatheus
+/.env.example                     @OdevMatheus
 /.github/CODEOWNERS               @OdevMatheus
 /.github/SECURITY.md              @OdevMatheus
 
@@ -16,13 +18,12 @@
 /.github/copilot-instructions.md  @OdevMatheus
 /.github/agents/                  @OdevMatheus
 
-# SkillOps Core Engine & Hybrid Skill Catalog
+# SkillOps Core Engine & Hybrid Executable Skill Catalog
 /pyproject.toml                   @OdevMatheus
 /src/skillops/                    @OdevMatheus
 /catalog/                         @OdevMatheus
 
-# CI/CD workflows, templates & plugin manifest
+# CI/CD workflows & issue/PR templates
 /.github/workflows/               @OdevMatheus
 /.github/ISSUE_TEMPLATE/          @OdevMatheus
-/.github/PULL_REQUEST_TEMPLATE*   @OdevMatheus
-/.github/plugin/                  @OdevMatheus
+/.github/PULL_REQUEST_TEMPLATE.md @OdevMatheus

@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   governance-check:
-    name: Validate Branch, Semantic Title & Data Hygiene
+    name: Validate Branch, Semantic Title & AI Data Hygiene
     runs-on: ubuntu-latest
     steps:
       - name: Check Branch Naming & Semantic PR Title
@@ -21,12 +21,12 @@ jobs:
             const branch = pr.head.ref;
             const title = pr.title;
 
-            // 1. Validate branch name: <type>/<short-kebab-description>
-            const branchRegex = /^(feat|fix|docs|chore|refactor|test|style|perf|ci)\/[a-z0-9-]+$/;
+            // 1. Validate branch name: <type>/<short-kebab-description> or dependabot/*
+            const branchRegex = /^((feat|fix|docs|chore|refactor|test|style|perf|ci)\/[a-z0-9-]+|dependabot\/.+)$/;
             if (!branchRegex.test(branch)) {
               core.setFailed(
                 `Invalid branch name "${branch}". Branch must follow "<type>/<short-kebab-description>" ` +
-                `(e.g., "chore/initial-setup", "feat/onboarding-mode", "docs/agent-rules").`
+                `(e.g., "feat/collision-auditor", "ci/ai-devops-cleanup", "docs/skill-contract").`
               );
             }
 
@@ -35,7 +35,7 @@ jobs:
             if (!titleRegex.test(title)) {
               core.setFailed(
                 `Invalid PR title "${title}". Title must follow Conventional Commits in lowercase imperative ` +
-                `(e.g., "chore(repo): initialize base AI agent files").`
+                `(e.g., "ci(devops): align AI governance and remove legacy bloat").`
               );
             }
 
@@ -76,7 +76,7 @@ jobs:
       - name: Checkout Repository for Deep Hygiene Audit
         uses: actions/checkout@v4
 
-      - name: Verify Core Governance & Community Files Integrity
+      - name: Verify Core AI Governance & Community Files Integrity
         run: |
           REQUIRED_FILES=(
             "AGENTS.md"
@@ -89,7 +89,8 @@ jobs:
             "CODE_OF_CONDUCT.md"
             "CHANGELOG.md"
             ".gitattributes"
-            ".editorconfig"
+            ".gitignore"
+            ".env.example"
           )
           for file in "${REQUIRED_FILES[@]}"; do
             if [ ! -f "$file" ]; then
@@ -99,13 +100,21 @@ jobs:
           done
           echo "OK — All core AI and open-source governance files are present."
 
-      - name: Scan Tracked Files for Leaked Machine Paths
+      - name: Scan Tracked Files for Leaked Machine Paths & AI API Keys
         run: |
-          # Exclude the workflow file itself from pattern matching
-          MATCHES=$(git grep -I -E '(C:\\Users\\[A-Za-z0-9][A-Za-z0-9._-]*|/Users/[A-Za-z0-9][A-Za-z0-9._-]*|/home/[A-Za-z0-9][A-Za-z0-9._-]*)' -- ':!.github/workflows/pr-governance.yml' || true)
-          if [ -n "$MATCHES" ]; then
+          # 1. Check for hardcoded local OS user paths
+          PATH_MATCHES=$(git grep -I -E '(C:\\Users\\[A-Za-z0-9][A-Za-z0-9._-]*|/Users/[A-Za-z0-9][A-Za-z0-9._-]*|/home/[A-Za-z0-9][A-Za-z0-9._-]*)' -- ':!.github/workflows/pr-governance.yml' || true)
+          if [ -n "$PATH_MATCHES" ]; then
             echo "::error::Detected hardcoded local machine user paths in tracked files:"
-            echo "$MATCHES"
+            echo "$PATH_MATCHES"
             exit 1
           fi
-          echo "OK — Zero hardcoded local machine paths found."
+
+          # 2. Check for leaked AI provider credentials (OpenAI, Anthropic, Gemini, HuggingFace)
+          KEY_MATCHES=$(git grep -I -E '(sk-proj-[A-Za-z0-9_-]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|AIzaSy[A-Za-z0-9_-]{33}|hf_[A-Za-z0-9]{30,})' -- ':!.github/workflows/pr-governance.yml' || true)
+          if [ -n "$KEY_MATCHES" ]; then
+            echo "::error::Detected potential leaked AI provider API key in tracked files:"
+            echo "$KEY_MATCHES"
+            exit 1
+          fi
+          echo "OK — Zero hardcoded local machine paths or leaked AI API keys found."

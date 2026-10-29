@@ -11,6 +11,7 @@
   - changed-files:
       - any-glob-to-any-file:
           - pyproject.toml
+          - .env.example
           - src/skillops/**
 
 "🧠 skill-catalog":
@@ -36,7 +37,6 @@
       - any-glob-to-any-file:
           - src/skillops/mcp/**
           - src/skillops/server/**
-          - .github/plugin/**
 
 "⚠️ agent-behavior":
   - changed-files:
@@ -60,11 +60,10 @@
   - changed-files:
       - any-glob-to-any-file:
           - .gitattributes
-          - .editorconfig
+          - .gitignore
           - .github/workflows/**
           - .github/labeler.yml
           - .github/release-drafter.yml
           - .github/dependabot.yml
           - .github/ISSUE_TEMPLATE/**
-          - .github/PULL_REQUEST_TEMPLATE/**
           - .github/PULL_REQUEST_TEMPLATE.md

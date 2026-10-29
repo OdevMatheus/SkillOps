@@ -2,34 +2,31 @@
 
 <!-- Briefly describe the purpose and context of this Pull Request in 1-3 sentences. -->
 
-## Related Issue & Milestone
+## Related Issue, Epic & Milestone
 
-- **Issue:** <!-- e.g., Fixes #12 / Closes #12 or N/A -->
-- **Milestone (Sprint):** <!-- e.g., v0.1.0 — Foundation & AI Governance (Sprint 0) -->
+- **Atomic Issue:** <!-- e.g., Closes #45 -->
+- **Sprint Epic:** <!-- e.g., Part of #43 -->
+- **Milestone (Sprint):** <!-- e.g., v0.2.0 — Architecture Contracts & Python 3.12+ Core Foundation (Sprint 1) -->
 
 ## Changes
 
 <!-- List the key additions, modifications, or removals introduced by this PR. -->
 - 
 
-## Type of Change
+## Scope & Type of Change
 
-- [ ] `feat` (`✨ feat`): New feature or workflow module
-- [ ] `fix` (`🐛 fix`): Bug fix or correction
-- [ ] `docs` (`📄 docs`): Documentation or AI agent instruction update
-- [ ] `chore` (`⚙️ ci`): Setup, configuration, tooling, or maintenance
-- [ ] `refactor` (`♻️ refactor`): Code/structure refactoring without behavior change
-- [ ] `test`: Adding or updating tests/validations
+- [ ] `🐍 core-engine`: SkillOps Python 3.12+ Core Engine (`src/skillops/`, `pyproject.toml`)
+- [ ] `🧠 skill-catalog`: Hybrid Executable Skill (`catalog/<track>/<skill>/`)
+- [ ] `🧪 eval-benchmark`: TDD Evaluation Suite (`evals.json`, `benchmark.json`, OpenAI Agents SDK runner)
+- [ ] `🔄 multi-runtime`: Context-Aware Repo Router & Multi-Runtime Sync (`Claude Code`, `Antigravity`, `Cursor`, `Codex`, `Copilot`)
+- [ ] `🔌 mcp-server`: FastMCP Server or FastAPI Benchmark Viewer
+- [ ] `🔴 core-architecture` / `⚠️ agent-behavior`: Architecture Contracts (`SKILL_CONTRACT.md`, ADRs, `AGENTS.md`, `.github/agents/`)
+- [ ] `⚙️ ci` / `📄 docs`: CI/CD Pipelines, DevOps Governance, or Documentation
 
-## Verification / How to Test
+## AI Engineering & Governance Checklist
 
-<!-- Describe the steps taken to verify these changes locally. -->
-1. 
-
-## Governance Checklist
-
-- [ ] **Branch Naming:** Branch follows `<type>/<short-kebab-description>` and does not push directly to `master`.
-- [ ] **Semantic Commits & PR Title:** Commit messages and PR title are in `en-US` and follow **Conventional Commits**.
+- [ ] **Branch & Semantic Title:** Branch follows `<type>/<short-kebab-description>` and PR title follows **Conventional Commits** in `en-US`.
+- [ ] **Skill Contract (`SKILL_CONTRACT.md`):** Any modified/added skills respect Level 1 (`<= 90 tokens`) and Level 2 (`<= 250 lines`) budgets and semantic collision thresholds (`cosine < 0.78`).
 - [ ] **Labels & Milestone Assigned:** Appropriate scope/type labels and Sprint Milestone are attached via `gh`.
-- [ ] **Language Standard:** All tracked files are in `en-US` (and local `DOCS-DEV/` mirror is not included in the commit).
-- [ ] **Privacy & Cleanliness:** No personal data, secrets (`.env`), or local machine paths are included in the diff.
+- [ ] **Language & Mirror Sync:** Tracked files are strictly in `en-US` with `LF` line endings, and local `DOCS-DEV/` (`pt-BR`) mirror is synchronized and gitignored.
+- [ ] **Security & Hygiene:** Zero hardcoded local OS paths, corporate references, or AI provider API keys (`OPENAI_API_KEY`, etc.).

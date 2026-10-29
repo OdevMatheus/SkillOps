@@ -1,32 +1,53 @@
-name: Feature or Hybrid Skill Request
-description: Propose a new SkillOps CLI capability, runtime adapter, or benchmark-verified Hybrid Executable Skill
+name: Hybrid Skill, Subagent or Engine Feature Request
+description: Propose a new Hybrid Executable Skill (SKILL.md + script + evals), Subagent, or SkillOps Engine capability
 title: "feat: "
 labels: ["✨ feat"]
 body:
   - type: checkboxes
     id: search
     attributes:
-      label: Existing Issues
+      label: Existing Issues & Skill Collision Check
       options:
-        - label: I have searched existing issues and discussions to ensure this hasn't been proposed yet.
+        - label: I have searched existing issues and verified this proposal does not semantically collide (`cosine >= 0.78`) with an existing skill in `catalog/`.
           required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Proposal Category
+      options:
+        - Hybrid Executable Skill — Track 1: AI & Agentic Systems (catalog/ai-engineering/)
+        - Hybrid Executable Skill — Track 2: Python 3.12+ Backend & Data (catalog/python-backend/)
+        - Hybrid Executable Skill — Track 3: Architecture, Security & QA (catalog/arch-quality/)
+        - Specialized Subagent Profile (.github/agents/*.agent.md)
+        - SkillOps Core Engine / CLI / FastMCP / Multi-Runtime Transpiler (src/skillops/)
+    validations:
+      required: true
+  - type: checkboxes
+    id: frameworks
+    attributes:
+      label: Target AI Agent Harnesses & Frameworks
+      description: Which AI harnesses or agent frameworks benefit from this skill or feature?
+      options:
+        - label: OpenAI Agents SDK (`openai-agents`)
+        - label: Model Context Protocol (`FastMCP` / `mcp`)
+        - label: Claude Code (`.claude/skills/`)
+        - label: Antigravity / Gemini CLI (`.agent/skills/`)
+        - label: Cursor (`.cursor/rules/*.mdc`)
+        - label: OpenAI Codex CLI (`.codex/skills/`)
+        - label: GitHub Copilot (`.github/instructions/` & `.github/agents/`)
+        - label: PydanticAI / LangGraph / CrewAI Ecosystems
   - type: textarea
     id: problem
     attributes:
-      label: Engineering Problem or Failure Mode
-      description: What failure mode (e.g., routing collision, baseline agent failure, runtime sync gap) does this solve?
-      placeholder: "e.g., Baseline coding agents frequently introduce event-loop blocking calls inside FastAPI async endpoints..."
+      label: Agent Failure Mode or Engineering Problem
+      description: What baseline LLM failure mode (e.g., routing collapse, hallucinated API, blocking async loop, missing blast-radius analysis) does this solve?
+      placeholder: "e.g., Baseline coding agents frequently introduce synchronous I/O inside FastAPI async def routes or exceed Level 1 token budgets..."
     validations:
       required: true
   - type: textarea
     id: solution
     attributes:
-      label: Proposed Solution / Hybrid Skill Specification
-      description: Describe how this should work in SkillOps (including deterministic Python script and TDD eval assertions if proposing a skill).
+      label: Proposed Specification (SKILL.md + Deterministic Script + TDD Eval Assertions)
+      description: Describe the Trigger Boundaries (`Use when...` / `Do not trigger for...`), the deterministic Python 3.12+ CLI tool (`scripts/*.py --json`), and the `with_skill` vs `without_skill` TDD evaluation assertions.
     validations:
       required: true
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternatives Considered
-      description: Any alternative approaches or workarounds you've considered?

@@ -21,5 +21,5 @@ jobs:
           stale-pr-message: "This pull request has been automatically marked as stale due to 45 days of inactivity. It will be closed in 14 days if no further activity occurs."
           stale-issue-label: "stale"
           stale-pr-label: "stale"
-          exempt-issue-labels: "pinned,security,roadmap"
-          exempt-pr-labels: "pinned,security,work-in-progress"
+          exempt-issue-labels: "📌 pinned,🔒 security,🗺️ roadmap,🚧 work-in-progress"
+          exempt-pr-labels: "📌 pinned,🔒 security,🗺️ roadmap,🚧 work-in-progress"
