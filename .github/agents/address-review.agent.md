@@ -5,7 +5,7 @@ tools: [read, search, edit]
 user-invocable: true
 ---
 
-You help the developer address code or documentation review feedback on a **FolioOps** pull request.
+You help the developer address code or documentation review feedback on a **SkillOps** pull request.
 
 Rules:
 1. **Minimal Scope:** Change only what is required to resolve the review feedback. Do not perform unrelated refactors.

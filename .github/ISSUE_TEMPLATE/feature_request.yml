@@ -1,7 +1,7 @@
-name: Feature Request
-description: Propose a new feature, workflow mode, or industry portfolio archetype
+name: Feature or Hybrid Skill Request
+description: Propose a new SkillOps CLI capability, runtime adapter, or benchmark-verified Hybrid Executable Skill
 title: "feat: "
-labels: ["enhancement"]
+labels: ["✨ feat"]
 body:
   - type: checkboxes
     id: search
@@ -13,16 +13,16 @@ body:
   - type: textarea
     id: problem
     attributes:
-      label: Problem or Opportunity
-      description: What problem does this feature solve, or which professional field does it help?
-      placeholder: "e.g., Architects and photographers need a dedicated visual gallery archetype..."
+      label: Engineering Problem or Failure Mode
+      description: What failure mode (e.g., routing collision, baseline agent failure, runtime sync gap) does this solve?
+      placeholder: "e.g., Baseline coding agents frequently introduce event-loop blocking calls inside FastAPI async endpoints..."
     validations:
       required: true
   - type: textarea
     id: solution
     attributes:
-      label: Proposed Solution
-      description: Describe how you envision this working within FolioOps (keeping our agile, low-complexity philosophy).
+      label: Proposed Solution / Hybrid Skill Specification
+      description: Describe how this should work in SkillOps (including deterministic Python script and TDD eval assertions if proposing a skill).
     validations:
       required: true
   - type: textarea

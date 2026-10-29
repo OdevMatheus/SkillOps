@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to **FolioOps** are documented in this file.
+All notable changes to **SkillOps** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -10,22 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Data Contract & Canonical Schemas (`DATA_CONTRACT.md` — Sprint 1 / Issue #17):**
-  - Defined strict isolation boundaries between `PROJECT_ROOT` (System Layer) and `DATA_ROOT` (User Data Layer) with safe framework upgrade policies (`modes/update.md`).
-  - Specified canonical YAML frontmatter + Markdown schemas for `profile/_profile.md` (with `source_ref` provenance tracking, `Schema.org` JSON-LD metadata, and image `width`/`height`/`alt` invariants), `profile/_design.md` (with `impeccable` surface modes, 4 visual archetypes, 6-token hex palette, and anti-slop guardrails), `profile/_custom.md`, and `config/profile.yml`.
-  - Documented 6 EARS-format functional invariants (`INV-DATA-01` through `INV-DATA-06`) for automated enforcement across modes and scripts.
-- **Agile Sprint Roadmap & Atomic Backlog (`Sprints 1–5`):**
-  - Created Milestones `#5` through `#9` (`v0.2.0` to `v1.0.0`), 5 Sprint Epic Issues (`#16`, `#21`, `#26`, `#31`, `#36`), and 20 atomic implementation Issues (`#17`–`#20`, `#22`–`#25`, `#27`–`#30`, `#32`–`#35`, `#37`–`#40`) mapped directly to the approved System Architecture and ADRs.
-- **System Architecture & ADRs (`docs/architecture/`):**
-  - Added master System Architecture & Design Specification (`docs/architecture/README.md`) with Mermaid component and sequence diagrams.
-  - Added `ADR-0001` (`career-ops`-Style Mode Router, Embedded Mandatory Rules, and AI-Executed Scripts).
-  - Added `ADR-0002` (Two-Stage User Data Layer: `inbox/` Raw Dropzone to `profile/` Canonical Source of Truth).
-  - Added `ADR-0003` (Top-Tier Portfolio Frontend Stack: Next.js Static Export, React 19, Tailwind CSS, ShadCN UI, and Motion).
-  - Added `ADR-0004` (Multi-Stage Quality Gates: Visual Anti-Slop Polish via Playwright + Automated SEO, WCAG 2.2, and Core Web Vitals Audits).
+- **Strategic Pivot & Rebranding to `SkillOps` (`Sprint 1 / Issue #44`):**
+  - Rebranded repository and architecture to **SkillOps — The Python 3.12+ Engine & Benchmark-Verified Library for AI Coding Agent Skills & Subagents** (`https://github.com/OdevMatheus/SkillOps`).
+  - Added normative [`SKILL_CONTRACT.md`](./SKILL_CONTRACT.md) defining Hybrid Executable Skills (`SKILL.md` + `scripts/*.py` + `evals/`), 3-level progressive disclosure token budgets (`Level 1 <= 90 tokens/skill`, `Level 2 <= 250 lines`), semantic collision thresholds (`cosine >= 0.78` warning, `>= 0.85` error), `evals.json` and `benchmark.json` schemas, and CLI exit codes (`skillops audit`, `route`, `sync`, `eval`, `serve`, `mcp`).
+  - Added Architecture Decision Records (`docs/architecture/adr/`):
+    - `ADR-0001`: Hybrid Executable Skills Architecture (`SKILL.md` + Deterministic Python 3.12+ CLI Tools + TDD Evals).
+    - `ADR-0002`: Semantic Collision Auditor and 3-Level Progressive Disclosure Token Budgeting (`skillops audit`).
+    - `ADR-0003`: Context-Aware Dynamic Router and Multi-Runtime Sync (`skillops route` & `skillops sync`).
+    - `ADR-0004`: TDD Skill Evaluation Engine via OpenAI Agents SDK (`skillops eval`, `skillops serve`, `skillops mcp`).
+  - Updated Milestones `#10` through `#14` (`v0.2.0` to `v1.0.0`), 5 Sprint Epic Issues (`#43`, `#48`, `#53`, `#58`, `#63`), and 20 atomic implementation Issues (`#44`–`#47`, `#49`–`#52`, `#54`–`#57`, `#59`–`#62`, `#64`–`#67`) for the `SkillOps` Python 3.12+ roadmap.
 - **Community & Open-Source Governance:** Added `LICENSE` (MIT), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `CHANGELOG.md`.
 - **Environment Standardization:** Added `.gitattributes` (enforcing UTF-8 `LF` line endings) and `.editorconfig`.
 - **DevOps Automation:**
-  - Configured GitHub CLI (`gh`) workflow, 12 standardized UTF-8 repository Labels, and the `v0.1.0 — Infra, DevOps & Architecture Foundation (Sprint 0)` Milestone.
+  - Configured GitHub CLI (`gh`) workflow, 12 standardized UTF-8 repository Labels, and Sprint Milestones.
   - Added semantic PR title validation (Conventional Commits) to `.github/workflows/pr-governance.yml`.
   - Added automated release notes drafting via `.github/workflows/release-drafter.yml` and `.github/release-drafter.yml`.
 

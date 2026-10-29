@@ -1,9 +1,20 @@
 name-template: "v$RESOLVED_VERSION"
 tag-template: "v$RESOLVED_VERSION"
 categories:
-  - title: "✨ Features & Portfolio Capabilities"
+  - title: "🐍 SkillOps Core Engine & CLI Features"
     labels:
+      - "🐍 core-engine"
       - "✨ feat"
+  - title: "🧠 Hybrid Executable Skill Catalog"
+    labels:
+      - "🧠 skill-catalog"
+  - title: "🧪 TDD Evaluation & Benchmark Engine"
+    labels:
+      - "🧪 eval-benchmark"
+  - title: "🔄 Context-Aware Router & Multi-Runtime Sync"
+    labels:
+      - "🔄 multi-runtime"
+      - "🔌 mcp-server"
   - title: "🔴 Core AI Architecture & Agent Rules"
     labels:
       - "🔴 core-architecture"
@@ -14,11 +25,10 @@ categories:
   - title: "♻️ Refactoring & Internal Improvements"
     labels:
       - "♻️ refactor"
-      - "🔌 plugin"
-  - title: "🔒 Security & Privacy"
+  - title: "🔒 Security & SAST Guardrails"
     labels:
       - "🔒 security"
-  - title: "📄 Documentation & Guides"
+  - title: "📄 Documentation & ADRs"
     labels:
       - "📄 docs"
   - title: "⚙️ CI/CD & DevOps Governance"
@@ -33,6 +43,7 @@ version-resolver:
   minor:
     labels:
       - "✨ feat"
+      - "🧠 skill-catalog"
   patch:
     labels:
       - "🐛 fix"

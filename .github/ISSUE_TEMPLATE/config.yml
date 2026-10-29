@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: GitHub Discussions & Ideas
-    url: https://github.com/OdevMatheus/FolioOps/discussions
-    about: For general questions, brainstorming, and community discussions.
+    url: https://github.com/OdevMatheus/SkillOps/discussions
+    about: For general questions, skill architecture proposals, and community discussions.
   - name: Security Vulnerability Report
-    url: https://github.com/OdevMatheus/FolioOps/security/advisories/new
+    url: https://github.com/OdevMatheus/SkillOps/security/advisories/new
     about: Please report security issues privately instead of opening a public issue.

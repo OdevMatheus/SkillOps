@@ -1,12 +1,12 @@
 name: Bug Report
-description: Report a bug or unexpected behavior in FolioOps
+description: Report a bug or unexpected behavior in SkillOps Engine or Catalog Skills
 title: "fix: "
-labels: ["bug"]
+labels: ["🐛 fix"]
 body:
   - type: markdown
     attributes:
       value: |
-        > ⚠️ **Privacy First:** Never include personal portfolio data, emails, phone numbers, or local machine paths in public issues.
+        > ⚠️ **Privacy First:** Never include API keys, private tokens, or local machine user paths in public issues.
   - type: checkboxes
     id: search
     attributes:
@@ -18,7 +18,7 @@ body:
     id: description
     attributes:
       label: What happened?
-      description: Provide a clear and concise description of the bug.
+      description: Provide a clear and concise description of the bug in the SkillOps CLI, MCP server, or catalog skill.
     validations:
       required: true
   - type: textarea
@@ -27,9 +27,8 @@ body:
       label: Steps to Reproduce
       description: How can we reproduce this issue step by step?
       placeholder: |
-        1. Open repository in...
-        2. Run command / prompt...
-        3. See error...
+        1. Run `skillops audit --catalog ./catalog`...
+        2. Observe output / stack trace...
     validations:
       required: true
   - type: textarea
@@ -42,10 +41,10 @@ body:
   - type: input
     id: agent
     attributes:
-      label: AI Agent / IDE Used
-      placeholder: "e.g., Antigravity, Claude Code, Cursor, GitHub Copilot"
+      label: AI Agent / Harness Used
+      placeholder: "e.g., Claude Code, Antigravity, Cursor, OpenAI Codex CLI, GitHub Copilot"
   - type: input
     id: environment
     attributes:
-      label: OS & Environment
-      placeholder: "e.g., Windows 11 / macOS 15 / Ubuntu 24.04"
+      label: Python Version & OS Environment
+      placeholder: "e.g., Python 3.12 / Windows 11 / macOS 15 / Ubuntu 24.04"

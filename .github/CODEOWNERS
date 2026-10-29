@@ -7,14 +7,19 @@
 /.github/CODEOWNERS               @OdevMatheus
 /.github/SECURITY.md              @OdevMatheus
 
-# AI Agent instructions & multi-CLI entry points (CI-blind prompt layer)
+# AI Agent instructions, architecture contracts & multi-CLI entry points
 /AGENTS.md                        @OdevMatheus
 /CLAUDE.md                        @OdevMatheus
 /GEMINI.md                        @OdevMatheus
-/DATA_CONTRACT.md                 @OdevMatheus
+/SKILL_CONTRACT.md                @OdevMatheus
 /docs/architecture/               @OdevMatheus
 /.github/copilot-instructions.md  @OdevMatheus
 /.github/agents/                  @OdevMatheus
+
+# SkillOps Core Engine & Hybrid Skill Catalog
+/pyproject.toml                   @OdevMatheus
+/src/skillops/                    @OdevMatheus
+/catalog/                         @OdevMatheus
 
 # CI/CD workflows, templates & plugin manifest
 /.github/workflows/               @OdevMatheus

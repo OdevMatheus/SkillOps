@@ -82,7 +82,7 @@ jobs:
             "AGENTS.md"
             "CLAUDE.md"
             "GEMINI.md"
-            "DATA_CONTRACT.md"
+            "SKILL_CONTRACT.md"
             "README.md"
             "LICENSE"
             "CONTRIBUTING.md"
