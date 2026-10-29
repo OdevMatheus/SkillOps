@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **CLI `skillops audit` Rich Terminal Tables, JSON, and Markdown Reports (`Sprint 2 / Issue #51`):**
+  - Updated `audit_command` in [`src/skillops/cli.py`](./src/skillops/cli.py) to delegate directly to `audit_catalog` from `skillops.auditor`, adding `--max-similarity`, `--max-l1-tokens`, and `--require-layout` flags and removing legacy inline cosine helpers.
+  - Added dedicated `_emit_audit_report` formatter in [`src/skillops/cli.py`](./src/skillops/cli.py) rendering Rich 3-Level Progressive Disclosure Budget tables, Pairwise Semantic Collision tables, structured JSON payloads (`skills`, `collisions`, `total_l3_scripts_tokens_saved`), and GitHub-flavored Markdown audit tables.
+  - Expanded [`tests/test_cli.py`](./tests/test_cli.py) to verify `table`, `json`, and `markdown` audit outputs, layout validation, bundle token budget enforcement, and exit codes (`0`, `2`, `3`).
 - **Zero-API Pairwise Semantic Similarity & Routing Collision Engine (`Sprint 2 / Issue #50`):**
   - Added [`src/skillops/auditor/collision.py`](./src/skillops/auditor/collision.py) implementing deterministic, 100% Zero-API pairwise semantic collision detection (`tokenize_routing_text`, `extract_text_features`, `extract_skill_features`, `compute_idf_weights`, `compute_feature_cosine`, `compute_text_similarity`, `compute_manifest_similarity`, `compute_collision_matrix`, and `audit_catalog`) solving *Implicit Routing Collapse* (`arXiv:2610.18522`).
   - Extended `CollisionPair` in [`src/skillops/models.py`](./src/skillops/models.py) with `shared_terms` and actionable `remediation` advice across `WARNING` (`>= 0.58`), `HIGH_RISK` (`>= 0.72`), and `BLOCKING_ERROR` (`>= 0.85`).

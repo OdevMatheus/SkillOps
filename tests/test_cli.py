@@ -81,13 +81,54 @@ def test_audit_command_on_reference_catalog_and_violations(tmp_path: Path) -> No
     """Verify `skillops audit` validates reference catalog skills and detects violations."""
     real_audit = runner.invoke(
         app,
-        ["audit", "--catalog", "catalog", "--format", "json", "--strict"],
+        [
+            "audit",
+            "--catalog",
+            "catalog",
+            "--format",
+            "json",
+            "--strict",
+            "--require-layout",
+        ],
     )
     assert real_audit.exit_code == int(ExitCode.SUCCESS)
     real_payload = json.loads(real_audit.stdout)
     assert real_payload["audited_skills"] >= 4
     assert real_payload["collisions_found"] == 0
+    assert real_payload["total_l3_scripts_tokens_saved"] > 2000
+    assert len(real_payload["skills"]) >= 4
     assert real_payload["status"] == "ok"
+
+    real_table = runner.invoke(
+        app,
+        ["audit", "--catalog", "catalog", "--format", "table"],
+    )
+    assert real_table.exit_code == int(ExitCode.SUCCESS)
+    assert "3-Level Progressive Disclosure Token Budgets" in real_table.stdout
+
+    real_md = runner.invoke(
+        app,
+        ["audit", "--catalog", "catalog", "--format", "markdown"],
+    )
+    assert real_md.exit_code == int(ExitCode.SUCCESS)
+    assert "## 3-Level Progressive Disclosure Budget Matrix" in real_md.stdout
+    assert "_No semantic collisions detected._" in real_md.stdout
+
+    bundle_overflow = runner.invoke(
+        app,
+        [
+            "audit",
+            "--catalog",
+            "catalog",
+            "--max-l1-tokens",
+            "50",
+            "--format",
+            "json",
+        ],
+    )
+    assert bundle_overflow.exit_code == int(ExitCode.BUDGET_OR_CONTRACT_ERROR)
+    overflow_payload = json.loads(bundle_overflow.stdout)
+    assert overflow_payload["status"] == "budget_violation"
 
     bad_catalog = tmp_path / "bad_catalog" / "ai-engineering" / "broken-skill"
     bad_catalog.mkdir(parents=True)
@@ -107,7 +148,8 @@ def test_audit_command_on_reference_catalog_and_violations(tmp_path: Path) -> No
     )
     for skill_name in ("mcp-alpha", "mcp-beta"):
         sdir = dup_root / skill_name
-        sdir.mkdir(parents=True)
+        (sdir / "scripts").mkdir(parents=True)
+        (sdir / "scripts" / "check.py").write_text('"""Check."""\n', encoding="utf-8")
         (sdir / "SKILL.md").write_text(
             f"---\nname: {skill_name}\ndescription: {desc}\ntrack: ai-engineering\n"
             "tags: [mcp]\nentrypoints:\n  scripts:\n    - path: scripts/check.py\n"
@@ -119,6 +161,23 @@ def test_audit_command_on_reference_catalog_and_violations(tmp_path: Path) -> No
         ["audit", "--catalog", str(tmp_path / "dup_catalog"), "--strict", "--format", "json"],
     )
     assert dup_result.exit_code == int(ExitCode.COLLISION_ERROR)
+    dup_payload = json.loads(dup_result.stdout)
+    assert dup_payload["status"] == "collision_detected"
+    assert len(dup_payload["collisions"]) == 1
+
+    dup_table = runner.invoke(
+        app,
+        ["audit", "--catalog", str(tmp_path / "dup_catalog"), "--format", "table"],
+    )
+    assert dup_table.exit_code == int(ExitCode.COLLISION_ERROR)
+    assert "Pairwise Semantic Collisions" in dup_table.stdout
+
+    dup_md = runner.invoke(
+        app,
+        ["audit", "--catalog", str(tmp_path / "dup_catalog"), "--format", "markdown"],
+    )
+    assert dup_md.exit_code == int(ExitCode.COLLISION_ERROR)
+    assert "| `mcp-alpha` | `mcp-beta` |" in dup_md.stdout
 
 
 def test_audit_command_json_and_table_modes(tmp_path: Path) -> None:
@@ -135,6 +194,8 @@ def test_audit_command_json_and_table_modes(tmp_path: Path) -> None:
             "--format",
             "json",
             "--strict",
+            "--max-similarity",
+            "0.80",
         ],
     )
     assert json_result.exit_code == int(ExitCode.SUCCESS)
@@ -142,8 +203,9 @@ def test_audit_command_json_and_table_modes(tmp_path: Path) -> None:
     assert payload["command"] == "audit"
     assert payload["status"] == "ok"
     assert payload["strict"] is True
-    assert payload["thresholds"]["collision_warn"] == 0.78
-    assert payload["thresholds"]["collision_error"] == 0.85
+    assert payload["thresholds"]["collision_warn"] == 0.58
+    assert payload["thresholds"]["collision_high_risk"] == 0.72
+    assert payload["thresholds"]["collision_error"] == 0.80
 
     table_result = runner.invoke(
         app,
