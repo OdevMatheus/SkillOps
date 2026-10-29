@@ -339,6 +339,14 @@ class CollisionPair(BaseModel):
     skill_b: str = Field(..., min_length=1)
     cosine_similarity: float = Field(..., ge=0.0, le=1.0)
     severity: CollisionSeverity
+    shared_terms: list[str] = Field(
+        default_factory=list,
+        description="Overlapping domain tokens or tags driving similarity.",
+    )
+    remediation: str = Field(
+        default="",
+        description="Actionable recommendation to resolve routing ambiguity.",
+    )
 
     @classmethod
     def from_similarity(
@@ -350,6 +358,8 @@ class CollisionPair(BaseModel):
         warn_threshold: float = 0.58,
         high_risk_threshold: float = 0.72,
         error_threshold: float = 0.85,
+        shared_terms: list[str] | None = None,
+        remediation: str | None = None,
     ) -> CollisionPair:
         """Classify a pair of skills based on their semantic cosine similarity."""
         if cosine_similarity >= error_threshold:
@@ -360,11 +370,34 @@ class CollisionPair(BaseModel):
             severity = CollisionSeverity.WARNING
         else:
             severity = CollisionSeverity.OK
+
+        terms = list(shared_terms) if shared_terms else []
+        advice = remediation or ""
+        if not advice and severity is not CollisionSeverity.OK:
+            overlap_hint = f" around [{', '.join(terms[:5])}]" if terms else ""
+            if severity is CollisionSeverity.BLOCKING_ERROR:
+                advice = (
+                    f"Merge '{skill_a}' and '{skill_b}' or rewrite their descriptions to "
+                    f"eliminate near-duplicate triggers{overlap_hint}."
+                )
+            elif severity is CollisionSeverity.HIGH_RISK:
+                advice = (
+                    f"Partition scope between '{skill_a}' and '{skill_b}' using explicit "
+                    f"negative_triggers and distinct domain nouns{overlap_hint}."
+                )
+            else:
+                advice = (
+                    f"Review trigger boundary overlap between '{skill_a}' and '{skill_b}'"
+                    f"{overlap_hint} to prevent implicit routing ambiguity."
+                )
+
         return cls(
             skill_a=skill_a,
             skill_b=skill_b,
             cosine_similarity=round(cosine_similarity, 4),
             severity=severity,
+            shared_terms=terms,
+            remediation=advice,
         )
 
 

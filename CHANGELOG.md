@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Zero-API Pairwise Semantic Similarity & Routing Collision Engine (`Sprint 2 / Issue #50`):**
+  - Added [`src/skillops/auditor/collision.py`](./src/skillops/auditor/collision.py) implementing deterministic, 100% Zero-API pairwise semantic collision detection (`tokenize_routing_text`, `extract_text_features`, `extract_skill_features`, `compute_idf_weights`, `compute_feature_cosine`, `compute_text_similarity`, `compute_manifest_similarity`, `compute_collision_matrix`, and `audit_catalog`) solving *Implicit Routing Collapse* (`arXiv:2610.18522`).
+  - Extended `CollisionPair` in [`src/skillops/models.py`](./src/skillops/models.py) with `shared_terms` and actionable `remediation` advice across `WARNING` (`>= 0.58`), `HIGH_RISK` (`>= 0.72`), and `BLOCKING_ERROR` (`>= 0.85`).
+  - Added [`tests/test_collision.py`](./tests/test_collision.py) verifying orthogonality across the reference catalog, clone detection, IDF weighting, and remediation recommendations.
 - **SKILL.md Frontmatter Parser & 3-Level Progressive Disclosure Token Budget Analyzer (`Sprint 2 / Issue #49`):**
   - Added [`src/skillops/auditor/parser.py`](./src/skillops/auditor/parser.py) implementing `ParsedSkillDirectory`, `split_skill_md`, `parse_skill_file`, `discover_skill_directories`, and `parse_skill_directory` to inspect `SKILL.md`, `scripts/*.py`, `references/*.md`, `evals/evals.json`, and `evals/benchmark.json` with 100% zero-API execution.
   - Added [`src/skillops/auditor/token_budget.py`](./src/skillops/auditor/token_budget.py) and [`src/skillops/auditor/__init__.py`](./src/skillops/auditor/__init__.py) implementing `CatalogBudgetSummary`, `analyze_skill_budget`, `analyze_catalog_budgets`, `count_fenced_code_lines`, and `detect_description_workflow_leak` across all 3 progressive disclosure tiers (including `total_l3_scripts_tokens_saved`).
