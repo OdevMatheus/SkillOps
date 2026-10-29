@@ -25,6 +25,7 @@ from skillops import (
     SkillOpsConfig,
     __version__,
 )
+from skillops.auditor import analyze_parsed_skill_budget, parse_skill_directory
 
 console = Console(stderr=False)
 err_console = Console(stderr=True)
@@ -254,19 +255,13 @@ def audit_command(
 
     try:
         for skill_file in skill_files:
-            manifest = SkillManifest.from_skill_md(skill_file)
-            manifests.append(manifest)
-            budget_metrics.append(
-                SkillBudgetMetrics(
-                    skill_name=manifest.name,
-                    track=manifest.track,
-                    l1_words=manifest.description_words,
-                    l1_tokens=manifest.description_tokens,
-                    l2_lines=manifest.body_lines,
-                    l2_tokens=manifest.body_tokens,
-                    within_budget=True,
-                )
+            parsed = parse_skill_directory(
+                skill_file,
+                require_layout=False,
+                validate_evals=False,
             )
+            manifests.append(parsed.manifest)
+            budget_metrics.append(analyze_parsed_skill_budget(parsed))
     except ValueError as exc:
         err_console.print(f"[bold red]Skill Contract / Budget Violation:[/bold red] {exc}")
         raise typer.Exit(int(ExitCode.BUDGET_OR_CONTRACT_ERROR)) from exc

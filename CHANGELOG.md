@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **SKILL.md Frontmatter Parser & 3-Level Progressive Disclosure Token Budget Analyzer (`Sprint 2 / Issue #49`):**
+  - Added [`src/skillops/auditor/parser.py`](./src/skillops/auditor/parser.py) implementing `ParsedSkillDirectory`, `split_skill_md`, `parse_skill_file`, `discover_skill_directories`, and `parse_skill_directory` to inspect `SKILL.md`, `scripts/*.py`, `references/*.md`, `evals/evals.json`, and `evals/benchmark.json` with 100% zero-API execution.
+  - Added [`src/skillops/auditor/token_budget.py`](./src/skillops/auditor/token_budget.py) and [`src/skillops/auditor/__init__.py`](./src/skillops/auditor/__init__.py) implementing `CatalogBudgetSummary`, `analyze_skill_budget`, `analyze_catalog_budgets`, `count_fenced_code_lines`, and `detect_description_workflow_leak` across all 3 progressive disclosure tiers (including `total_l3_scripts_tokens_saved`).
+  - Extended `SkillBudgetMetrics` in [`src/skillops/models.py`](./src/skillops/models.py) with Level 3 script/reference metrics (`l3_scripts_count`, `l3_scripts_tokens`, `l3_references_count`, `l3_reference_tokens`), `warnings`, and `violations`, and wired `skillops audit` in [`src/skillops/cli.py`](./src/skillops/cli.py) to use `skillops.auditor`.
+  - Added [`tests/test_parser_and_budget.py`](./tests/test_parser_and_budget.py) achieving 100% statement and branch coverage across `src/skillops/auditor/`.
 - **Strict Pydantic v2 Contracts, `skillops init`, Composite GitHub Action & Reference Skill Catalog (`Sprint 1 / Issue #46`):**
   - Added [`src/skillops/models.py`](./src/skillops/models.py) implementing strict Pydantic v2 models (`SkillManifest`, `ScriptOutput`, `EvalSuite`, `CollisionReport`, `BenchmarkReport`, and `SkillOpsConfig`) enforcing EARS invariants `INV-SKILL-01` through `INV-SKILL-05`.
   - Added `skillops init` command and live catalog validation in `skillops audit` ([`src/skillops/cli.py`](./src/skillops/cli.py)), plus workspace configuration [`.skillops.yml`](./.skillops.yml).
