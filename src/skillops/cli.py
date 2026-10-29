@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import math
-import re
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any
@@ -16,47 +14,16 @@ from rich.panel import Panel
 from rich.table import Table
 
 from skillops import (
-    CollisionPair,
     CollisionReport,
     CollisionSeverity,
     ExitCode,
-    SkillBudgetMetrics,
-    SkillManifest,
     SkillOpsConfig,
     __version__,
 )
-from skillops.auditor import analyze_parsed_skill_budget, parse_skill_directory
+from skillops.auditor import audit_catalog
 
 console = Console(stderr=False)
 err_console = Console(stderr=True)
-
-_TOKEN_SPLIT = re.compile(r"[a-z0-9_]+")
-_STOPWORDS = frozenset(
-    {
-        "use",
-        "when",
-        "the",
-        "and",
-        "for",
-        "with",
-        "that",
-        "this",
-        "from",
-        "into",
-        "or",
-        "to",
-        "in",
-        "of",
-        "on",
-        "by",
-        "an",
-        "a",
-        "is",
-        "are",
-        "not",
-        "do",
-    }
-)
 
 
 class OutputFormat(StrEnum):
@@ -101,23 +68,6 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit(int(ExitCode.SUCCESS))
 
 
-def _lexical_cosine(text_a: str, text_b: str) -> float:
-    """Compute zero-API bag-of-words + character 3-gram cosine similarity."""
-    tokens_a = [tok for tok in _TOKEN_SPLIT.findall(text_a.lower()) if tok not in _STOPWORDS]
-    tokens_b = [tok for tok in _TOKEN_SPLIT.findall(text_b.lower()) if tok not in _STOPWORDS]
-    if not tokens_a or not tokens_b:
-        return 0.0
-    vocab = sorted(set(tokens_a) | set(tokens_b))
-    vec_a = [float(tokens_a.count(term)) for term in vocab]
-    vec_b = [float(tokens_b.count(term)) for term in vocab]
-    dot = sum(a * b for a, b in zip(vec_a, vec_b, strict=True))
-    norm_a = math.sqrt(sum(a * a for a in vec_a))
-    norm_b = math.sqrt(sum(b * b for b in vec_b))
-    if norm_a == 0.0 or norm_b == 0.0:
-        return 0.0
-    return round(dot / (norm_a * norm_b), 4)
-
-
 def _emit_output(
     output_format: OutputFormat,
     payload: dict[str, Any],
@@ -144,6 +94,141 @@ def _emit_output(
         rendered = json.dumps(value) if isinstance(value, (dict, list)) else str(value)
         table.add_row(str(key), rendered)
     console.print(Panel(table, border_style="cyan", expand=False))
+
+
+def _emit_audit_report(
+    output_format: OutputFormat,
+    report: CollisionReport,
+    payload: dict[str, Any],
+) -> None:
+    """Emit the SkillOps audit report in JSON, Markdown, or Rich Table format."""
+    if output_format is OutputFormat.JSON:
+        typer.echo(json.dumps(payload, indent=2))
+        return
+
+    if output_format is OutputFormat.MARKDOWN:
+        lines = [
+            "# SkillOps Audit Report",
+            "",
+            f"- **catalog**: `{payload['catalog']}`",
+            f"- **audited_skills**: `{payload['audited_skills']}`",
+            (
+                f"- **total_l1_bundle_tokens**: `{payload['total_l1_bundle_tokens']}` / "
+                f"`{report.max_bundle_tokens}`"
+            ),
+            f"- **total_l3_scripts_tokens_saved**: `{payload['total_l3_scripts_tokens_saved']}`",
+            f"- **collisions_found**: `{payload['collisions_found']}`",
+            f"- **status**: `{payload['status']}`",
+            "",
+            "## 3-Level Progressive Disclosure Budget Matrix",
+            "",
+            (
+                "| Skill | Track | L1 Words | L1 Tokens | L2 Lines | L2 Tokens | "
+                "L3 Scripts | L3 Offloaded Tokens | Budget Status |"
+            ),
+            "| :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | :--- |",
+        ]
+        for skill in report.skills:
+            offloaded = skill.l3_scripts_tokens + skill.l3_reference_tokens
+            status_badge = "PASS" if skill.within_budget else "FAIL"
+            lines.append(
+                f"| `{skill.skill_name}` | `{skill.track.value}` | {skill.l1_words} | "
+                f"{skill.l1_tokens} | {skill.l2_lines} | {skill.l2_tokens} | "
+                f"{skill.l3_scripts_count} | {offloaded} | **{status_badge}** |"
+            )
+
+        lines.extend(["", "## Pairwise Semantic Collisions", ""])
+        if not report.collisions:
+            lines.append("_No semantic collisions detected._")
+        else:
+            lines.extend(
+                [
+                    "| Skill A | Skill B | Cosine | Severity | Shared Terms | Remediation |",
+                    "| :--- | :--- | ---: | :--- | :--- | :--- |",
+                ]
+            )
+            for pair in report.collisions:
+                terms = ", ".join(pair.shared_terms) if pair.shared_terms else "-"
+                lines.append(
+                    f"| `{pair.skill_a}` | `{pair.skill_b}` | {pair.cosine_similarity:.4f} | "
+                    f"**{pair.severity.value}** | {terms} | {pair.remediation} |"
+                )
+        typer.echo("\n".join(lines))
+        return
+
+    summary_table = Table(
+        title="SkillOps Semantic Collision & Token Budget Auditor",
+        show_header=True,
+        header_style="bold cyan",
+        min_width=64,
+    )
+    summary_table.add_column("Metric", style="bold")
+    summary_table.add_column("Value")
+    summary_table.add_row("catalog", str(payload["catalog"]))
+    summary_table.add_row("audited_skills", str(payload["audited_skills"]))
+    summary_table.add_row(
+        "total_l1_bundle_tokens",
+        f"{payload['total_l1_bundle_tokens']} / {report.max_bundle_tokens}",
+    )
+    summary_table.add_row(
+        "total_l3_scripts_tokens_saved",
+        str(payload["total_l3_scripts_tokens_saved"]),
+    )
+    summary_table.add_row("collisions_found", str(payload["collisions_found"]))
+    summary_table.add_row("status", str(payload["status"]))
+    console.print(Panel(summary_table, border_style="cyan", expand=False))
+
+    if report.skills:
+        budget_table = Table(
+            title="3-Level Progressive Disclosure Token Budgets",
+            show_header=True,
+            header_style="bold green",
+        )
+        budget_table.add_column("Skill", style="bold")
+        budget_table.add_column("Track")
+        budget_table.add_column("L1 Words", justify="right")
+        budget_table.add_column("L1 Tokens", justify="right")
+        budget_table.add_column("L2 Lines", justify="right")
+        budget_table.add_column("L2 Tokens", justify="right")
+        budget_table.add_column("L3 Offloaded", justify="right")
+        budget_table.add_column("Status")
+        for skill in report.skills:
+            offloaded = skill.l3_scripts_tokens + skill.l3_reference_tokens
+            status_cell = "[green]PASS[/green]" if skill.within_budget else "[red]FAIL[/red]"
+            budget_table.add_row(
+                skill.skill_name,
+                skill.track.value,
+                str(skill.l1_words),
+                str(skill.l1_tokens),
+                str(skill.l2_lines),
+                str(skill.l2_tokens),
+                str(offloaded),
+                status_cell,
+            )
+        console.print(budget_table)
+
+    if report.collisions:
+        collision_table = Table(
+            title="Pairwise Semantic Collisions",
+            show_header=True,
+            header_style="bold yellow",
+        )
+        collision_table.add_column("Skill A", style="bold")
+        collision_table.add_column("Skill B", style="bold")
+        collision_table.add_column("Cosine", justify="right")
+        collision_table.add_column("Severity")
+        collision_table.add_column("Shared Terms")
+        collision_table.add_column("Remediation")
+        for pair in report.collisions:
+            collision_table.add_row(
+                pair.skill_a,
+                pair.skill_b,
+                f"{pair.cosine_similarity:.4f}",
+                pair.severity.value,
+                ", ".join(pair.shared_terms[:5]),
+                pair.remediation,
+            )
+        console.print(collision_table)
 
 
 @app.callback()
@@ -244,75 +329,99 @@ def audit_command(
         bool,
         typer.Option(
             "--strict",
-            help="Treat semantic collision warnings (cosine >= 0.72) as errors.",
+            help="Treat high-risk semantic collisions (cosine >= 0.72) as errors.",
+        ),
+    ] = False,
+    max_similarity: Annotated[
+        float,
+        typer.Option(
+            "--max-similarity",
+            min=0.1,
+            max=0.99,
+            help="Maximum allowed pairwise cosine similarity before BLOCKING_ERROR.",
+        ),
+    ] = 0.85,
+    max_l1_tokens: Annotated[
+        int,
+        typer.Option(
+            "--max-l1-tokens",
+            min=40,
+            help="Maximum aggregate Level 1 routing token budget across the catalog.",
+        ),
+    ] = 1500,
+    require_layout: Annotated[
+        bool,
+        typer.Option(
+            "--require-layout",
+            help="Verify that all declared scripts/*.py and evals/evals.json exist on disk.",
         ),
     ] = False,
 ) -> None:
     """Audit skill catalog for semantic routing collisions and 3-level token budgets."""
-    skill_files = sorted(catalog.rglob("SKILL.md")) if catalog.exists() else []
-    manifests: list[SkillManifest] = []
-    budget_metrics: list[SkillBudgetMetrics] = []
-
+    config = SkillOpsConfig(
+        collision_warn_threshold=min(0.58, max_similarity),
+        collision_high_risk_threshold=min(0.72, max_similarity),
+        collision_error_threshold=max_similarity,
+    )
     try:
-        for skill_file in skill_files:
-            parsed = parse_skill_directory(
-                skill_file,
-                require_layout=False,
-                validate_evals=False,
-            )
-            manifests.append(parsed.manifest)
-            budget_metrics.append(analyze_parsed_skill_budget(parsed))
+        report = audit_catalog(
+            catalog,
+            config=config,
+            strict=strict,
+            max_bundle_tokens=max_l1_tokens,
+            require_layout=require_layout,
+            validate_evals=require_layout,
+        )
     except ValueError as exc:
         err_console.print(f"[bold red]Skill Contract / Budget Violation:[/bold red] {exc}")
         raise typer.Exit(int(ExitCode.BUDGET_OR_CONTRACT_ERROR)) from exc
 
-    collisions: list[CollisionPair] = []
-    has_collision_error = False
-    for idx, left in enumerate(manifests):
-        for right in manifests[idx + 1 :]:
-            sim = _lexical_cosine(left.description, right.description)
-            pair = CollisionPair.from_similarity(left.name, right.name, sim)
-            if pair.severity is not CollisionSeverity.OK:
-                collisions.append(pair)
-            if pair.severity is CollisionSeverity.BLOCKING_ERROR or (
-                strict and pair.severity is CollisionSeverity.HIGH_RISK
-            ):
-                has_collision_error = True
-
-    total_l1_tokens = sum(item.l1_tokens for item in budget_metrics)
-    report = CollisionReport(
-        catalog_path=catalog.as_posix(),
-        total_skills=len(manifests),
-        total_l1_bundle_tokens=total_l1_tokens,
-        max_bundle_tokens=1500,
-        skills=budget_metrics,
-        collisions=collisions,
-        passed=not has_collision_error and total_l1_tokens <= 1500,
+    has_budget_error = (
+        any(not skill.within_budget for skill in report.skills)
+        or report.total_l1_bundle_tokens > max_l1_tokens
     )
+    has_collision_error = any(
+        pair.severity is CollisionSeverity.BLOCKING_ERROR
+        or (strict and pair.severity is CollisionSeverity.HIGH_RISK)
+        for pair in report.collisions
+    )
+    total_l3_saved = sum(
+        skill.l3_scripts_tokens + skill.l3_reference_tokens for skill in report.skills
+    )
+
+    if report.passed:
+        status = "ok"
+    elif has_budget_error:
+        status = "budget_violation"
+    else:
+        status = "collision_detected"
 
     payload: dict[str, Any] = {
         "command": "audit",
         "version": __version__,
-        "catalog": str(catalog),
+        "catalog": report.catalog_path,
         "strict": strict,
+        "require_layout": require_layout,
         "thresholds": {
-            "collision_warn": 0.78,
-            "collision_error": 0.85,
-            "max_l1_tokens": 160,
-            "max_l2_lines": 250,
-            "max_bundle_tokens": 1500,
+            "collision_warn": config.collision_warn_threshold,
+            "collision_high_risk": config.collision_high_risk_threshold,
+            "collision_error": config.collision_error_threshold,
+            "max_l1_tokens": config.max_l1_tokens,
+            "max_l2_lines": config.max_l2_lines,
+            "max_bundle_tokens": max_l1_tokens,
         },
         "audited_skills": report.total_skills,
         "total_l1_bundle_tokens": report.total_l1_bundle_tokens,
+        "total_l3_scripts_tokens_saved": total_l3_saved,
         "collisions_found": len(report.collisions),
-        "status": "ok" if report.passed else "collision_detected",
+        "skills": [skill.model_dump(mode="json") for skill in report.skills],
+        "collisions": [pair.model_dump(mode="json") for pair in report.collisions],
+        "status": status,
     }
-    _emit_output(
-        output_format,
-        payload,
-        title="SkillOps Semantic Collision & Token Budget Auditor",
-        markdown_heading="SkillOps Audit Report",
-    )
+    _emit_audit_report(output_format, report, payload)
+
+    if has_budget_error:
+        raise typer.Exit(int(ExitCode.BUDGET_OR_CONTRACT_ERROR))
     if has_collision_error:
         raise typer.Exit(int(ExitCode.COLLISION_ERROR))
 
