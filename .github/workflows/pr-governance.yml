@@ -101,7 +101,7 @@ jobs:
       - name: Scan Tracked Files for Leaked Machine Paths
         run: |
           # Exclude the workflow file itself from pattern matching
-          MATCHES=$(git grep -I -E '(C:\\Users\\[A-Za-z0-9._-]+|/Users/[A-Za-z0-9._-]+|/home/[A-Za-z0-9._-]+)' -- ':!.github/workflows/pr-governance.yml' || true)
+          MATCHES=$(git grep -I -E '(C:\\Users\\[A-Za-z0-9][A-Za-z0-9._-]*|/Users/[A-Za-z0-9][A-Za-z0-9._-]*|/home/[A-Za-z0-9][A-Za-z0-9._-]*)' -- ':!.github/workflows/pr-governance.yml' || true)
           if [ -n "$MATCHES" ]; then
             echo "::error::Detected hardcoded local machine user paths in tracked files:"
             echo "$MATCHES"
