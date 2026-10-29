@@ -1,0 +1,54 @@
+{
+  "skill_name": "postgres-query-doctor",
+  "schema_version": "1.0",
+  "evals": [
+    {
+      "id": "eval-01-concurrent-index-migration",
+      "name": "Convert blocking CREATE INDEX to CREATE INDEX CONCURRENTLY",
+      "prompt": "Review our PostgreSQL migration `004_add_orders_user_idx.sql` that adds an index on `orders(user_id)` in a 50M-row table and ensure zero write downtime.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-sql-safety-script",
+          "type": "tool_call_contains",
+          "target": "analyze_sql_safety.py",
+          "description": "Agent executed the deterministic SQL migration safety analyzer."
+        },
+        {
+          "id": "assert-create-index-concurrently",
+          "type": "regex_match",
+          "target": "CREATE\\s+(UNIQUE\\s+)?INDEX\\s+CONCURRENTLY",
+          "description": "Migration uses CREATE INDEX CONCURRENTLY to avoid table write locks."
+        }
+      ]
+    },
+    {
+      "id": "eval-02-avoid-select-star",
+      "name": "Replace SELECT * with explicit column projection for index-only scan",
+      "prompt": "Optimize the slow PostgreSQL query `SELECT * FROM audit_events WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 50`.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-composite-index-proposed",
+          "type": "regex_match",
+          "target": "\\(tenant_id,\\s*created_at",
+          "description": "Proposed composite B-Tree index matching equality + sort predicate."
+        }
+      ]
+    },
+    {
+      "id": "eval-03-safe-not-null-constraint",
+      "name": "Add NOT NULL constraint safely via NOT VALID + VALIDATE CONSTRAINT",
+      "prompt": "Write a PostgreSQL migration to enforce `NOT NULL` on `invoices.customer_id` without locking concurrent inserts for a full table scan.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-not-valid-constraint-pattern",
+          "type": "regex_match",
+          "target": "NOT VALID[\\s\\S]*VALIDATE CONSTRAINT",
+          "description": "Used two-phase CHECK ... NOT VALID followed by VALIDATE CONSTRAINT."
+        }
+      ]
+    }
+  ]
+}

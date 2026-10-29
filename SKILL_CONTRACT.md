@@ -43,7 +43,7 @@ catalog/<track>/<skill-name>/
 ├── references/               # Optional: Deep domain tables, patterns, or checklists loaded on demand
 │   └── <topic>.md
 └── evals/                    # Required for catalog skills: TDD evaluation & benchmark artifacts
-    ├── evals.json            # Pressure scenarios + programmatic/LLM-judge assertions
+    ├── evals.json            # Pressure scenarios + deterministic AST/regex/JSON assertions
     └── benchmark.json        # Aggregated pass_rate, token_delta, and latency_ms (with_skill vs baseline)
 ```
 
@@ -162,7 +162,7 @@ Validated by `skillops.models.EvalSuite` and `skillops.models.BenchmarkReport` (
 ```json
 {
   "skill_name": "ast-blast-radius",
-  "model": "gpt-4.1-mini",
+  "runner": "deterministic-ast",
   "timestamp": "2026-10-29T12:00:00Z",
   "with_skill": {
     "pass_rate_mean": 0.95,

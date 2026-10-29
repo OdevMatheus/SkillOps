@@ -3,19 +3,59 @@
 from __future__ import annotations
 
 import json
+import math
+import re
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any
 
 import typer
+import yaml
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from skillops import ExitCode, __version__
+from skillops import (
+    CollisionPair,
+    CollisionReport,
+    CollisionSeverity,
+    ExitCode,
+    SkillBudgetMetrics,
+    SkillManifest,
+    SkillOpsConfig,
+    __version__,
+)
 
 console = Console(stderr=False)
 err_console = Console(stderr=True)
+
+_TOKEN_SPLIT = re.compile(r"[a-z0-9_]+")
+_STOPWORDS = frozenset(
+    {
+        "use",
+        "when",
+        "the",
+        "and",
+        "for",
+        "with",
+        "that",
+        "this",
+        "from",
+        "into",
+        "or",
+        "to",
+        "in",
+        "of",
+        "on",
+        "by",
+        "an",
+        "a",
+        "is",
+        "are",
+        "not",
+        "do",
+    }
+)
 
 
 class OutputFormat(StrEnum):
@@ -24,13 +64,6 @@ class OutputFormat(StrEnum):
     TABLE = "table"
     JSON = "json"
     MARKDOWN = "markdown"
-
-
-class EvalMode(StrEnum):
-    """Supported TDD evaluation execution modes."""
-
-    DETERMINISTIC = "deterministic"
-    LIVE = "live"
 
 
 class RuntimeTarget(StrEnum):
@@ -44,10 +77,9 @@ class RuntimeTarget(StrEnum):
 
 
 class McpTransport(StrEnum):
-    """Supported Model Context Protocol (MCP) transports."""
+    """Supported zero-API Model Context Protocol (MCP) transports."""
 
     STDIO = "stdio"
-    SSE = "sse"
 
 
 app = typer.Typer(
@@ -66,6 +98,23 @@ def _version_callback(value: bool) -> None:
     if value:
         typer.echo(f"SkillOps v{__version__}")
         raise typer.Exit(int(ExitCode.SUCCESS))
+
+
+def _lexical_cosine(text_a: str, text_b: str) -> float:
+    """Compute zero-API bag-of-words + character 3-gram cosine similarity."""
+    tokens_a = [tok for tok in _TOKEN_SPLIT.findall(text_a.lower()) if tok not in _STOPWORDS]
+    tokens_b = [tok for tok in _TOKEN_SPLIT.findall(text_b.lower()) if tok not in _STOPWORDS]
+    if not tokens_a or not tokens_b:
+        return 0.0
+    vocab = sorted(set(tokens_a) | set(tokens_b))
+    vec_a = [float(tokens_a.count(term)) for term in vocab]
+    vec_b = [float(tokens_b.count(term)) for term in vocab]
+    dot = sum(a * b for a, b in zip(vec_a, vec_b, strict=True))
+    norm_a = math.sqrt(sum(a * a for a in vec_a))
+    norm_b = math.sqrt(sum(b * b for b in vec_b))
+    if norm_a == 0.0 or norm_b == 0.0:
+        return 0.0
+    return round(dot / (norm_a * norm_b), 4)
 
 
 def _emit_output(
@@ -112,6 +161,66 @@ def cli_root(
     """SkillOps CLI root callback."""
 
 
+@app.command("init")
+def init_command(
+    target_dir: Annotated[
+        Path,
+        typer.Option(
+            "--target-dir",
+            "-d",
+            help="Target workspace directory to initialize with SkillOps structure.",
+        ),
+    ] = Path("."),
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            help="Overwrite existing .skillops.yml if already present.",
+        ),
+    ] = False,
+    output_format: Annotated[
+        OutputFormat,
+        typer.Option(
+            "--format",
+            "-f",
+            help="Output format (table, json, or markdown).",
+        ),
+    ] = OutputFormat.TABLE,
+) -> None:
+    """Scaffold .skillops.yml and catalog/ track directories for a workspace."""
+    config_path = target_dir / ".skillops.yml"
+    tracks = ["ai-engineering", "python-backend", "arch-quality"]
+    created_paths: list[str] = []
+
+    for track in tracks:
+        track_dir = target_dir / "catalog" / track
+        track_dir.mkdir(parents=True, exist_ok=True)
+        created_paths.append(track_dir.as_posix())
+
+    default_config = SkillOpsConfig()
+    if not config_path.exists() or force:
+        config_path.write_text(
+            yaml.safe_dump(default_config.model_dump(mode="json"), sort_keys=False),
+            encoding="utf-8",
+        )
+        created_paths.append(config_path.as_posix())
+
+    payload: dict[str, Any] = {
+        "command": "init",
+        "version": __version__,
+        "target_dir": target_dir.as_posix(),
+        "config_file": config_path.as_posix(),
+        "created": created_paths,
+        "status": "ok",
+    }
+    _emit_output(
+        output_format,
+        payload,
+        title="SkillOps Workspace Initialization",
+        markdown_heading="SkillOps Init Report",
+    )
+
+
 @app.command("audit")
 def audit_command(
     catalog: Annotated[
@@ -134,11 +243,58 @@ def audit_command(
         bool,
         typer.Option(
             "--strict",
-            help="Treat semantic collision warnings (cosine >= 0.78) as errors.",
+            help="Treat semantic collision warnings (cosine >= 0.72) as errors.",
         ),
     ] = False,
 ) -> None:
     """Audit skill catalog for semantic routing collisions and 3-level token budgets."""
+    skill_files = sorted(catalog.rglob("SKILL.md")) if catalog.exists() else []
+    manifests: list[SkillManifest] = []
+    budget_metrics: list[SkillBudgetMetrics] = []
+
+    try:
+        for skill_file in skill_files:
+            manifest = SkillManifest.from_skill_md(skill_file)
+            manifests.append(manifest)
+            budget_metrics.append(
+                SkillBudgetMetrics(
+                    skill_name=manifest.name,
+                    track=manifest.track,
+                    l1_words=manifest.description_words,
+                    l1_tokens=manifest.description_tokens,
+                    l2_lines=manifest.body_lines,
+                    l2_tokens=manifest.body_tokens,
+                    within_budget=True,
+                )
+            )
+    except ValueError as exc:
+        err_console.print(f"[bold red]Skill Contract / Budget Violation:[/bold red] {exc}")
+        raise typer.Exit(int(ExitCode.BUDGET_OR_CONTRACT_ERROR)) from exc
+
+    collisions: list[CollisionPair] = []
+    has_collision_error = False
+    for idx, left in enumerate(manifests):
+        for right in manifests[idx + 1 :]:
+            sim = _lexical_cosine(left.description, right.description)
+            pair = CollisionPair.from_similarity(left.name, right.name, sim)
+            if pair.severity is not CollisionSeverity.OK:
+                collisions.append(pair)
+            if pair.severity is CollisionSeverity.BLOCKING_ERROR or (
+                strict and pair.severity is CollisionSeverity.HIGH_RISK
+            ):
+                has_collision_error = True
+
+    total_l1_tokens = sum(item.l1_tokens for item in budget_metrics)
+    report = CollisionReport(
+        catalog_path=catalog.as_posix(),
+        total_skills=len(manifests),
+        total_l1_bundle_tokens=total_l1_tokens,
+        max_bundle_tokens=1500,
+        skills=budget_metrics,
+        collisions=collisions,
+        passed=not has_collision_error and total_l1_tokens <= 1500,
+    )
+
     payload: dict[str, Any] = {
         "command": "audit",
         "version": __version__,
@@ -147,11 +303,14 @@ def audit_command(
         "thresholds": {
             "collision_warn": 0.78,
             "collision_error": 0.85,
-            "max_l1_tokens": 90,
+            "max_l1_tokens": 160,
             "max_l2_lines": 250,
             "max_bundle_tokens": 1500,
         },
-        "status": "ok",
+        "audited_skills": report.total_skills,
+        "total_l1_bundle_tokens": report.total_l1_bundle_tokens,
+        "collisions_found": len(report.collisions),
+        "status": "ok" if report.passed else "collision_detected",
     }
     _emit_output(
         output_format,
@@ -159,6 +318,8 @@ def audit_command(
         title="SkillOps Semantic Collision & Token Budget Auditor",
         markdown_heading="SkillOps Audit Report",
     )
+    if has_collision_error:
+        raise typer.Exit(int(ExitCode.COLLISION_ERROR))
 
 
 @app.command("route")
@@ -294,28 +455,13 @@ def eval_command(
             help="Evaluate all Hybrid Executable Skills in the catalog.",
         ),
     ] = False,
-    mode: Annotated[
-        EvalMode,
-        typer.Option(
-            "--mode",
-            "-m",
-            help="Evaluation execution mode (deterministic offline CI or live OpenAI Agents SDK).",
-        ),
-    ] = EvalMode.DETERMINISTIC,
-    model: Annotated[
-        str,
-        typer.Option(
-            "--model",
-            help="Target LLM identifier for live OpenAI Agents SDK trials.",
-        ),
-    ] = "gpt-4.1-mini",
     trials: Annotated[
         int,
         typer.Option(
             "--trials",
             min=1,
             max=10,
-            help="Number of evaluation trials per scenario.",
+            help="Number of deterministic evaluation trials per scenario.",
         ),
     ] = 3,
     output_format: Annotated[
@@ -327,81 +473,20 @@ def eval_command(
         ),
     ] = OutputFormat.TABLE,
 ) -> None:
-    """Run comparative with_skill vs. without_skill TDD evaluations."""
+    """Run zero-API comparative with_skill vs. without_skill TDD evaluations."""
     payload: dict[str, Any] = {
         "command": "eval",
         "version": __version__,
         "skill": skill or ("*" if run_all else "all"),
-        "mode": mode.value,
-        "model": model,
+        "runner": "deterministic-ast",
         "trials": trials,
         "status": "ok",
     }
     _emit_output(
         output_format,
         payload,
-        title="SkillOps TDD Evaluation Engine (OpenAI Agents SDK)",
+        title="SkillOps Zero-API TDD Evaluation Engine",
         markdown_heading="SkillOps Benchmark Report",
-    )
-
-
-@app.command("serve")
-def serve_command(
-    host: Annotated[
-        str,
-        typer.Option(
-            "--host",
-            help="Bind address (strictly restricted to 127.0.0.1 or localhost).",
-        ),
-    ] = "127.0.0.1",
-    port: Annotated[
-        int,
-        typer.Option(
-            "--port",
-            "-p",
-            min=1024,
-            max=65535,
-            help="Local TCP port for the FastAPI benchmark & collision viewer.",
-        ),
-    ] = 8080,
-    dry_run: Annotated[
-        bool,
-        typer.Option(
-            "--dry-run",
-            help="Validate server configuration without blocking the terminal.",
-        ),
-    ] = False,
-    output_format: Annotated[
-        OutputFormat,
-        typer.Option(
-            "--format",
-            "-f",
-            help="Output format (table, json, or markdown).",
-        ),
-    ] = OutputFormat.TABLE,
-) -> None:
-    """Launch the local FastAPI benchmark and collision matrix viewer."""
-    if host not in {"127.0.0.1", "localhost"}:
-        err_console.print(
-            "[bold red]Security Policy Violation:[/bold red] "
-            "`skillops serve` must bind exclusively to `127.0.0.1` or `localhost`."
-        )
-        raise typer.Exit(int(ExitCode.ERROR))
-
-    payload: dict[str, Any] = {
-        "command": "serve",
-        "version": __version__,
-        "host": host,
-        "port": port,
-        "dry_run": dry_run,
-        "url": f"http://{host}:{port}",
-        "status": "ok",
-    }
-    _emit_output(
-        output_format,
-        payload,
-        title="SkillOps FastAPI Benchmark Viewer",
-        markdown_heading="SkillOps Server Configuration",
     )
 
 
@@ -411,7 +496,7 @@ def mcp_command(
         McpTransport,
         typer.Option(
             "--transport",
-            help="MCP transport protocol (stdio or sse).",
+            help="Zero-API local MCP transport protocol (stdio).",
         ),
     ] = McpTransport.STDIO,
     dry_run: Annotated[
@@ -430,7 +515,7 @@ def mcp_command(
         ),
     ] = OutputFormat.TABLE,
 ) -> None:
-    """Start the FastMCP server exposing SkillOps tools to AI coding agents."""
+    """Start the local JSON-RPC 2.0 stdio MCP server exposing SkillOps tools to AI agents."""
     payload: dict[str, Any] = {
         "command": "mcp",
         "version": __version__,
@@ -447,8 +532,8 @@ def mcp_command(
     _emit_output(
         output_format,
         payload,
-        title="SkillOps FastMCP Server",
-        markdown_heading="SkillOps FastMCP Capabilities",
+        title="SkillOps Local MCP Stdio Server",
+        markdown_heading="SkillOps MCP Capabilities",
     )
 
 

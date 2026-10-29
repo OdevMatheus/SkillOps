@@ -1,0 +1,54 @@
+{
+  "skill_name": "fastapi-production",
+  "schema_version": "1.0",
+  "evals": [
+    {
+      "id": "eval-01-async-blocking-io",
+      "name": "Replace blocking requests.get and time.sleep inside async def route",
+      "prompt": "Audit our FastAPI router in `routes.py` where `async def fetch_profile()` uses `requests.get` and `time.sleep`, causing latency spikes under load.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-fastapi-audit-script",
+          "type": "tool_call_contains",
+          "target": "audit_fastapi_routes.py",
+          "description": "Agent executed the deterministic FastAPI AST auditor script."
+        },
+        {
+          "id": "assert-non-blocking-async-client",
+          "type": "regex_match",
+          "target": "(httpx\\.AsyncClient|asyncio\\.sleep)",
+          "description": "Replaced blocking calls with non-blocking async primitives."
+        }
+      ]
+    },
+    {
+      "id": "eval-02-explicit-response-model",
+      "name": "Enforce explicit Pydantic v2 response_model or return annotation",
+      "prompt": "Add a `POST /v1/deployments` endpoint to our FastAPI router with strict Pydantic v2 response serialization.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-response-contract-present",
+          "type": "regex_match",
+          "target": "(response_model=|->\\s*[A-Z][A-Za-z0-9_]+)",
+          "description": "Endpoint declares explicit response_model or return type annotation."
+        }
+      ]
+    },
+    {
+      "id": "eval-03-cors-origin-hardening",
+      "name": "Remediate wildcard allow_origins=['*'] in CORSMiddleware",
+      "prompt": "Review `main.py` CORS configuration and harden it for production deployment.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-explicit-cors-origins",
+          "type": "regex_match",
+          "target": "allow_origins=\\[(?!\\s*[\"']\\*[\"'])",
+          "description": "Wildcard origin was replaced with explicit allowed origins."
+        }
+      ]
+    }
+  ]
+}
