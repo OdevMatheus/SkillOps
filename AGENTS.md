@@ -107,10 +107,14 @@ Right now, **we are building the FolioOps engine/framework itself** — we are *
 - **Mandatory Labels on Every PR / Issue (Drives `labeler.yml` & `release-drafter.yml`):**
   - **Scope Labels (matching `.github/labeler.yml`):** `🔴 core-architecture`, `⚠️ agent-behavior`, `📄 docs`, `🔌 plugin`, `⚙️ ci`
   - **Type / Governance Labels (used by `.github/release-drafter.yml`):** `✨ feat`, `🐛 fix`, `♻️ refactor`, `🔒 security`, `🗺️ roadmap`, `🚧 work-in-progress`, `📌 pinned`
-- **Mandatory Milestone & Epic Issue Linking (Agile Sprint Tracking):**
-  - Every PR and Issue must be linked (`--milestone`) to the active **Infra, DevOps & Architecture** Sprint Milestone (and reference its Epic Issue when applicable):
-    - **Active Milestone (`Milestone #1` / `Epic #7`):** `v0.1.0 — Infra, DevOps & Architecture Foundation (Sprint 0)`
-  - *Note:* Product/MVP Milestones will only be created once the Infrastructure, DevOps, and Software Architecture phase is fully concluded.
+- **Mandatory Milestone & Epic Issue Linking (Agile Sprint Tracking — 1 Issue = 1 PR):**
+  - Every PR must be linked (`--milestone`) to its corresponding Sprint Milestone and reference its specific Atomic Issue (`Closes #<issue>`) and Sprint Epic (`Part of #<epic>`):
+    - **Sprint 0 (`Milestone #1` / `Epic #7` — Completed):** `v0.1.0 — Infra, DevOps & Architecture Foundation (Sprint 0)`
+    - **Sprint 1 (`Milestone #5` / `Epic #16` — Issues `#17`–`#20`):** `v0.2.0 — Data Contract, Workspace & Engine Foundation (Sprint 1)`
+    - **Sprint 2 (`Milestone #6` / `Epic #21` — Issues `#22`–`#25`):** `v0.3.0 — Smart Inbox Intake & Interactive Visual Brainstorming (Sprint 2)`
+    - **Sprint 3 (`Milestone #7` / `Epic #26` — Issues `#27`–`#30`):** `v0.4.0 — Next.js Portfolio Generation Engine & Archetype Blueprints (Sprint 3)`
+    - **Sprint 4 (`Milestone #8` / `Epic #31` — Issues `#32`–`#35`):** `v0.5.0 — Multi-Stage Anti-Slop Polish & Technical Quality Gates (Sprint 4)`
+    - **Sprint 5 (`Milestone #9` / `Epic #36` — Issues `#37`–`#40`):** `v1.0.0 — End-to-End Auto-Pipeline, Incremental Updates & Zero-Cost Deploy (Sprint 5)`
 
 ---
 
