@@ -1,0 +1,54 @@
+{
+  "skill_name": "mcp-architect",
+  "schema_version": "1.0",
+  "evals": [
+    {
+      "id": "eval-01-stdio-print-corruption",
+      "name": "Detect and fix stdout print() corruption in a FastMCP stdio tool",
+      "prompt": "Audit our FastMCP server in `server.py` where `search_docs` prints debug logs to stdout, and fix it so stdio JSON-RPC framing is not corrupted.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-validate-mcp-script",
+          "type": "tool_call_contains",
+          "target": "validate_mcp_server.py",
+          "description": "Agent executed the deterministic AST MCP auditor script."
+        },
+        {
+          "id": "assert-removed-stdout-print",
+          "type": "regex_match",
+          "target": "(sys\\.stderr|logging)",
+          "description": "Diagnostics were redirected to stderr or logging instead of bare stdout print()."
+        }
+      ]
+    },
+    {
+      "id": "eval-02-typed-tool-annotations",
+      "name": "Enforce explicit type hints and docstring on @mcp.tool handlers",
+      "prompt": "Add a `@mcp.tool()` handler `query_metrics(service, window_minutes)` to our MCP server with strict schema validation.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-explicit-return-type",
+          "type": "regex_match",
+          "target": "def query_metrics\\(.*\\)\\s*->",
+          "description": "Tool function includes explicit parameter and return type annotations."
+        }
+      ]
+    },
+    {
+      "id": "eval-03-localhost-transport-binding",
+      "name": "Prevent 0.0.0.0 network exposure on MCP SSE transport",
+      "prompt": "Review the FastMCP SSE server launcher and fix any unsafe network host binding.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-localhost-binding",
+          "type": "regex_match",
+          "target": "127\\.0\\.0\\.1|localhost",
+          "description": "Server binds exclusively to 127.0.0.1 or localhost."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+name: "SkillOps Audit (Semantic Collision & Token Budget Gate)"
+description: "Audits AI Coding Agent Skills (SKILL.md, scripts/*.py, evals/evals.json) for semantic routing collisions and 3-level token budgets."
+author: "OdevMatheus"
+branding:
+  icon: "shield"
+  color: "blue"
+
+inputs:
+  catalog-path:
+    description: "Path to the Hybrid Executable Skill catalog directory."
+    required: false
+    default: "catalog"
+  strict:
+    description: "Fail on high-risk semantic collisions (cosine >= 0.72)."
+    required: false
+    default: "true"
+  python-version:
+    description: "Python version used to run SkillOps (requires >= 3.12)."
+    required: false
+    default: "3.12"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up uv & Python ${{ inputs.python-version }}
+      uses: astral-sh/setup-uv@v4
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install SkillOps CLI
+      shell: bash
+      run: uv pip install --system -e "${{ github.action_path }}/../../.."
+
+    - name: Run SkillOps Semantic Collision & Token Budget Audit
+      shell: bash
+      run: |
+        STRICT_FLAG=""
+        if [ "${{ inputs.strict }}" = "true" ]; then
+          STRICT_FLAG="--strict"
+        fi
+        skillops audit --catalog "${{ inputs.catalog-path }}" --format table $STRICT_FLAG

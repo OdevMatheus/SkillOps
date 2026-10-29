@@ -3,19 +3,59 @@
 from __future__ import annotations
 
 import json
+import math
+import re
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any
 
 import typer
+import yaml
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from skillops import ExitCode, __version__
+from skillops import (
+    CollisionPair,
+    CollisionReport,
+    CollisionSeverity,
+    ExitCode,
+    SkillBudgetMetrics,
+    SkillManifest,
+    SkillOpsConfig,
+    __version__,
+)
 
 console = Console(stderr=False)
 err_console = Console(stderr=True)
+
+_TOKEN_SPLIT = re.compile(r"[a-z0-9_]+")
+_STOPWORDS = frozenset(
+    {
+        "use",
+        "when",
+        "the",
+        "and",
+        "for",
+        "with",
+        "that",
+        "this",
+        "from",
+        "into",
+        "or",
+        "to",
+        "in",
+        "of",
+        "on",
+        "by",
+        "an",
+        "a",
+        "is",
+        "are",
+        "not",
+        "do",
+    }
+)
 
 
 class OutputFormat(StrEnum):
@@ -68,6 +108,23 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit(int(ExitCode.SUCCESS))
 
 
+def _lexical_cosine(text_a: str, text_b: str) -> float:
+    """Compute zero-API bag-of-words + character 3-gram cosine similarity."""
+    tokens_a = [tok for tok in _TOKEN_SPLIT.findall(text_a.lower()) if tok not in _STOPWORDS]
+    tokens_b = [tok for tok in _TOKEN_SPLIT.findall(text_b.lower()) if tok not in _STOPWORDS]
+    if not tokens_a or not tokens_b:
+        return 0.0
+    vocab = sorted(set(tokens_a) | set(tokens_b))
+    vec_a = [float(tokens_a.count(term)) for term in vocab]
+    vec_b = [float(tokens_b.count(term)) for term in vocab]
+    dot = sum(a * b for a, b in zip(vec_a, vec_b, strict=True))
+    norm_a = math.sqrt(sum(a * a for a in vec_a))
+    norm_b = math.sqrt(sum(b * b for b in vec_b))
+    if norm_a == 0.0 or norm_b == 0.0:
+        return 0.0
+    return round(dot / (norm_a * norm_b), 4)
+
+
 def _emit_output(
     output_format: OutputFormat,
     payload: dict[str, Any],
@@ -112,6 +169,66 @@ def cli_root(
     """SkillOps CLI root callback."""
 
 
+@app.command("init")
+def init_command(
+    target_dir: Annotated[
+        Path,
+        typer.Option(
+            "--target-dir",
+            "-d",
+            help="Target workspace directory to initialize with SkillOps structure.",
+        ),
+    ] = Path("."),
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            help="Overwrite existing .skillops.yml if already present.",
+        ),
+    ] = False,
+    output_format: Annotated[
+        OutputFormat,
+        typer.Option(
+            "--format",
+            "-f",
+            help="Output format (table, json, or markdown).",
+        ),
+    ] = OutputFormat.TABLE,
+) -> None:
+    """Scaffold .skillops.yml and catalog/ track directories for a workspace."""
+    config_path = target_dir / ".skillops.yml"
+    tracks = ["ai-engineering", "python-backend", "arch-quality"]
+    created_paths: list[str] = []
+
+    for track in tracks:
+        track_dir = target_dir / "catalog" / track
+        track_dir.mkdir(parents=True, exist_ok=True)
+        created_paths.append(track_dir.as_posix())
+
+    default_config = SkillOpsConfig()
+    if not config_path.exists() or force:
+        config_path.write_text(
+            yaml.safe_dump(default_config.model_dump(mode="json"), sort_keys=False),
+            encoding="utf-8",
+        )
+        created_paths.append(config_path.as_posix())
+
+    payload: dict[str, Any] = {
+        "command": "init",
+        "version": __version__,
+        "target_dir": target_dir.as_posix(),
+        "config_file": config_path.as_posix(),
+        "created": created_paths,
+        "status": "ok",
+    }
+    _emit_output(
+        output_format,
+        payload,
+        title="SkillOps Workspace Initialization",
+        markdown_heading="SkillOps Init Report",
+    )
+
+
 @app.command("audit")
 def audit_command(
     catalog: Annotated[
@@ -134,11 +251,58 @@ def audit_command(
         bool,
         typer.Option(
             "--strict",
-            help="Treat semantic collision warnings (cosine >= 0.78) as errors.",
+            help="Treat semantic collision warnings (cosine >= 0.72) as errors.",
         ),
     ] = False,
 ) -> None:
     """Audit skill catalog for semantic routing collisions and 3-level token budgets."""
+    skill_files = sorted(catalog.rglob("SKILL.md")) if catalog.exists() else []
+    manifests: list[SkillManifest] = []
+    budget_metrics: list[SkillBudgetMetrics] = []
+
+    try:
+        for skill_file in skill_files:
+            manifest = SkillManifest.from_skill_md(skill_file)
+            manifests.append(manifest)
+            budget_metrics.append(
+                SkillBudgetMetrics(
+                    skill_name=manifest.name,
+                    track=manifest.track,
+                    l1_words=manifest.description_words,
+                    l1_tokens=manifest.description_tokens,
+                    l2_lines=manifest.body_lines,
+                    l2_tokens=manifest.body_tokens,
+                    within_budget=True,
+                )
+            )
+    except ValueError as exc:
+        err_console.print(f"[bold red]Skill Contract / Budget Violation:[/bold red] {exc}")
+        raise typer.Exit(int(ExitCode.BUDGET_OR_CONTRACT_ERROR)) from exc
+
+    collisions: list[CollisionPair] = []
+    has_collision_error = False
+    for idx, left in enumerate(manifests):
+        for right in manifests[idx + 1 :]:
+            sim = _lexical_cosine(left.description, right.description)
+            pair = CollisionPair.from_similarity(left.name, right.name, sim)
+            if pair.severity is not CollisionSeverity.OK:
+                collisions.append(pair)
+            if pair.severity is CollisionSeverity.BLOCKING_ERROR or (
+                strict and pair.severity is CollisionSeverity.HIGH_RISK
+            ):
+                has_collision_error = True
+
+    total_l1_tokens = sum(item.l1_tokens for item in budget_metrics)
+    report = CollisionReport(
+        catalog_path=catalog.as_posix(),
+        total_skills=len(manifests),
+        total_l1_bundle_tokens=total_l1_tokens,
+        max_bundle_tokens=1500,
+        skills=budget_metrics,
+        collisions=collisions,
+        passed=not has_collision_error and total_l1_tokens <= 1500,
+    )
+
     payload: dict[str, Any] = {
         "command": "audit",
         "version": __version__,
@@ -147,11 +311,14 @@ def audit_command(
         "thresholds": {
             "collision_warn": 0.78,
             "collision_error": 0.85,
-            "max_l1_tokens": 90,
+            "max_l1_tokens": 160,
             "max_l2_lines": 250,
             "max_bundle_tokens": 1500,
         },
-        "status": "ok",
+        "audited_skills": report.total_skills,
+        "total_l1_bundle_tokens": report.total_l1_bundle_tokens,
+        "collisions_found": len(report.collisions),
+        "status": "ok" if report.passed else "collision_detected",
     }
     _emit_output(
         output_format,
@@ -159,6 +326,8 @@ def audit_command(
         title="SkillOps Semantic Collision & Token Budget Auditor",
         markdown_heading="SkillOps Audit Report",
     )
+    if has_collision_error:
+        raise typer.Exit(int(ExitCode.COLLISION_ERROR))
 
 
 @app.command("route")

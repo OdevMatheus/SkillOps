@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Strict Pydantic v2 Contracts, `skillops init`, Composite GitHub Action & Reference Skill Catalog (`Sprint 1 / Issue #46`):**
+  - Added [`src/skillops/models.py`](./src/skillops/models.py) implementing strict Pydantic v2 models (`SkillManifest`, `ScriptOutput`, `EvalSuite`, `CollisionReport`, `BenchmarkReport`, and `SkillOpsConfig`) enforcing EARS invariants `INV-SKILL-01` through `INV-SKILL-05`.
+  - Added `skillops init` command and live catalog validation in `skillops audit` ([`src/skillops/cli.py`](./src/skillops/cli.py)), plus workspace configuration [`.skillops.yml`](./.skillops.yml).
+  - Added 4 production-ready **Reference Hybrid Executable Skills** in `catalog/` across all 3 tracks (`SKILL.md`, deterministic Python 3.12+ AST/SQL CLI scripts, `evals/evals.json`, and `evals/benchmark.json`):
+    - [`catalog/ai-engineering/mcp-architect/`](./catalog/ai-engineering/mcp-architect/SKILL.md) (`scripts/validate_mcp_server.py`)
+    - [`catalog/python-backend/fastapi-production/`](./catalog/python-backend/fastapi-production/SKILL.md) (`scripts/audit_fastapi_routes.py`)
+    - [`catalog/python-backend/postgres-query-doctor/`](./catalog/python-backend/postgres-query-doctor/SKILL.md) (`scripts/analyze_sql_safety.py`)
+    - [`catalog/arch-quality/ast-blast-radius/`](./catalog/arch-quality/ast-blast-radius/SKILL.md) (`scripts/analyze_call_graph.py`)
+  - Added reusable composite GitHub Action [`.github/actions/skillops-audit/action.yml`](./.github/actions/skillops-audit/action.yml), VHS terminal demo script [`docs/assets/demo.tape`](./docs/assets/demo.tape), and [`docs/SKILLOPS_IMPROVEMENT_ROADMAP.md`](./docs/SKILLOPS_IMPROVEMENT_ROADMAP.md).
+  - Added [`tests/test_models.py`](./tests/test_models.py) verifying Pydantic v2 schemas, regression guards, and end-to-end execution of all reference skill scripts (`--json`).
 - **Python 3.12+ Core Package & Typer/Rich CLI Entrypoint (`Sprint 1 / Issue #45`):**
   - Added [`pyproject.toml`](./pyproject.toml) configuring `skillops` (`0.2.0`, `requires-python = ">=3.12"`), `hatchling` build system, CLI script `skillops = "skillops.cli:app"`, optional extras (`audit`, `agents`, `serve`, `dev`), and strict `ruff`, `mypy --strict`, and `pytest` tool configurations.
   - Added [`src/skillops/__init__.py`](./src/skillops/__init__.py), [`src/skillops/__main__.py`](./src/skillops/__main__.py), [`src/skillops/py.typed`](./src/skillops/py.typed), and [`src/skillops/cli.py`](./src/skillops/cli.py) implementing deterministic CLI exit codes (`ExitCode`: `0`–`5`), `--version` flag, and subcommands (`audit`, `route`, `sync`, `eval`, `serve`, `mcp`) per [`SKILL_CONTRACT.md`](./SKILL_CONTRACT.md) §7.

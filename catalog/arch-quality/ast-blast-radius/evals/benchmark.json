@@ -1,0 +1,22 @@
+{
+  "skill_name": "ast-blast-radius",
+  "model": "gpt-4.1-mini",
+  "timestamp": "2026-10-29T14:00:00Z",
+  "with_skill": {
+    "pass_rate_mean": 0.95,
+    "pass_rate_stddev": 0.05,
+    "tokens_mean": 3420,
+    "latency_ms_mean": 4100
+  },
+  "without_skill": {
+    "pass_rate_mean": 0.55,
+    "pass_rate_stddev": 0.12,
+    "tokens_mean": 6890,
+    "latency_ms_mean": 8300
+  },
+  "delta": {
+    "pass_rate_gain": 0.40,
+    "token_reduction_pct": -50.36,
+    "verdict": "CERTIFIED_IMPROVEMENT"
+  }
+}

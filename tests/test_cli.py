@@ -54,12 +54,71 @@ def test_cli_version_flag() -> None:
         assert f"SkillOps v{__version__}" in result.stdout
 
 
-def test_cli_help_lists_all_six_canonical_commands() -> None:
-    """Verify `skillops --help` exposes all 6 SKILL_CONTRACT.md subcommands."""
+def test_cli_help_lists_all_canonical_commands() -> None:
+    """Verify `skillops --help` exposes init plus all 6 SKILL_CONTRACT.md subcommands."""
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    for command in ("audit", "route", "sync", "eval", "serve", "mcp"):
+    for command in ("init", "audit", "route", "sync", "eval", "serve", "mcp"):
         assert command in result.stdout
+
+
+def test_init_command_scaffolds_workspace(tmp_path: Path) -> None:
+    """Verify `skillops init` scaffolds .skillops.yml and catalog track folders."""
+    result = runner.invoke(
+        app,
+        ["init", "--target-dir", str(tmp_path), "--format", "json"],
+    )
+    assert result.exit_code == int(ExitCode.SUCCESS)
+    payload = json.loads(result.stdout)
+    assert payload["command"] == "init"
+    assert (tmp_path / ".skillops.yml").exists()
+    assert (tmp_path / "catalog" / "ai-engineering").is_dir()
+    assert (tmp_path / "catalog" / "python-backend").is_dir()
+    assert (tmp_path / "catalog" / "arch-quality").is_dir()
+
+
+def test_audit_command_on_reference_catalog_and_violations(tmp_path: Path) -> None:
+    """Verify `skillops audit` validates reference catalog skills and detects violations."""
+    real_audit = runner.invoke(
+        app,
+        ["audit", "--catalog", "catalog", "--format", "json", "--strict"],
+    )
+    assert real_audit.exit_code == int(ExitCode.SUCCESS)
+    real_payload = json.loads(real_audit.stdout)
+    assert real_payload["audited_skills"] >= 4
+    assert real_payload["collisions_found"] == 0
+    assert real_payload["status"] == "ok"
+
+    bad_catalog = tmp_path / "bad_catalog" / "ai-engineering" / "broken-skill"
+    bad_catalog.mkdir(parents=True)
+    (bad_catalog / "SKILL.md").write_text("# Missing frontmatter\n", encoding="utf-8")
+    bad_result = runner.invoke(
+        app,
+        ["audit", "--catalog", str(tmp_path / "bad_catalog")],
+    )
+    assert bad_result.exit_code == int(ExitCode.BUDGET_OR_CONTRACT_ERROR)
+
+    dup_root = tmp_path / "dup_catalog" / "ai-engineering"
+    desc = (
+        "Use when designing, implementing, or auditing Model Context Protocol (MCP) servers "
+        "and FastMCP tools in Python or TypeScript to enforce strict JSON-RPC stdio hygiene, "
+        "Pydantic input schemas, tool docstring clarity, and localhost-bound SSE transport "
+        "security without polluting stdout or exposing untyped tool handlers to AI coding agents."
+    )
+    for skill_name in ("mcp-alpha", "mcp-beta"):
+        sdir = dup_root / skill_name
+        sdir.mkdir(parents=True)
+        (sdir / "SKILL.md").write_text(
+            f"---\nname: {skill_name}\ndescription: {desc}\ntrack: ai-engineering\n"
+            "tags: [mcp]\nentrypoints:\n  scripts:\n    - path: scripts/check.py\n"
+            "      description: Check MCP server tool annotations.\n---\n# Body\n",
+            encoding="utf-8",
+        )
+    dup_result = runner.invoke(
+        app,
+        ["audit", "--catalog", str(tmp_path / "dup_catalog"), "--strict", "--format", "json"],
+    )
+    assert dup_result.exit_code == int(ExitCode.COLLISION_ERROR)
 
 
 def test_audit_command_json_and_table_modes(tmp_path: Path) -> None:

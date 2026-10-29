@@ -1,0 +1,14 @@
+version: "1.0"
+catalog_dir: "catalog"
+max_bundle_skills: 12
+max_l1_tokens: 160
+max_l2_lines: 250
+collision_warn_threshold: 0.58
+collision_high_risk_threshold: 0.72
+collision_error_threshold: 0.85
+targets:
+  - "claude"
+  - "antigravity"
+  - "cursor"
+  - "codex"
+  - "copilot"

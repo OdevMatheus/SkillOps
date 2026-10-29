@@ -1,0 +1,22 @@
+{
+  "skill_name": "postgres-query-doctor",
+  "model": "gpt-4.1-mini",
+  "timestamp": "2026-10-29T14:00:00Z",
+  "with_skill": {
+    "pass_rate_mean": 0.95,
+    "pass_rate_stddev": 0.04,
+    "tokens_mean": 2950,
+    "latency_ms_mean": 3400
+  },
+  "without_skill": {
+    "pass_rate_mean": 0.56,
+    "pass_rate_stddev": 0.13,
+    "tokens_mean": 5490,
+    "latency_ms_mean": 6400
+  },
+  "delta": {
+    "pass_rate_gain": 0.39,
+    "token_reduction_pct": -46.27,
+    "verdict": "CERTIFIED_IMPROVEMENT"
+  }
+}

@@ -4,6 +4,29 @@ from __future__ import annotations
 
 from enum import IntEnum
 
+from skillops.models import (
+    AssertionType,
+    BenchmarkDelta,
+    BenchmarkReport,
+    BenchmarkRunStats,
+    BenchmarkVerdict,
+    CatalogTrack,
+    CollisionPair,
+    CollisionReport,
+    CollisionSeverity,
+    EvalAssertion,
+    EvalCase,
+    EvalSuite,
+    RoutingSignals,
+    ScriptEntrypoint,
+    ScriptFinding,
+    ScriptOutput,
+    SkillBudgetMetrics,
+    SkillEntrypoints,
+    SkillManifest,
+    SkillOpsConfig,
+)
+
 __version__ = "0.2.0"
 
 
@@ -18,6 +41,26 @@ class ExitCode(IntEnum):
 
 
 __all__ = [
+    "AssertionType",
+    "BenchmarkDelta",
+    "BenchmarkReport",
+    "BenchmarkRunStats",
+    "BenchmarkVerdict",
+    "CatalogTrack",
+    "CollisionPair",
+    "CollisionReport",
+    "CollisionSeverity",
+    "EvalAssertion",
+    "EvalCase",
+    "EvalSuite",
     "ExitCode",
+    "RoutingSignals",
+    "ScriptEntrypoint",
+    "ScriptFinding",
+    "ScriptOutput",
+    "SkillBudgetMetrics",
+    "SkillEntrypoints",
+    "SkillManifest",
+    "SkillOpsConfig",
     "__version__",
 ]
