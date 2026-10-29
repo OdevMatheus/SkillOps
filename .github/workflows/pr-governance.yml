@@ -60,7 +60,7 @@ jobs:
             ];
 
             const offending = files
-              .filter((f) => f.status !== 'removed' && f.filename !== '.env.example')
+              .filter((f) => f.status !== 'removed')
               .map((f) => f.filename)
               .filter((name) => FORBIDDEN_PATTERNS.some((re) => re.test(name)));
 
@@ -90,7 +90,7 @@ jobs:
             "CHANGELOG.md"
             ".gitattributes"
             ".gitignore"
-            ".env.example"
+            ".skillops.yml"
           )
           for file in "${REQUIRED_FILES[@]}"; do
             if [ ! -f "$file" ]; then

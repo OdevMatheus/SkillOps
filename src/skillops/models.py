@@ -379,6 +379,12 @@ class SkillBudgetMetrics(BaseModel):
     l1_tokens: int = Field(..., ge=0)
     l2_lines: int = Field(..., ge=0)
     l2_tokens: int = Field(..., ge=0)
+    l3_scripts_count: int = Field(default=0, ge=0)
+    l3_scripts_tokens: int = Field(default=0, ge=0)
+    l3_references_count: int = Field(default=0, ge=0)
+    l3_reference_tokens: int = Field(default=0, ge=0)
+    warnings: list[str] = Field(default_factory=list)
+    violations: list[str] = Field(default_factory=list)
     within_budget: bool = Field(default=True)
 
 
