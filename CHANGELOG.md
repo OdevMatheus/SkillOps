@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Python 3.12+ Core Package & Typer/Rich CLI Entrypoint (`Sprint 1 / Issue #45`):**
+  - Added [`pyproject.toml`](./pyproject.toml) configuring `skillops` (`0.2.0`, `requires-python = ">=3.12"`), `hatchling` build system, CLI script `skillops = "skillops.cli:app"`, optional extras (`audit`, `agents`, `serve`, `dev`), and strict `ruff`, `mypy --strict`, and `pytest` tool configurations.
+  - Added [`src/skillops/__init__.py`](./src/skillops/__init__.py), [`src/skillops/__main__.py`](./src/skillops/__main__.py), [`src/skillops/py.typed`](./src/skillops/py.typed), and [`src/skillops/cli.py`](./src/skillops/cli.py) implementing deterministic CLI exit codes (`ExitCode`: `0`–`5`), `--version` flag, and subcommands (`audit`, `route`, `sync`, `eval`, `serve`, `mcp`) per [`SKILL_CONTRACT.md`](./SKILL_CONTRACT.md) §7.
+  - Added [`tests/test_cli.py`](./tests/test_cli.py) verifying all 6 CLI subcommands, exit codes, `--json` output, and localhost-only guard (`127.0.0.1` / `localhost`).
+  - Enabled `pip` ecosystem updates in [`.github/dependabot.yml`](./.github/dependabot.yml).
 - **AI-First DevOps, CI/CD & Multi-Framework Infrastructure (`Sprint 1 / Issue #47`):**
   - Added [`.github/workflows/ai-ci.yml`](./.github/workflows/ai-ci.yml) implementing subagent frontmatter validation, `SKILL.md` progressive disclosure line-budget enforcement (`<= 250 lines` per `INV-SKILL-01`), and a Python 3.12 & 3.13 QA matrix (`uv`, `ruff`, `mypy --strict`, `pytest`).
   - Added [`.github/agents/skill-auditor.agent.md`](./.github/agents/skill-auditor.agent.md) specialized in auditing Hybrid Executable Skills (`SKILL.md`, `scripts/*.py`, `evals/evals.json`) and multi-framework compatibility (**OpenAI Agents SDK**, **FastMCP**, **Claude Code**, **Antigravity/Gemini CLI**, **Cursor**, **OpenAI Codex CLI**, **GitHub Copilot**).
