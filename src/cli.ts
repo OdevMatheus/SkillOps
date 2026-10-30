@@ -8,7 +8,14 @@ import {
   auditCatalog,
   formatTokenEconomyReport,
 } from "./auditor/index.js";
-import { ExitCode, SKILLOPS_VERSION } from "./models.js";
+import {
+  ALL_RUNTIME_TARGETS,
+  ExitCode,
+  type RuntimeTarget,
+  SKILLOPS_VERSION,
+} from "./models.js";
+import { formatRoutedBundle, routeRepository } from "./router/index.js";
+import { addSkillOrSubagent, formatSyncReport, syncRepository } from "./sync/index.js";
 
 export function runCli(argv: readonly string[]): number {
   const args = argv.slice(2);
@@ -115,6 +122,98 @@ export function runCli(argv: readonly string[]): number {
       return ExitCode.BUDGET_OR_CONTRACT_ERROR;
     }
     return ExitCode.SUCCESS;
+  }
+
+  if (command === "route") {
+    const repoIdx = args.indexOf("--repo");
+    const repoPath =
+      repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd();
+    const catalogIdx = args.indexOf("--catalog");
+    const catalogDir =
+      catalogIdx !== -1 && args[catalogIdx + 1]
+        ? args[catalogIdx + 1]!
+        : path.join(path.resolve(repoPath), "catalog");
+    const taskIdx = args.indexOf("--task");
+    const taskPrompt = taskIdx !== -1 && args[taskIdx + 1] ? args[taskIdx + 1]! : "";
+    const formatIdx = args.indexOf("--format");
+    const rawFormat = formatIdx !== -1 && args[formatIdx + 1] ? args[formatIdx + 1]! : "table";
+    const format: "table" | "json" | "markdown" =
+      rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
+
+    const bundle = routeRepository(repoPath, catalogDir, { taskPrompt });
+    process.stdout.write(formatRoutedBundle(bundle, format));
+    return bundle.passed_invariants ? ExitCode.SUCCESS : ExitCode.ERROR;
+  }
+
+  if (command === "sync") {
+    const repoIdx = args.indexOf("--repo");
+    const repoPath =
+      repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd();
+    const catalogIdx = args.indexOf("--catalog");
+    const catalogDir =
+      catalogIdx !== -1 && args[catalogIdx + 1]
+        ? args[catalogIdx + 1]!
+        : path.join(path.resolve(repoPath), "catalog");
+    const targetsIdx = args.indexOf("--targets");
+    const rawTargets =
+      targetsIdx !== -1 && args[targetsIdx + 1]
+        ? args[targetsIdx + 1]!
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : [...ALL_RUNTIME_TARGETS];
+    const targets = rawTargets as RuntimeTarget[];
+    const dryRun = args.includes("--dry-run");
+    const force = args.includes("--force");
+    const formatIdx = args.indexOf("--format");
+    const rawFormat = formatIdx !== -1 && args[formatIdx + 1] ? args[formatIdx + 1]! : "table";
+    const format: "table" | "json" | "markdown" =
+      rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
+
+    const report = syncRepository(repoPath, catalogDir, { targets, dryRun, force });
+    process.stdout.write(formatSyncReport(report, format));
+    return report.passed ? ExitCode.SUCCESS : ExitCode.ERROR;
+  }
+
+  if (command === "add") {
+    const itemName = args[1];
+    if (!itemName || itemName.startsWith("-")) {
+      process.stderr.write("Usage: npx skillops@latest add <skill-or-subagent-name> [options]\n");
+      return ExitCode.ERROR;
+    }
+    const repoIdx = args.indexOf("--repo");
+    const repoPath =
+      repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd();
+    const catalogIdx = args.indexOf("--catalog");
+    const catalogDir =
+      catalogIdx !== -1 && args[catalogIdx + 1]
+        ? args[catalogIdx + 1]!
+        : path.join(path.resolve(repoPath), "catalog");
+    const targetsIdx = args.indexOf("--targets");
+    const rawTargets =
+      targetsIdx !== -1 && args[targetsIdx + 1]
+        ? args[targetsIdx + 1]!
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : [...ALL_RUNTIME_TARGETS];
+    const targets = rawTargets as RuntimeTarget[];
+    const dryRun = args.includes("--dry-run");
+    const force = args.includes("--force");
+
+    try {
+      const report = addSkillOrSubagent(repoPath, catalogDir, itemName, {
+        targets,
+        dryRun,
+        force,
+      });
+      process.stdout.write(formatSyncReport(report, "table"));
+      return report.passed ? ExitCode.SUCCESS : ExitCode.ERROR;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`Error: ${msg}\n`);
+      return ExitCode.ERROR;
+    }
   }
 
   process.stderr.write(`Unknown command '${command}'. Run 'npx skillops@latest --help'.\n`);
