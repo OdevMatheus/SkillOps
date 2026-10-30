@@ -81,5 +81,5 @@ jobs:
           npm test
           npm run build
           node dist/cli.js audit --catalog catalog --strict --require-layout
-          node dist/cli.js tokens --strict --budget 4000
+          node dist/cli.js tokens --strict
           node dist/cli.js eval --catalog catalog --strict

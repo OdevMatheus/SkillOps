@@ -1,69 +1,62 @@
 "🔴 core-architecture":
   - changed-files:
       - any-glob-to-any-file:
-          - AGENTS.md
-          - CLAUDE.md
-          - GEMINI.md
-          - SKILL_CONTRACT.md
-          - docs/architecture/**
+          - "AGENTS.md"
+          - "CLAUDE.md"
+          - "GEMINI.md"
+          - "SKILL_CONTRACT.md"
+          - "package.json"
+          - "tsconfig.json"
+          - "tsup.config.ts"
+          - "vitest.config.ts"
+          - ".skillops.yml"
+          - "docs/architecture/**"
 
 "🐍 core-engine":
   - changed-files:
       - any-glob-to-any-file:
-          - pyproject.toml
-          - .env.example
-          - src/skillops/**
+          - "src/**"
+          - "tests/**"
 
 "🧠 skill-catalog":
   - changed-files:
       - any-glob-to-any-file:
-          - catalog/**
+          - "catalog/**"
 
 "🧪 eval-benchmark":
   - changed-files:
       - any-glob-to-any-file:
-          - src/skillops/eval_engine/**
-          - catalog/**/evals/**
-          - tests/**
+          - "src/eval/**"
+          - "catalog/**/evals/**"
+          - "tests/*eval*"
 
 "🔄 multi-runtime":
   - changed-files:
       - any-glob-to-any-file:
-          - src/skillops/router/**
-          - src/skillops/sync/**
+          - "src/router/**"
+          - "src/sync/**"
+          - ".github/copilot-instructions.md"
+          - ".github/agents/**"
 
 "🔌 mcp-server":
   - changed-files:
       - any-glob-to-any-file:
-          - src/skillops/mcp/**
-          - src/skillops/server/**
-
-"⚠️ agent-behavior":
-  - changed-files:
-      - any-glob-to-any-file:
-          - .github/copilot-instructions.md
-          - .github/agents/**
+          - "src/mcp/**"
 
 "📄 docs":
   - changed-files:
       - any-glob-to-any-file:
-          - "README*.md"
-          - SKILL_CONTRACT.md
-          - CONTRIBUTING.md
-          - CODE_OF_CONDUCT.md
-          - CHANGELOG.md
-          - LICENSE
-          - docs/**
-          - .github/SECURITY.md
+          - "**/*.md"
+          - "!catalog/**"
+          - "!.github/agents/**"
 
 "⚙️ ci":
   - changed-files:
       - any-glob-to-any-file:
-          - .gitattributes
-          - .gitignore
-          - .github/workflows/**
-          - .github/labeler.yml
-          - .github/release-drafter.yml
-          - .github/dependabot.yml
-          - .github/ISSUE_TEMPLATE/**
-          - .github/PULL_REQUEST_TEMPLATE.md
+          - ".github/workflows/**"
+          - ".github/actions/**"
+          - ".github/dependabot.yml"
+          - ".github/labeler.yml"
+          - ".github/release-drafter.yml"
+          - ".gitattributes"
+          - ".gitignore"

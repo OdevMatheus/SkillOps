@@ -1,53 +1,40 @@
-name: Hybrid Skill, Subagent or Engine Feature Request
-description: Propose a new Hybrid Executable Skill (SKILL.md + script + evals), Subagent, or SkillOps Engine capability
+name: Feature / Hybrid Skill / Subagent Proposal
+description: Propose a new Hybrid Executable Skill, Context-Isolated Subagent, NPX CLI capability, or runtime adapter for SkillOps
 title: "feat: "
 labels: ["✨ feat"]
 body:
-  - type: checkboxes
-    id: search
-    attributes:
-      label: Existing Issues & Skill Collision Check
-      options:
-        - label: I have searched existing issues and verified this proposal does not semantically collide (`cosine >= 0.78`) with an existing skill in `catalog/`.
-          required: true
   - type: dropdown
     id: category
     attributes:
       label: Proposal Category
       options:
-        - Hybrid Executable Skill — Track 1: AI & Agentic Systems (catalog/ai-engineering/)
-        - Hybrid Executable Skill — Track 2: Python 3.12+ Backend & Data (catalog/python-backend/)
-        - Hybrid Executable Skill — Track 3: Architecture, Security & QA (catalog/arch-quality/)
-        - Specialized Subagent Profile (.github/agents/*.agent.md)
-        - SkillOps Core Engine / CLI / FastMCP / Multi-Runtime Transpiler (src/skillops/)
+        - Core Engine Feature (src/ — Auditor / Token Economy / Router / Sync / Eval / MCP)
+        - New Hybrid Executable Skill — Track 1: AI & Agentic Engineering (catalog/ai-engineering/)
+        - New Hybrid Executable Skill — Track 2: Python 3.12+ Backend (catalog/python-backend/)
+        - New Hybrid Executable Skill — Track 3: Architecture, Security & Quality (catalog/arch-quality/)
+        - New Context-Isolated Subagent (catalog/subagents/ or .github/agents/)
+        - Multi-Runtime Adapter (Claude Code / Antigravity / Cursor / Codex CLI / GitHub Copilot)
+        - Architecture Decision Record (ADR) / Governance Enhancement
     validations:
       required: true
-  - type: checkboxes
-    id: frameworks
-    attributes:
-      label: Target AI Agent Harnesses & Frameworks
-      description: Which AI harnesses or agent frameworks benefit from this skill or feature?
-      options:
-        - label: OpenAI Agents SDK (`openai-agents`)
-        - label: Model Context Protocol (`FastMCP` / `mcp`)
-        - label: Claude Code (`.claude/skills/`)
-        - label: Antigravity / Gemini CLI (`.agent/skills/`)
-        - label: Cursor (`.cursor/rules/*.mdc`)
-        - label: OpenAI Codex CLI (`.codex/skills/`)
-        - label: GitHub Copilot (`.github/instructions/` & `.github/agents/`)
-        - label: PydanticAI / LangGraph / CrewAI Ecosystems
   - type: textarea
     id: problem
     attributes:
-      label: Agent Failure Mode or Engineering Problem
-      description: What baseline LLM failure mode (e.g., routing collapse, hallucinated API, blocking async loop, missing blast-radius analysis) does this solve?
-      placeholder: "e.g., Baseline coding agents frequently introduce synchronous I/O inside FastAPI async def routes or exceed Level 1 token budgets..."
+      label: Problem Statement & Empirical Motivation
+      description: What failure mode, routing collision, token waste, or engineering bottleneck does this solve?
     validations:
       required: true
   - type: textarea
     id: solution
     attributes:
-      label: Proposed Specification (SKILL.md + Deterministic Script + TDD Eval Assertions)
-      description: Describe the Trigger Boundaries (`Use when...` / `Do not trigger for...`), the deterministic Python 3.12+ CLI tool (`scripts/*.py --json`), and the `with_skill` vs `without_skill` TDD evaluation assertions.
+      label: Proposed Design & Deterministic Execution Contract
+      description: Describe the TypeScript/Node.js 20+ module or Hybrid Skill (`SKILL.md` + `scripts/*.py --json` + `evals/evals.json`) or Subagent (`AGENT.md` with `max_output_tokens <= 400`).
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria (EARS / TDD Assertions)
+      description: List verifiable criteria, token budget bounds, and expected pass-rate delta (`with_skill` vs `without_skill`).
     validations:
       required: true

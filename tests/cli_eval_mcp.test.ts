@@ -103,8 +103,14 @@ describe("SkillOps NPX Complete CLI, Deterministic Eval Runner & Stdio MCP Serve
     const contentText = (
       callTokensRes!.result as { content: Array<{ type: string; text: string }> }
     ).content[0]!.text;
-    const tokenPayload = JSON.parse(contentText) as { token_savings_pct: number };
+    const tokenPayload = JSON.parse(contentText) as {
+      token_savings_pct: number;
+      passed_budget: boolean;
+      hotspots: unknown[];
+    };
     expect(tokenPayload.token_savings_pct).toBeGreaterThanOrEqual(75);
+    expect(tokenPayload.passed_budget).toBe(true);
+    expect(tokenPayload.hotspots).toHaveLength(0);
   });
 
   it("executes CLI init, list, and eval commands cleanly", () => {

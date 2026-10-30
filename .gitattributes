@@ -1,44 +1,39 @@
-# ============================================================================
-# SkillOps — Git Attributes & Line Ending Normalization
-# Enforces UTF-8 LF line endings across Windows, macOS, and Linux for
-# AI Agent Skills (SKILL.md), Subagents (.agent.md), Cursor Rules (.mdc),
-# and Python 3.12+ Core Engine & Deterministic Scripts.
-# ============================================================================
-
-# Default behavior: auto-detect text files and normalize to LF on checkout/commit
+# Auto-detect text files and normalize line endings to LF
 * text=auto eol=lf
 
-# AI Agent Skills, Subagents, Cursor Rules & Documentation
+# Documentation & AI Agent Contracts
 *.md text eol=lf
 *.mdc text eol=lf
 *.txt text eol=lf
 
-# Python 3.12+ Engine, Deterministic Skill Scripts & Type Stubs
+# TypeScript / Node.js 20+ NPX Engine & Deterministic Python 3.12+ Catalog Scripts
+*.ts text eol=lf
+*.mts text eol=lf
+*.cts text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
 *.py text eol=lf
 *.pyi text eol=lf
-
-# Configuration, Evals, Benchmarks & Manifests
+*.toml text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
 *.json text eol=lf
 *.jsonl text eol=lf
-*.toml text eol=lf
+
+# Shell & Automation Scripts
 *.sh text eol=lf
 *.ps1 text eol=crlf
-.gitignore text eol=lf
-.gitattributes text eol=lf
-.env.example text eol=lf
-CODEOWNERS text eol=lf
-LICENSE text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
 
-# Binary Assets (do not modify line endings)
+# Binary & Media Assets
 *.png binary
 *.jpg binary
 *.jpeg binary
 *.gif binary
 *.webp binary
-*.svg text eol=lf
+*.ico binary
 *.pdf binary
-*.zip binary
-*.tar binary
-*.gz binary
+*.woff binary
+*.woff2 binary
