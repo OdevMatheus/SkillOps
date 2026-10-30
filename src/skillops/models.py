@@ -612,3 +612,57 @@ class RepoProfile(BaseModel):
 
 
 RepoFingerprint = RepoProfile
+
+
+class ScoredSkill(BaseModel):
+    """Catalog skill scored and selected by ``DynamicSkillRouter`` (``ADR-0003``)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: str = Field(..., min_length=1, description="Skill identifier.")
+    track: CatalogTrack = Field(..., description="Catalog domain track.")
+    skill_dir: str = Field(..., min_length=1, description="POSIX path to the skill directory.")
+    relevance_score: float = Field(
+        ...,
+        ge=0.0,
+        le=100.0,
+        description="Deterministic repository relevance score S(k) in [0, 100].",
+    )
+    l1_tokens: int = Field(..., ge=0, description="Level 1 routing description token count.")
+    matched_signals: list[str] = Field(
+        default_factory=list,
+        description="Repository signals that contributed to the skill's relevance score.",
+    )
+
+
+class SkippedSkill(BaseModel):
+    """Catalog skill excluded from the routed bundle with a deterministic explanation."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: str = Field(..., min_length=1, description="Skill identifier.")
+    track: CatalogTrack = Field(..., description="Catalog domain track.")
+    relevance_score: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=100.0,
+        description="Computed relevance score before exclusion.",
+    )
+    reason: str = Field(..., min_length=3, description="Deterministic exclusion reason.")
+
+
+class RoutedBundle(BaseModel):
+    """Optimal collision-free skill bundle compiled for a target repository (``INV-SKILL-03``)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    repo_profile: RepoProfile
+    catalog_path: str = Field(..., min_length=1)
+    max_skills: int = Field(default=12, ge=1, le=12)
+    max_l1_tokens: int = Field(default=1500, ge=1)
+    max_similarity: float = Field(default=0.78, ge=0.1, le=0.99)
+    selected_skills: list[ScoredSkill] = Field(default_factory=list)
+    skipped_skills: list[SkippedSkill] = Field(default_factory=list)
+    total_l1_tokens: int = Field(default=0, ge=0)
+    max_pairwise_similarity: float = Field(default=0.0, ge=0.0, le=1.0)
+    passed_invariants: bool = Field(default=True)
