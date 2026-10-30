@@ -2,20 +2,50 @@
  * SkillOps NPX CLI Entrypoint (`npx skillops@latest <command>`).
  */
 
+import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import YAML from "yaml";
 import {
   analyzeRepoTokenEconomy,
   auditCatalog,
+  auditCatalogTokenBudgets,
   formatTokenEconomyReport,
 } from "./auditor/index.js";
+import { evaluateCatalog, formatEvalSummary } from "./eval/index.js";
+import { startMcpStdioServer } from "./mcp/index.js";
 import {
   ALL_RUNTIME_TARGETS,
   ExitCode,
   type RuntimeTarget,
   SKILLOPS_VERSION,
 } from "./models.js";
-import { formatRoutedBundle, routeRepository } from "./router/index.js";
+import {
+  fingerprintRepository,
+  formatRoutedBundle,
+  routeRepository,
+} from "./router/index.js";
 import { addSkillOrSubagent, formatSyncReport, syncRepository } from "./sync/index.js";
+
+const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+function resolveCatalogDir(args: readonly string[], repoPath?: string): string {
+  const catalogIdx = args.indexOf("--catalog");
+  if (catalogIdx !== -1 && args[catalogIdx + 1]) {
+    return path.resolve(args[catalogIdx + 1]!);
+  }
+  if (repoPath) {
+    const repoCatalog = path.join(path.resolve(repoPath), "catalog");
+    if (fs.existsSync(repoCatalog)) {
+      return repoCatalog;
+    }
+  }
+  const cwdCatalog = path.resolve(process.cwd(), "catalog");
+  if (fs.existsSync(cwdCatalog)) {
+    return cwdCatalog;
+  }
+  return path.join(PACKAGE_ROOT, "catalog");
+}
 
 export function runCli(argv: readonly string[]): number {
   const args = argv.slice(2);
@@ -48,12 +78,102 @@ export function runCli(argv: readonly string[]): number {
   }
 
   const command = args[0];
+
+  if (command === "init") {
+    const repoIdx = args.indexOf("--repo");
+    const repoPath = path.resolve(
+      repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd(),
+    );
+    const catalogDir = resolveCatalogDir(args, repoPath);
+    const profile = fingerprintRepository(repoPath);
+
+    const configPayload = {
+      version: "1.0",
+      catalog_dir: path.relative(repoPath, catalogDir).replace(/\\/g, "/") || "catalog",
+      token_economy: {
+        startup_tax_budget: 2500,
+        max_active_skills: 12,
+        max_l1_tokens: 1500,
+        max_similarity: 0.78,
+      },
+      detected_stack: {
+        languages: profile.languages,
+        frameworks: profile.frameworks,
+      },
+      targets: [...ALL_RUNTIME_TARGETS],
+    };
+
+    const configPath = path.join(repoPath, ".skillops.yml");
+    fs.mkdirSync(repoPath, { recursive: true });
+    fs.writeFileSync(configPath, YAML.stringify(configPayload), "utf-8");
+    process.stdout.write(
+      `Initialized SkillOps configuration at ${configPath.replace(/\\/g, "/")}\n`,
+    );
+    return ExitCode.SUCCESS;
+  }
+
+  if (command === "list") {
+    const catalogDir = resolveCatalogDir(args);
+    const formatIdx = args.indexOf("--format");
+    const rawFormat = formatIdx !== -1 && args[formatIdx + 1] ? args[formatIdx + 1]! : "table";
+    const summary = auditCatalogTokenBudgets(catalogDir, { requireLayout: false });
+
+    if (rawFormat === "json") {
+      process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
+      return ExitCode.SUCCESS;
+    }
+
+    if (rawFormat === "markdown") {
+      const lines = [
+        "## SkillOps Catalog — High-End Skills & Context-Isolated Subagents",
+        "",
+        "### Hybrid Executable Skills (`INV-SKILL-01` .. `03`)",
+        "",
+        "| Skill | L1 Tokens | L2 Lines | L2 Tokens | Scripts |Savings |",
+        "| :--- | ---: | ---: | ---: | ---: | ---: |",
+        ...summary.skills.map((s) => {
+          const totalRaw = s.l1Tokens + s.l2Tokens;
+          const savingsPct =
+            totalRaw > 0
+              ? (((totalRaw - s.l1Tokens) / totalRaw) * 100).toFixed(1)
+              : "0.0";
+          return `| \`${s.skillName}\` | ${s.l1Tokens} | ${s.l2Lines} | ${s.l2Tokens} | ${s.scriptsCount} | ${savingsPct}% |`;
+        }),
+        "",
+        "### Context-Isolated Subagents (`INV-SKILL-04`)",
+        "",
+        "| Subagent | Prompt Tokens | Max Output Tokens | Tools |",
+        "| :--- | ---: | ---: | ---: |",
+        ...summary.subagents.map(
+          (a) =>
+            `| \`${a.subagentName}\` | ${a.systemPromptTokens} | <= ${a.maxOutputTokens} | ${a.tools.length} |`,
+        ),
+        "",
+      ];
+      process.stdout.write(lines.join("\n"));
+      return ExitCode.SUCCESS;
+    }
+
+    const lines = [
+      `=== SkillOps Catalog (v${SKILLOPS_VERSION}) ===`,
+      `Skills (${summary.skills.length}) — Total L1 Routing Tax: ${summary.totalL1Tokens} tokens`,
+      ...summary.skills.map(
+        (s) =>
+          `  [SKILL] ${s.skillName} — L1: ${s.l1Tokens}t | L2: ${s.l2Lines} lines (${s.l2Tokens}t) | L3 Scripts: ${s.scriptsCount}`,
+      ),
+      `Subagents (${summary.subagents.length}) — Context-Isolated Specialist Agents:`,
+      ...summary.subagents.map(
+        (a) =>
+          `  [SUBAGENT] ${a.subagentName} (prompt=${a.systemPromptTokens}t, max_out<=${a.maxOutputTokens}t, tools=${a.tools.length})`,
+      ),
+      "",
+    ];
+    process.stdout.write(lines.join("\n"));
+    return ExitCode.SUCCESS;
+  }
+
   if (command === "audit") {
-    const catalogIdx = args.indexOf("--catalog");
-    const catalogDir =
-      catalogIdx !== -1 && args[catalogIdx + 1]
-        ? args[catalogIdx + 1]!
-        : path.resolve(process.cwd(), "catalog");
+    const catalogDir = resolveCatalogDir(args);
     const strict = args.includes("--strict");
     const requireLayout = args.includes("--require-layout");
     const formatIdx = args.indexOf("--format");
@@ -96,11 +216,7 @@ export function runCli(argv: readonly string[]): number {
     const repoIdx = args.indexOf("--repo");
     const repoPath =
       repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd();
-    const catalogIdx = args.indexOf("--catalog");
-    const catalogDir =
-      catalogIdx !== -1 && args[catalogIdx + 1]
-        ? args[catalogIdx + 1]!
-        : path.join(path.resolve(repoPath), "catalog");
+    const catalogDir = resolveCatalogDir(args, repoPath);
     const budgetIdx = args.indexOf("--budget");
     const startupTaxBudget =
       budgetIdx !== -1 && args[budgetIdx + 1]
@@ -128,11 +244,7 @@ export function runCli(argv: readonly string[]): number {
     const repoIdx = args.indexOf("--repo");
     const repoPath =
       repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd();
-    const catalogIdx = args.indexOf("--catalog");
-    const catalogDir =
-      catalogIdx !== -1 && args[catalogIdx + 1]
-        ? args[catalogIdx + 1]!
-        : path.join(path.resolve(repoPath), "catalog");
+    const catalogDir = resolveCatalogDir(args, repoPath);
     const taskIdx = args.indexOf("--task");
     const taskPrompt = taskIdx !== -1 && args[taskIdx + 1] ? args[taskIdx + 1]! : "";
     const formatIdx = args.indexOf("--format");
@@ -149,11 +261,7 @@ export function runCli(argv: readonly string[]): number {
     const repoIdx = args.indexOf("--repo");
     const repoPath =
       repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd();
-    const catalogIdx = args.indexOf("--catalog");
-    const catalogDir =
-      catalogIdx !== -1 && args[catalogIdx + 1]
-        ? args[catalogIdx + 1]!
-        : path.join(path.resolve(repoPath), "catalog");
+    const catalogDir = resolveCatalogDir(args, repoPath);
     const targetsIdx = args.indexOf("--targets");
     const rawTargets =
       targetsIdx !== -1 && args[targetsIdx + 1]
@@ -184,11 +292,7 @@ export function runCli(argv: readonly string[]): number {
     const repoIdx = args.indexOf("--repo");
     const repoPath =
       repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd();
-    const catalogIdx = args.indexOf("--catalog");
-    const catalogDir =
-      catalogIdx !== -1 && args[catalogIdx + 1]
-        ? args[catalogIdx + 1]!
-        : path.join(path.resolve(repoPath), "catalog");
+    const catalogDir = resolveCatalogDir(args, repoPath);
     const targetsIdx = args.indexOf("--targets");
     const rawTargets =
       targetsIdx !== -1 && args[targetsIdx + 1]
@@ -214,6 +318,45 @@ export function runCli(argv: readonly string[]): number {
       process.stderr.write(`Error: ${msg}\n`);
       return ExitCode.ERROR;
     }
+  }
+
+  if (command === "eval") {
+    const catalogDir = resolveCatalogDir(args);
+    const skillIdx = args.indexOf("--skill");
+    const skillFilter = skillIdx !== -1 && args[skillIdx + 1] ? args[skillIdx + 1] : undefined;
+    const formatIdx = args.indexOf("--format");
+    const rawFormat = formatIdx !== -1 && args[formatIdx + 1] ? args[formatIdx + 1]! : "table";
+    const format: "table" | "json" | "markdown" | "html" =
+      rawFormat === "json" || rawFormat === "markdown" || rawFormat === "html"
+        ? rawFormat
+        : "table";
+    const outIdx = args.indexOf("--out");
+    const outPath = outIdx !== -1 && args[outIdx + 1] ? path.resolve(args[outIdx + 1]!) : null;
+    const strict = args.includes("--strict");
+
+    const summary = evaluateCatalog(catalogDir, { skillFilter });
+    const rendered = formatEvalSummary(summary, format);
+
+    if (outPath) {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+      fs.writeFileSync(outPath, rendered, "utf-8");
+    }
+    process.stdout.write(rendered);
+
+    if (strict && !summary.passed) {
+      return ExitCode.EVAL_REGRESSION_ERROR;
+    }
+    return ExitCode.SUCCESS;
+  }
+
+  if (command === "mcp") {
+    const repoIdx = args.indexOf("--repo");
+    const repoPath = path.resolve(
+      repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd(),
+    );
+    const catalogDir = resolveCatalogDir(args, repoPath);
+    startMcpStdioServer({ repoPath, catalogDir });
+    return ExitCode.SUCCESS;
   }
 
   process.stderr.write(`Unknown command '${command}'. Run 'npx skillops@latest --help'.\n`);

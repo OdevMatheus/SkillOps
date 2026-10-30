@@ -1,5 +1,5 @@
-name: "SkillOps Audit (Semantic Collision & Token Budget Gate)"
-description: "Audits AI Coding Agent Skills (SKILL.md, scripts/*.py, evals/evals.json) for semantic routing collisions and 3-level token budgets."
+name: "SkillOps Audit (Zero-API NPX Token Economy & Collision Gate)"
+description: "Audits AI Coding Agent Skills & Context-Isolated Subagents for Startup Token Tax, L1/L2/L3 progressive disclosure budgets, and semantic collisions."
 author: "OdevMatheus"
 branding:
   icon: "shield"
@@ -7,35 +7,31 @@ branding:
 
 inputs:
   catalog-path:
-    description: "Path to the Hybrid Executable Skill catalog directory."
+    description: "Path to the Hybrid Executable Skill & Subagent catalog directory."
     required: false
     default: "catalog"
   strict:
     description: "Fail on high-risk semantic collisions (cosine >= 0.72)."
     required: false
     default: "true"
-  python-version:
-    description: "Python version used to run SkillOps (requires >= 3.12)."
+  node-version:
+    description: "Node.js version used to run SkillOps NPX engine (requires >= 20)."
     required: false
-    default: "3.12"
+    default: "22"
 
 runs:
   using: "composite"
   steps:
-    - name: Set up uv & Python ${{ inputs.python-version }}
-      uses: astral-sh/setup-uv@v4
+    - name: Set up Node.js ${{ inputs.node-version }}
+      uses: actions/setup-node@v4
       with:
-        python-version: ${{ inputs.python-version }}
+        node-version: ${{ inputs.node-version }}
 
-    - name: Install SkillOps CLI
-      shell: bash
-      run: uv pip install --system -e "${{ github.action_path }}/../../.."
-
-    - name: Run SkillOps Semantic Collision & Token Budget Audit
+    - name: Run SkillOps NPX Semantic Collision & Token Budget Audit
       shell: bash
       run: |
         STRICT_FLAG=""
         if [ "${{ inputs.strict }}" = "true" ]; then
           STRICT_FLAG="--strict"
         fi
-        skillops audit --catalog "${{ inputs.catalog-path }}" --format table $STRICT_FLAG
+        npx skillops@latest audit --catalog "${{ inputs.catalog-path }}" --format table $STRICT_FLAG
