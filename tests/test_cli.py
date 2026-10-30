@@ -18,7 +18,7 @@ runner = CliRunner()
 
 def test_package_version_and_exit_codes() -> None:
     """Verify canonical package version and SKILL_CONTRACT.md exit code values."""
-    assert __version__ == "0.2.0"
+    assert __version__ == "0.3.0"
     assert int(ExitCode.SUCCESS) == 0
     assert int(ExitCode.ERROR) == 1
     assert int(ExitCode.COLLISION_ERROR) == 2

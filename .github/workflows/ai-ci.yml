@@ -76,10 +76,11 @@ jobs:
         run: |
           if [ -f "pyproject.toml" ]; then
             uv sync --all-extras --dev
-            uv run ruff check src tests
-            uv run ruff format --check src tests
+            uv run ruff check src tests catalog
+            uv run ruff format --check src tests catalog
             uv run mypy --strict src tests
             uv run pytest --cov=skillops --cov-report=term-missing
+            uv run skillops audit --catalog catalog --strict --require-layout --format table
           else
             echo "OK — Python 3.12+ CI pipeline ready (awaiting pyproject.toml in Sprint 1 Issue #45)."
           fi
