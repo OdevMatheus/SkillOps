@@ -27,3 +27,10 @@ export {
   computeCollisionMatrix,
   auditCatalog,
 } from "./collision.js";
+
+export {
+  type AnalyzeTokenEconomyOptions,
+  analyzeRepoTokenEconomy,
+  formatTokenEconomyReport,
+} from "./token_economy.js";
+
