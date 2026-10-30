@@ -1,50 +1,48 @@
 name: Bug Report
-description: Report a bug or unexpected behavior in SkillOps Engine or Catalog Skills
+description: Report a bug in the SkillOps NPX engine, hybrid skill scripts, TDD eval runner, or multi-runtime sync
 title: "fix: "
 labels: ["🐛 fix"]
 body:
   - type: markdown
     attributes:
       value: |
-        > ⚠️ **Privacy First:** Never include API keys, private tokens, or local machine user paths in public issues.
-  - type: checkboxes
-    id: search
+        Thanks for reporting an issue in **SkillOps**! Please provide details below so maintainers and AI coding agents can reproduce and fix it deterministically.
+  - type: dropdown
+    id: area
     attributes:
-      label: Existing Issues
+      label: Affected Subsystem
       options:
-        - label: I have searched existing issues to make sure this bug has not been reported yet.
-          required: true
+        - Core Engine — Semantic Collision & Token Budget Auditor (npx skillops audit)
+        - Core Engine — Repository Token Economy & Startup Tax Analyzer (npx skillops tokens)
+        - Core Engine — Context-Aware Router & Bundle Compiler (npx skillops route)
+        - Core Engine — Multi-Runtime Transpiler & Sync (npx skillops sync / add)
+        - Core Engine — Deterministic TDD Eval Runner (npx skillops eval)
+        - Core Engine — Local Stdio MCP Server (npx skillops mcp)
+        - Skill & Subagent Catalog — Track 1: AI & Agentic Systems (catalog/ai-engineering/)
+        - Skill & Subagent Catalog — Track 2: Python 3.12+ Backend (catalog/python-backend/)
+        - Skill & Subagent Catalog — Track 3: Architecture & Quality (catalog/arch-quality/)
+        - Context-Isolated Subagents (catalog/subagents/ or .github/agents/)
+        - Documentation / Governance / CI Workflows (.github/)
+    validations:
+      required: true
   - type: textarea
     id: description
     attributes:
-      label: What happened?
-      description: Provide a clear and concise description of the bug in the SkillOps CLI, MCP server, or catalog skill.
+      label: Bug Description
+      description: Clear and concise description of the bug or contract violation.
     validations:
       required: true
   - type: textarea
     id: steps
     attributes:
       label: Steps to Reproduce
-      description: How can we reproduce this issue step by step?
-      placeholder: |
-        1. Run `skillops audit --catalog ./catalog`...
-        2. Observe output / stack trace...
+      description: Exact CLI command (`npx skillops ...` or `python catalog/.../scripts/*.py --json`) or Vitest test case that triggers the bug.
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
       label: Expected Behavior
-      description: What did you expect to happen instead?
+      description: What should happen according to SKILL_CONTRACT.md or AGENTS.md?
     validations:
       required: true
-  - type: input
-    id: agent
-    attributes:
-      label: AI Agent / Harness Used
-      placeholder: "e.g., Claude Code, Antigravity, Cursor, OpenAI Codex CLI, GitHub Copilot"
-  - type: input
-    id: environment
-    attributes:
-      label: Python Version & OS Environment
-      placeholder: "e.g., Python 3.12 / Windows 11 / macOS 15 / Ubuntu 24.04"

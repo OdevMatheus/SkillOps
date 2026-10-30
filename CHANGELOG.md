@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **NPX DevOps, Governance & Token Economy Alignment (`Sprint 4 / v0.5.0`):**
+  - Updated [`.github/labeler.yml`](./.github/labeler.yml), [`.github/workflows/pr-governance.yml`](./.github/workflows/pr-governance.yml), [`.github/workflows/ai-ci.yml`](./.github/workflows/ai-ci.yml), [`.github/PULL_REQUEST_TEMPLATE.md`](./.github/PULL_REQUEST_TEMPLATE.md), [`.github/ISSUE_TEMPLATE/`](./.github/ISSUE_TEMPLATE/), [`.github/copilot-instructions.md`](./.github/copilot-instructions.md), [`.github/agents/*.agent.md`](./.github/agents/), [`.gitattributes`](./.gitattributes), and [`.skillops.yml`](./.skillops.yml) for the Node.js 20+ / TypeScript `npx skillops@latest` architecture.
+  - Optimized [`AGENTS.md`](./AGENTS.md) (`<= 600 tokens`) and subagent frontmatters (`max_output_tokens: 400`) so `npx skillops@latest tokens --strict` passes with **0 hotspots** (`1,424 / 2,500 tokens`).
+  - Updated [`SKILL_CONTRACT.md`](./SKILL_CONTRACT.md), [`CONTRIBUTING.md`](./CONTRIBUTING.md), [`README.md`](./README.md), and [`docs/architecture/README.md`](./docs/architecture/README.md) to reflect the `npx skillops@latest` engine.
+
+### Fixed
+- **Cross-Platform Windows/Linux CLI Direct Invocation (`src/cli.ts`):**
+  - Fixed `isDirectCliInvocation()` in [`src/cli.ts`](./src/cli.ts) using `pathToFileURL` and `fs.realpathSync` so `node dist/cli.js` and `npx skillops` execute reliably across Windows, macOS, and Linux.
+
 ---
 
 ## [0.5.0] - 2026-10-30

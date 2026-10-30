@@ -4,7 +4,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import YAML from "yaml";
 import {
   analyzeRepoTokenEconomy,
@@ -363,7 +363,27 @@ export function runCli(argv: readonly string[]): number {
   return ExitCode.ERROR;
 }
 
-if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}`) {
+function isDirectCliInvocation(): boolean {
+  const entryArg = process.argv[1];
+  if (!entryArg) {
+    return false;
+  }
+  try {
+    const resolvedArg = fs.existsSync(entryArg)
+      ? fs.realpathSync(entryArg)
+      : path.resolve(entryArg);
+    const selfPath = fileURLToPath(import.meta.url);
+    const resolvedSelf = fs.existsSync(selfPath) ? fs.realpathSync(selfPath) : selfPath;
+    return (
+      pathToFileURL(resolvedArg).href === pathToFileURL(resolvedSelf).href ||
+      path.basename(resolvedArg, path.extname(resolvedArg)) === "skillops"
+    );
+  } catch {
+    return false;
+  }
+}
+
+if (isDirectCliInvocation()) {
   const code = runCli(process.argv);
   process.exit(code);
 }
