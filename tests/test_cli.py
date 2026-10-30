@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 from typer.testing import CliRunner
 
-from skillops import ExitCode, __version__
-from skillops.cli import McpTransport, OutputFormat, RuntimeTarget, app
+from skillops import ExitCode, RuntimeTarget, __version__
+from skillops.cli import McpTransport, OutputFormat, app
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -18,7 +18,7 @@ runner = CliRunner()
 
 def test_package_version_and_exit_codes() -> None:
     """Verify canonical package version and SKILL_CONTRACT.md exit code values."""
-    assert __version__ == "0.3.0"
+    assert __version__ == "0.4.0"
     assert int(ExitCode.SUCCESS) == 0
     assert int(ExitCode.ERROR) == 1
     assert int(ExitCode.COLLISION_ERROR) == 2

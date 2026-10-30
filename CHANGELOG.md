@@ -11,6 +11,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] - 2026-10-30
+
+### Added
+- **CLI `skillops route` & `skillops sync` Commands with Lockfile Verification (`Sprint 3 / Issue #57`):**
+  - Wired `route_command` and `sync_command` in [`src/skillops/cli.py`](./src/skillops/cli.py) to `route_repository` and `sync_repository`, adding Rich Table, JSON, and Markdown formatters (`_emit_route_report`, `_emit_sync_report`), `--task` context filtering, `--dry-run` preview, and `--force` drift override.
+  - Added [`tests/test_router_sync.py`](./tests/test_router_sync.py) testing end-to-end repository routing, 5-runtime transpilation, `.skillops-lock.json` verification, and drift conflict detection (`ExitCode.ERROR`), and bumped package version to `0.4.0`.
+- **Multi-Runtime Transpiler Adapters & `.skillops-lock.json` Sync Engine (`Sprint 3 / Issue #56`):**
+  - Added `RuntimeTarget`, `SyncedArtifact`, `SyncLockEntry`, `SyncLockfile`, and `SyncReport` models in [`src/skillops/models.py`](./src/skillops/models.py).
+  - Added [`src/skillops/sync/adapters.py`](./src/skillops/sync/adapters.py) and [`src/skillops/sync/__init__.py`](./src/skillops/sync/__init__.py) implementing `MultiRuntimeTranspiler`, `sync_repository`, `transpile_claude`, `transpile_antigravity`, `transpile_cursor`, `transpile_codex`, `render_codex_agents_index`, and `transpile_copilot` with deterministic SHA-256 lockfile tracking, drift protection, and stale artifact cleanup (`ADR-0003`).
+  - Added [`tests/test_sync_adapters.py`](./tests/test_sync_adapters.py) verifying all 5 runtime adapters, idempotency, dry-run mode, drift protection, and unmanaged `AGENTS.md` preservation.
+- **Dynamic Skill Router & Greedy Collision-Free Bundle Compiler (`Sprint 3 / Issue #55`):**
+  - Added `ScoredSkill`, `SkippedSkill`, and `RoutedBundle` in [`src/skillops/models.py`](./src/skillops/models.py).
+  - Added [`src/skillops/router/bundle_compiler.py`](./src/skillops/router/bundle_compiler.py) implementing `DynamicSkillRouter`, `compile_skill_bundle`, `route_repository`, and `score_skill_against_profile` enforcing `INV-SKILL-03` (`<= 12` skills, `<= 1,500` Level 1 tokens, and `< 0.78` pairwise cosine similarity).
+  - Added [`tests/test_bundle_compiler.py`](./tests/test_bundle_compiler.py) verifying relevance scoring, negative trigger exclusion, greedy collision avoidance, and token budget caps.
+- **Deterministic Repository Stack Fingerprinter (`Sprint 3 / Issue #54`):**
+  - Added `RepoProfile` (`RepoFingerprint`) in [`src/skillops/models.py`](./src/skillops/models.py).
+  - Added [`src/skillops/router/fingerprinter.py`](./src/skillops/router/fingerprinter.py) and [`src/skillops/router/__init__.py`](./src/skillops/router/__init__.py) implementing `RepoFingerprinter`, `fingerprint_repository`, and `normalize_package_name` across Python, Node/TypeScript, Rust, Go, Docker, SQL, and GitHub Actions without executing untrusted code.
+  - Added [`tests/test_fingerprinter.py`](./tests/test_fingerprinter.py) verifying polyglot manifest parsing, AST import extraction, and Python 3.12+ construct detection.
+
+---
+
 ## [0.3.0] - 2026-10-29
 
 ### Added

@@ -17,10 +17,15 @@ from skillops import (
     CollisionReport,
     CollisionSeverity,
     ExitCode,
+    RoutedBundle,
+    RuntimeTarget,
     SkillOpsConfig,
+    SyncReport,
     __version__,
 )
 from skillops.auditor import audit_catalog
+from skillops.router import route_repository
+from skillops.sync import sync_repository
 
 console = Console(stderr=False)
 err_console = Console(stderr=True)
@@ -32,16 +37,6 @@ class OutputFormat(StrEnum):
     TABLE = "table"
     JSON = "json"
     MARKDOWN = "markdown"
-
-
-class RuntimeTarget(StrEnum):
-    """Supported AI coding agent harnesses for multi-runtime transpilation."""
-
-    CLAUDE = "claude"
-    ANTIGRAVITY = "antigravity"
-    CURSOR = "cursor"
-    CODEX = "codex"
-    COPILOT = "copilot"
 
 
 class McpTransport(StrEnum):
@@ -229,6 +224,182 @@ def _emit_audit_report(
                 pair.remediation,
             )
         console.print(collision_table)
+
+
+def _emit_route_report(
+    output_format: OutputFormat,
+    bundle: RoutedBundle,
+    payload: dict[str, Any],
+) -> None:
+    """Emit the SkillOps repository routing report in JSON, Markdown, or Rich Table format."""
+    if output_format is OutputFormat.JSON:
+        typer.echo(json.dumps(payload, indent=2))
+        return
+
+    if output_format is OutputFormat.MARKDOWN:
+        lines = [
+            "# SkillOps Route Bundle",
+            "",
+            f"- **repo**: `{payload['repo']}`",
+            f"- **catalog**: `{payload['catalog']}`",
+            f"- **detected_signals**: `{', '.join(bundle.repo_profile.signals) or 'none'}`",
+            f"- **selected_count**: `{len(bundle.selected_skills)}` / `{bundle.max_skills}`",
+            f"- **total_l1_tokens**: `{bundle.total_l1_tokens}` / `{bundle.max_l1_tokens}`",
+            f"- **max_pairwise_similarity**: `{bundle.max_pairwise_similarity:.4f}`",
+            f"- **status**: `{payload['status']}`",
+            "",
+            "## Selected Collision-Free Skill Bundle",
+            "",
+            "| Skill | Track | Score | L1 Tokens | Matched Signals |",
+            "| :--- | :--- | ---: | ---: | :--- |",
+        ]
+        for skill in bundle.selected_skills:
+            signals_str = ", ".join(skill.matched_signals) if skill.matched_signals else "-"
+            lines.append(
+                f"| `{skill.name}` | `{skill.track.value}` | {skill.relevance_score:.2f} | "
+                f"{skill.l1_tokens} | {signals_str} |"
+            )
+        if bundle.skipped_skills:
+            lines.extend(
+                [
+                    "",
+                    "## Skipped Catalog Skills",
+                    "",
+                    "| Skill | Track | Score | Reason |",
+                    "| :--- | :--- | ---: | :--- |",
+                ]
+            )
+            for skipped in bundle.skipped_skills:
+                lines.append(
+                    f"| `{skipped.name}` | `{skipped.track.value}` | "
+                    f"{skipped.relevance_score:.2f} | {skipped.reason} |"
+                )
+        typer.echo("\n".join(lines))
+        return
+
+    summary_table = Table(
+        title="SkillOps Context-Aware Repository Router",
+        show_header=True,
+        header_style="bold cyan",
+        min_width=64,
+    )
+    summary_table.add_column("Metric", style="bold")
+    summary_table.add_column("Value")
+    summary_table.add_row("repo", str(payload["repo"]))
+    summary_table.add_row("catalog", str(payload["catalog"]))
+    summary_table.add_row(
+        "detected_signals",
+        ", ".join(bundle.repo_profile.signals) or "none",
+    )
+    summary_table.add_row(
+        "selected_skills",
+        f"{len(bundle.selected_skills)} / {bundle.max_skills}",
+    )
+    summary_table.add_row(
+        "total_l1_tokens",
+        f"{bundle.total_l1_tokens} / {bundle.max_l1_tokens}",
+    )
+    summary_table.add_row(
+        "max_pairwise_similarity",
+        f"{bundle.max_pairwise_similarity:.4f}",
+    )
+    summary_table.add_row("status", str(payload["status"]))
+    console.print(Panel(summary_table, border_style="cyan", expand=False))
+
+    if bundle.selected_skills:
+        selected_table = Table(
+            title="Selected Collision-Free Skill Bundle",
+            show_header=True,
+            header_style="bold green",
+        )
+        selected_table.add_column("Skill", style="bold")
+        selected_table.add_column("Track")
+        selected_table.add_column("Score", justify="right")
+        selected_table.add_column("L1 Tokens", justify="right")
+        selected_table.add_column("Matched Signals")
+        for skill in bundle.selected_skills:
+            selected_table.add_row(
+                skill.name,
+                skill.track.value,
+                f"{skill.relevance_score:.2f}",
+                str(skill.l1_tokens),
+                ", ".join(skill.matched_signals) or "-",
+            )
+        console.print(selected_table)
+
+
+def _emit_sync_report(
+    output_format: OutputFormat,
+    report: SyncReport,
+    payload: dict[str, Any],
+) -> None:
+    """Emit the SkillOps multi-runtime sync report in JSON, Markdown, or Rich Table format."""
+    if output_format is OutputFormat.JSON:
+        typer.echo(json.dumps(payload, indent=2))
+        return
+
+    if output_format is OutputFormat.MARKDOWN:
+        lines = [
+            "# SkillOps Sync Report",
+            "",
+            f"- **repo**: `{payload['repo']}`",
+            f"- **targets**: `{', '.join(payload['targets'])}`",
+            f"- **selected_skills**: `{', '.join(report.selected_skills) or 'none'}`",
+            f"- **dry_run**: `{report.dry_run}`",
+            f"- **artifacts_total**: `{len(report.artifacts)}`",
+            f"- **drift_conflicts**: `{len(report.drift_conflicts)}`",
+            f"- **status**: `{payload['status']}`",
+            "",
+            "## Transpiled Runtime Artifacts",
+            "",
+            "| Target | Skill | Relative Path | Action | SHA-256 |",
+            "| :--- | :--- | :--- | :--- | :--- |",
+        ]
+        for item in report.artifacts:
+            lines.append(
+                f"| `{item.target.value}` | `{item.skill_name}` | `{item.relative_path}` | "
+                f"**{item.action}** | `{item.sha256[:12]}` |"
+            )
+        typer.echo("\n".join(lines))
+        return
+
+    summary_table = Table(
+        title="SkillOps Multi-Runtime Transpiler & Sync",
+        show_header=True,
+        header_style="bold cyan",
+        min_width=64,
+    )
+    summary_table.add_column("Metric", style="bold")
+    summary_table.add_column("Value")
+    summary_table.add_row("repo", str(payload["repo"]))
+    summary_table.add_row("targets", ", ".join(payload["targets"]))
+    summary_table.add_row("selected_skills", ", ".join(report.selected_skills) or "none")
+    summary_table.add_row("dry_run", str(report.dry_run))
+    summary_table.add_row("artifacts_synced", str(len(report.artifacts)))
+    summary_table.add_row("drift_conflicts", str(len(report.drift_conflicts)))
+    summary_table.add_row("status", str(payload["status"]))
+    console.print(Panel(summary_table, border_style="cyan", expand=False))
+
+    if report.artifacts:
+        artifact_table = Table(
+            title="Transpiled Runtime Artifacts",
+            show_header=True,
+            header_style="bold green",
+        )
+        artifact_table.add_column("Target")
+        artifact_table.add_column("Skill", style="bold")
+        artifact_table.add_column("Relative Path")
+        artifact_table.add_column("Action")
+        artifact_table.add_column("SHA-256")
+        for item in report.artifacts:
+            artifact_table.add_row(
+                item.target.value,
+                item.skill_name,
+                item.relative_path,
+                item.action,
+                item.sha256[:12],
+            )
+        console.print(artifact_table)
 
 
 @app.callback()
@@ -456,6 +627,30 @@ def route_command(
             ),
         ),
     ] = 10,
+    max_l1_tokens: Annotated[
+        int,
+        typer.Option(
+            "--max-l1-tokens",
+            min=40,
+            help="Maximum Level 1 token budget for the routed bundle (INV-SKILL-03 <= 1500).",
+        ),
+    ] = 1500,
+    max_similarity: Annotated[
+        float,
+        typer.Option(
+            "--max-similarity",
+            min=0.1,
+            max=0.99,
+            help="Maximum pairwise cosine similarity within the routed bundle (< 0.78).",
+        ),
+    ] = 0.78,
+    task: Annotated[
+        str,
+        typer.Option(
+            "--task",
+            help="Optional task prompt/context for negative trigger filtering and keyword boost.",
+        ),
+    ] = "",
     output_format: Annotated[
         OutputFormat,
         typer.Option(
@@ -466,20 +661,30 @@ def route_command(
     ] = OutputFormat.TABLE,
 ) -> None:
     """Fingerprint a repository stack and compile an optimal collision-free skill bundle."""
+    bundle = route_repository(
+        repo,
+        catalog,
+        max_skills=max_skills,
+        max_l1_tokens=max_l1_tokens,
+        max_similarity=max_similarity,
+        task_context=task,
+    )
     payload: dict[str, Any] = {
         "command": "route",
         "version": __version__,
-        "repo": str(repo),
-        "catalog": str(catalog),
+        "repo": bundle.repo_profile.repo_path,
+        "catalog": bundle.catalog_path,
         "max_skills": max_skills,
-        "status": "ok",
+        "max_l1_tokens": max_l1_tokens,
+        "max_similarity": max_similarity,
+        "repo_profile": bundle.repo_profile.model_dump(mode="json"),
+        "selected_skills": [s.model_dump(mode="json") for s in bundle.selected_skills],
+        "skipped_skills": [s.model_dump(mode="json") for s in bundle.skipped_skills],
+        "total_l1_tokens": bundle.total_l1_tokens,
+        "max_pairwise_similarity": bundle.max_pairwise_similarity,
+        "status": "ok" if bundle.passed_invariants else "invariant_violation",
     }
-    _emit_output(
-        output_format,
-        payload,
-        title="SkillOps Context-Aware Repository Router",
-        markdown_heading="SkillOps Route Bundle",
-    )
+    _emit_route_report(output_format, bundle, payload)
 
 
 @app.command("sync")
@@ -492,6 +697,14 @@ def sync_command(
             help="Path to target repository where skills will be synced.",
         ),
     ] = Path("."),
+    catalog: Annotated[
+        Path,
+        typer.Option(
+            "--catalog",
+            "-c",
+            help="Path to the skill catalog directory.",
+        ),
+    ] = Path("catalog"),
     targets: Annotated[
         str,
         typer.Option(
@@ -500,11 +713,27 @@ def sync_command(
             help="Comma-separated runtime harnesses (claude,antigravity,cursor,codex,copilot).",
         ),
     ] = "claude,antigravity,cursor,codex,copilot",
+    max_skills: Annotated[
+        int,
+        typer.Option(
+            "--max-skills",
+            min=1,
+            max=12,
+            help="Maximum collision-free skills to route and sync (<= 12).",
+        ),
+    ] = 10,
     dry_run: Annotated[
         bool,
         typer.Option(
             "--dry-run",
             help="Preview transpiled files without writing to disk.",
+        ),
+    ] = False,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            help="Overwrite locally modified files that drifted from .skillops-lock.json.",
         ),
     ] = False,
     output_format: Annotated[
@@ -526,20 +755,33 @@ def sync_command(
         )
         raise typer.Exit(int(ExitCode.ERROR))
 
+    report = sync_repository(
+        repo,
+        catalog,
+        targets=[RuntimeTarget(item) for item in parsed_targets],
+        max_skills=max_skills,
+        dry_run=dry_run,
+        force=force,
+    )
     payload: dict[str, Any] = {
         "command": "sync",
         "version": __version__,
-        "repo": str(repo),
-        "targets": parsed_targets,
-        "dry_run": dry_run,
-        "status": "ok",
+        "repo": report.repo_path,
+        "catalog": report.catalog_path,
+        "targets": [item.value for item in report.targets],
+        "selected_skills": report.selected_skills,
+        "dry_run": report.dry_run,
+        "force": report.force,
+        "artifacts": [item.model_dump(mode="json") for item in report.artifacts],
+        "drift_conflicts": report.drift_conflicts,
+        "removed_stale_files": report.removed_stale_files,
+        "lockfile_path": report.lockfile_path,
+        "status": "ok" if report.passed else "drift_conflict",
     }
-    _emit_output(
-        output_format,
-        payload,
-        title="SkillOps Multi-Runtime Transpiler & Sync",
-        markdown_heading="SkillOps Sync Report",
-    )
+    _emit_sync_report(output_format, report, payload)
+
+    if not report.passed:
+        raise typer.Exit(int(ExitCode.ERROR))
 
 
 @app.command("eval")
