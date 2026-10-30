@@ -10,7 +10,7 @@ import fs from "node:fs";
 import YAML from "yaml";
 import { z } from "zod";
 
-export const SKILLOPS_VERSION = "0.5.0";
+export const SKILLOPS_VERSION = "1.0.0";
 
 const SKILL_NAME_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SEMVER_REGEX = /^\d+\.\d+\.\d+$/;

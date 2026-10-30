@@ -1,0 +1,47 @@
+name: Publish to NPM (skillops-cli)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish-npm:
+    name: Build, Verify & Publish skillops-cli to NPM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22 with NPM Registry
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Lint, Typecheck, Test & Build
+        run: |
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
+
+      - name: Verify Zero-API Catalog Audit & Token Economy
+        run: |
+          node dist/cli.js audit --catalog catalog --strict --require-layout
+          node dist/cli.js tokens --strict
+          node dist/cli.js eval --catalog catalog --strict
+
+      - name: Publish skillops-cli to NPM with Provenance
+        if: env.NODE_AUTH_TOKEN != ''
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public

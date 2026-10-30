@@ -374,9 +374,11 @@ function isDirectCliInvocation(): boolean {
       : path.resolve(entryArg);
     const selfPath = fileURLToPath(import.meta.url);
     const resolvedSelf = fs.existsSync(selfPath) ? fs.realpathSync(selfPath) : selfPath;
+    const base = path.basename(resolvedArg, path.extname(resolvedArg));
     return (
       pathToFileURL(resolvedArg).href === pathToFileURL(resolvedSelf).href ||
-      path.basename(resolvedArg, path.extname(resolvedArg)) === "skillops"
+      base === "skillops" ||
+      base === "skillops-cli"
     );
   } catch {
     return false;

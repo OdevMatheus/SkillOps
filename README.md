@@ -1,9 +1,10 @@
-# SkillOps (`npx skillops@latest`)
+# SkillOps (`npx skillops-cli@latest`)
 
-> **The Zero-API Node.js 20+ / TypeScript Engine & Benchmark-Verified Library for AI Coding Agent Skills & Context-Isolated Subagents**  
-> *Stop installing unverified Markdown prompt essays that bloat your Startup Token Tax. Audit semantic collisions offline, quantify token economy savings (`npx skillops tokens`), dynamically route context-aware skill + subagent bundles across 5 agent runtimes (`npx skillops sync`), and prove positive task lift (`with_skill` vs. `without_skill`) with 100% deterministic, zero-API AST & subprocess TDD evaluations.*
+> **The Zero-API Node.js 20+ / TypeScript Engine & Benchmark-Verified Library for AI Coding Agent Skills & Context-Isolated Subagents (`v1.0.0`)**  
+> *Stop installing unverified Markdown prompt essays that bloat your Startup Token Tax. Audit semantic collisions offline, quantify token economy savings (`npx skillops-cli@latest tokens`), dynamically route context-aware skill + subagent bundles across 5 agent runtimes (`npx skillops-cli@latest sync`), and prove positive task lift (`with_skill` vs. `without_skill`) with 100% deterministic, zero-API AST & subprocess TDD evaluations.*
 
 [![CI Governance](https://img.shields.io/badge/governance-1%20Issue%20%3D%201%20PR-blue.svg)](./AGENTS.md)
+[![NPM Package](https://img.shields.io/badge/npx-skillops--cli%40latest-cb3837.svg?logo=npm&logoColor=white)](./package.json)
 [![Node.js 20+](https://img.shields.io/badge/node-20%2B%20%7C%20npx-339933.svg?logo=nodedotjs&logoColor=white)](./package.json)
 [![TypeScript Strict](https://img.shields.io/badge/TypeScript-5.8%20strict-3178C6.svg?logo=typescript&logoColor=white)](./tsconfig.json)
 [![Zero API](https://img.shields.io/badge/Zero%20External%20APIs-100%25%20Offline-2ea44f.svg)](./SKILL_CONTRACT.md)
@@ -12,28 +13,28 @@
 
 ---
 
-## Quick Start (`npx skillops@latest`)
+## Quick Start (`npx skillops-cli@latest`)
 
-Run **SkillOps** in any repository with zero global installation or API keys:
+Run **SkillOps** in any repository with zero global installation or API keys (or install globally via `npm install -g skillops-cli` to use the `skillops` command directly):
 
 ```bash
 # 1. Audit your repository's Startup Token Tax (CLAUDE.md, AGENTS.md, .cursor/rules, .mcp.json)
-npx skillops@latest tokens
+npx skillops-cli@latest tokens
 
-# 2. List all Hybrid Executable Skills & Context-Isolated Subagents with token budgets
-npx skillops@latest list
+# 2. List all 10 Hybrid Executable Skills & 9 Context-Isolated Subagents with token budgets
+npx skillops-cli@latest list
 
 # 3. Audit a catalog for semantic routing collisions & 3-level progressive disclosure compliance
-npx skillops@latest audit --catalog catalog --strict --require-layout
+npx skillops-cli@latest audit --catalog catalog --strict --require-layout
 
 # 4. Fingerprint a target repository and transpile an optimal bundle across 5 AI runtimes
-npx skillops@latest sync --repo . --targets claude,antigravity,cursor,codex,copilot
+npx skillops-cli@latest sync --repo . --targets claude,antigravity,cursor,codex,copilot
 
 # 5. Surgically install a single Skill or Context-Isolated Subagent
-npx skillops@latest add mcp-architect --repo .
+npx skillops-cli@latest add mcp-architect --repo .
 
 # 6. Run 100% offline deterministic with_skill vs without_skill TDD evaluations
-npx skillops@latest eval --catalog catalog --strict
+npx skillops-cli@latest eval --catalog catalog --strict
 ```
 
 ---
@@ -106,6 +107,7 @@ flowchart LR
 
 ## Documentation & Architecture Index
 
+- **[`docs/BENCHMARKS.md`](./docs/BENCHMARKS.md):** `v1.0.0` Token Economy Case Study (`95.53%` Startup Token Tax reduction), 10-Skill Deterministic TDD Matrix (`+39.1%` pass-rate lift, `-51.05%` token delta), and 9-Subagent Context-Isolation Matrix.
 - **[`SKILL_CONTRACT.md`](./SKILL_CONTRACT.md):** Normative specification for hybrid skills, context-isolated subagents, 3-level token budgets, `evals.json` & `benchmark.json` schemas, and CLI exit codes.
 - **[`docs/architecture/README.md`](./docs/architecture/README.md):** High-level system architecture and component overview.
   - **[`ADR-0001`](./docs/architecture/adr/0001-hybrid-executable-skills-architecture.md):** Hybrid Executable Skills Architecture (`SKILL.md` + `scripts/*.py` + `evals/`).
