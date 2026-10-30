@@ -558,3 +558,57 @@ class SkillOpsConfig(BaseModel):
     targets: list[str] = Field(
         default_factory=lambda: ["claude", "antigravity", "cursor", "codex", "copilot"]
     )
+
+
+class RepoProfile(BaseModel):
+    """Deterministic repository stack profile produced by ``RepoFingerprinter`` (``ADR-0003``).
+
+    Captures programming languages, frameworks, databases, package dependencies, indicator
+    files, and high-level capability signals without executing any untrusted code.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    repo_path: str = Field(..., min_length=1, description="POSIX path of the inspected repository.")
+    languages: list[str] = Field(
+        default_factory=list,
+        description="Detected programming languages (e.g., python, sql, typescript).",
+    )
+    python_version: str | None = Field(
+        default=None,
+        description="Detected Python version specifier or target (e.g., '>=3.12', '3.12').",
+    )
+    python_312_plus: bool = Field(
+        default=False,
+        description="Whether Python 3.12+ features or version targets were detected.",
+    )
+    frameworks: list[str] = Field(
+        default_factory=list,
+        description="Detected application/agent frameworks (e.g., fastapi, pydantic, mcp, nextjs).",
+    )
+    databases: list[str] = Field(
+        default_factory=list,
+        description="Detected databases and ORMs (e.g., postgresql, sqlalchemy, asyncpg, sqlite).",
+    )
+    dependencies: list[str] = Field(
+        default_factory=list,
+        description="Normalized package names discovered in manifests and AST imports.",
+    )
+    detected_files: list[str] = Field(
+        default_factory=list,
+        description="Relative POSIX paths of key repository indicator files.",
+    )
+    signals: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Canonical stack signals (e.g., python-3.12+, fastapi, pydantic, sqlalchemy, "
+            "postgresql, asyncio, openai-agents-sdk, mcp, nextjs, react, docker, github-actions)."
+        ),
+    )
+    file_counts: dict[str, int] = Field(
+        default_factory=dict,
+        description="Count of repository source/config files grouped by lowercase extension.",
+    )
+
+
+RepoFingerprint = RepoProfile
