@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **NPX Context-Aware Router & Multi-Runtime Skill/Subagent Transpiler (`Sprint 4 / Issue #61`):**
+  - Added [`src/router/fingerprinter.ts`](./src/router/fingerprinter.ts), [`src/router/bundle_compiler.ts`](./src/router/bundle_compiler.ts), and [`src/router/index.ts`](./src/router/index.ts) implementing deterministic `RepoFingerprinter`, `compileSkillBundle`, and `routeRepository` (`<= 12` skills, `<= 1,500` L1 tokens, `< 0.78` cosine similarity + matched Subagents).
+  - Added [`src/sync/adapters.ts`](./src/sync/adapters.ts) and [`src/sync/index.ts`](./src/sync/index.ts) implementing `syncRepository`, `addSkillOrSubagent`, and `renderCodexAgentsIndex` across **Claude Code**, **Antigravity / Gemini CLI**, **Cursor**, **OpenAI Codex CLI**, and **GitHub Copilot** for both **Skills** and **Subagents**, backed by `.skillops-lock.json` SHA-256 drift protection.
+  - Wired `route`, `sync`, and `add` commands in [`src/cli.ts`](./src/cli.ts) and added [`tests/router_sync.test.ts`](./tests/router_sync.test.ts).
 - **Repository Token Economy & Startup Context Tax Analyzer (`Sprint 4 / Issue #60`):**
   - Added [`src/auditor/token_economy.ts`](./src/auditor/token_economy.ts) implementing `analyzeRepoTokenEconomy` and `formatTokenEconomyReport` (`table`, `json`, `markdown`) to audit always-on Startup Token Tax (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules/*.mdc`, `.mcp.json`) and quantify Progressive Disclosure + Context-Isolated Subagent savings (`>= 75%` token reduction).
   - Wired `npx skillops@latest tokens` in [`src/cli.ts`](./src/cli.ts) with `--repo`, `--catalog`, `--budget`, `--format`, and `--strict` budget enforcement (`ExitCode.BUDGET_OR_CONTRACT_ERROR`).
