@@ -42,11 +42,20 @@ def _matches_file_signal(pattern: str, detected_files: set[str], basenames: set[
 def score_skill_against_profile(
     manifest: SkillManifest,
     profile: RepoProfile,
+    *,
+    task_context: str = "",
 ) -> tuple[float, list[str], str | None]:
     """Compute relevance score $S(k) \\in [0, 100]$ for ``manifest`` against ``profile``.
 
     Returns ``(relevance_score, matched_signals, rejection_reason)``.
     """
+    task_lower = task_context.lower().strip()
+    if task_lower:
+        for neg in manifest.routing_signals.negative_triggers:
+            clean_neg = neg.lower().strip()
+            if clean_neg and clean_neg in task_lower:
+                return 0.0, [], f"negative_trigger:{clean_neg}"
+
     repo_langs = {lang.lower() for lang in profile.languages}
     repo_files = set(profile.detected_files)
     repo_basenames = {Path(f).name for f in repo_files}
@@ -132,6 +141,17 @@ def score_skill_against_profile(
         if "signal:python-3.12+" not in matched_signals:
             matched_signals.append("signal:python-3.12+")
 
+    if task_lower:
+        task_tokens = set(tokenize_routing_text(task_lower))
+        skill_keywords = {
+            t.lower() for t in (*manifest.tags, *manifest.name.split("-")) if t.strip()
+        }
+        matched_task = sorted(task_tokens & skill_keywords)
+        if matched_task:
+            score += min(10.0, 5.0 * len(matched_task))
+            for tok in matched_task:
+                matched_signals.append(f"task:{tok}")
+
     final_score = round(min(100.0, score), 2)
     return final_score, matched_signals, None
 
@@ -159,6 +179,8 @@ class DynamicSkillRouter:
         self,
         profile: RepoProfile,
         catalog_dir: Path,
+        *,
+        task_context: str = "",
     ) -> RoutedBundle:
         """Score all skills in ``catalog_dir`` against ``profile`` and select an optimal bundle."""
         skill_dirs = discover_skill_directories(catalog_dir)
@@ -176,7 +198,11 @@ class DynamicSkillRouter:
 
         for parsed in parsed_skills:
             manifest = parsed.manifest
-            score, matched, reject_reason = score_skill_against_profile(manifest, profile)
+            score, matched, reject_reason = score_skill_against_profile(
+                manifest,
+                profile,
+                task_context=task_context,
+            )
             if reject_reason is not None:
                 skipped.append(
                     SkippedSkill(
@@ -314,10 +340,12 @@ class DynamicSkillRouter:
         self,
         repo_path: Path,
         catalog_dir: Path,
+        *,
+        task_context: str = "",
     ) -> RoutedBundle:
         """Fingerprint ``repo_path`` and compile an optimal collision-free skill bundle."""
         profile = fingerprint_repository(repo_path)
-        return self.compile_bundle(profile, catalog_dir)
+        return self.compile_bundle(profile, catalog_dir, task_context=task_context)
 
 
 def compile_skill_bundle(
@@ -328,6 +356,7 @@ def compile_skill_bundle(
     max_l1_tokens: int = 1500,
     max_similarity: float = 0.78,
     min_score: float = 20.0,
+    task_context: str = "",
 ) -> RoutedBundle:
     """Compile an optimal collision-free skill bundle for ``profile`` from ``catalog_dir``."""
     router = DynamicSkillRouter(
@@ -336,7 +365,7 @@ def compile_skill_bundle(
         max_similarity=max_similarity,
         min_score=min_score,
     )
-    return router.compile_bundle(profile, catalog_dir)
+    return router.compile_bundle(profile, catalog_dir, task_context=task_context)
 
 
 def route_repository(
@@ -347,6 +376,7 @@ def route_repository(
     max_l1_tokens: int = 1500,
     max_similarity: float = 0.78,
     min_score: float = 20.0,
+    task_context: str = "",
 ) -> RoutedBundle:
     """Fingerprint ``repo_path`` and compile an optimal skill bundle from ``catalog_dir``."""
     router = DynamicSkillRouter(
@@ -355,7 +385,7 @@ def route_repository(
         max_similarity=max_similarity,
         min_score=min_score,
     )
-    return router.route_repository(repo_path, catalog_dir)
+    return router.route_repository(repo_path, catalog_dir, task_context=task_context)
 
 
 __all__ = [

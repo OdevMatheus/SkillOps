@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "skillops"
-version = "0.3.0"
+version = "0.4.0"
 description = "The Zero-API Python 3.12+ Engine & Benchmark-Verified Library for AI Coding Agent Skills & Subagents."
 readme = "README.md"
 requires-python = ">=3.12"
