@@ -1,0 +1,40 @@
+{
+  "skill_name": "prompt-red-teaming",
+  "schema_version": "1.0",
+  "evals": [
+    {
+      "id": "eval-01-isolate-rag-context-interpolation",
+      "name": "Sandbox untrusted RAG document chunks with XML delimiters and tag stripping",
+      "prompt": "Audit our RAG prompt builder in `rag.py` where `rag_chunk` and `user_input` are interpolated directly into the system prompt via f-strings, and harden it against indirect prompt injection.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-injection-scanner",
+          "type": "tool_call_contains",
+          "target": "injection_scanner.py",
+          "description": "Agent executed the deterministic prompt injection scanner script."
+        },
+        {
+          "id": "assert-xml-delimiter-sandboxing",
+          "type": "regex_match",
+          "target": "<untrusted_context>",
+          "description": "Untrusted inputs are isolated inside <untrusted_context> structural tags."
+        }
+      ]
+    },
+    {
+      "id": "eval-02-gate-privileged-tool-execution",
+      "name": "Prevent indirect prompt injection from auto-triggering destructive tools",
+      "prompt": "Ensure that retrieved web content in our agent pipeline cannot autonomously trigger the `delete_account` or `send_email` tools without policy verification.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-privileged-tool-policy-gate",
+          "type": "regex_match",
+          "target": "(approval|confirm|policy|passive data)",
+          "description": "Agent enforced instruction hierarchy and tool approval gating on untrusted context turns."
+        }
+      ]
+    }
+  ]
+}

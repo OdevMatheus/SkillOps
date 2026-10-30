@@ -1,0 +1,22 @@
+{
+  "skill_name": "context-pruner-advisor",
+  "runner": "deterministic-ast",
+  "timestamp": "2026-10-30T14:30:00Z",
+  "with_skill": {
+    "pass_rate_mean": 0.96,
+    "pass_rate_stddev": 0.03,
+    "tokens_mean": 1920,
+    "latency_ms_mean": 2400
+  },
+  "without_skill": {
+    "pass_rate_mean": 0.58,
+    "pass_rate_stddev": 0.12,
+    "tokens_mean": 4850,
+    "latency_ms_mean": 5300
+  },
+  "delta": {
+    "pass_rate_gain": 0.38,
+    "token_reduction_pct": -60.41,
+    "verdict": "CERTIFIED_IMPROVEMENT"
+  }
+}

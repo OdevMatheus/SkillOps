@@ -130,13 +130,24 @@ describe("SkillOps NPX Core Models & Subagent Contracts (Issue #59)", () => {
 
   it("discovers and audits real repository catalog skills and .github/agents subagents", () => {
     const skillDirs = discoverSkillDirectories(CATALOG_ROOT);
-    expect(skillDirs.length).toBeGreaterThanOrEqual(4);
+    expect(skillDirs.length).toBeGreaterThanOrEqual(7);
 
+    const skillNames: string[] = [];
     for (const dir of skillDirs) {
       const parsed = parseSkillDirectory(dir, { requireLayout: true });
+      skillNames.push(parsed.manifest.name);
       expect(parsed.manifest.description_words).toBeGreaterThanOrEqual(40);
       expect(parsed.totalLines).toBeLessThanOrEqual(250);
       expect(parsed.declaredScripts.length).toBeGreaterThanOrEqual(1);
+    }
+
+    for (const requiredSkill of [
+      "context-pruner-advisor",
+      "agent-harness-auditor",
+      "mcp-architect",
+      "prompt-red-teaming",
+    ]) {
+      expect(skillNames).toContain(requiredSkill);
     }
 
     const subagentFiles = discoverSubagentFiles(CATALOG_ROOT);

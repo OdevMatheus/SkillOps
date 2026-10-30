@@ -10,16 +10,23 @@ Set Theme "Catppuccin Mocha"
 Set TypingSpeed 40ms
 Set Padding 20
 
-Type "# 1. Audit Hybrid Executable Skill Catalog (Zero-API Token & Collision Gate)"
+Type "# 1. Measure Repository Startup Token Tax & Progressive Disclosure Savings"
 Enter
 Sleep 400ms
-Type "skillops audit --catalog catalog --strict"
+Type "npx skillops@latest tokens --strict"
 Enter
 Sleep 2500ms
 
-Type "# 2. Transpile & Sync Optimal Skill Bundle Across AI Harnesses"
+Type "# 2. Audit Hybrid Executable Skill & Subagent Catalog (Zero-API Collision Gate)"
 Enter
 Sleep 400ms
-Type "skillops sync --targets claude,antigravity,cursor,codex,copilot --dry-run"
+Type "npx skillops@latest audit --catalog catalog --strict --require-layout"
+Enter
+Sleep 2500ms
+
+Type "# 3. Transpile & Sync Optimal Bundle Across 5 AI Coding Harnesses"
+Enter
+Sleep 400ms
+Type "npx skillops@latest sync --targets claude,antigravity,cursor,codex,copilot --dry-run"
 Enter
 Sleep 2500ms

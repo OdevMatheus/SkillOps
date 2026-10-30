@@ -1,0 +1,40 @@
+{
+  "skill_name": "context-pruner-advisor",
+  "schema_version": "1.0",
+  "evals": [
+    {
+      "id": "eval-01-prune-bloated-agents-md",
+      "name": "Diagnose and split a 2,400-token AGENTS.md into L1/L2/L3 progressive disclosure",
+      "prompt": "Our root AGENTS.md consumes 2,400 tokens on every prompt turn. Audit the workspace token footprint and refactor it below 800 tokens without losing governance rules.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-context-pruner-script",
+          "type": "tool_call_contains",
+          "target": "context_pruner.py",
+          "description": "Agent executed the deterministic context footprint scanner script."
+        },
+        {
+          "id": "assert-progressive-disclosure-split",
+          "type": "regex_match",
+          "target": "(references/|L1|L2|L3|800 tokens)",
+          "description": "Agent applied progressive disclosure offloading to keep root instructions compact."
+        }
+      ]
+    },
+    {
+      "id": "eval-02-generate-surgical-ignore-manifests",
+      "name": "Generate .claudeignore and .cursorignore excluding lockfiles and build artifacts",
+      "prompt": "Create surgical .claudeignore and .cursorignore files so lockfiles and build outputs stop polluting agent search context.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-excludes-lockfiles-and-dist",
+          "type": "regex_match",
+          "target": "(package-lock\\.json|pnpm-lock\\.yaml|dist/|node_modules/)",
+          "description": "Ignore manifest excludes high-token lockfiles and compiled output directories."
+        }
+      ]
+    }
+  ]
+}

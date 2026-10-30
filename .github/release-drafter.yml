@@ -1,14 +1,15 @@
 name-template: "v$RESOLVED_VERSION"
 tag-template: "v$RESOLVED_VERSION"
 categories:
-  - title: "🐍 SkillOps Core Engine & CLI Features"
+  - title: "📦 SkillOps NPX Core Engine & CLI Features"
     labels:
-      - "🐍 core-engine"
+      - "📦 core-engine"
+      - "scope: core-engine"
       - "✨ feat"
-  - title: "🧠 Hybrid Executable Skill Catalog"
+  - title: "🧠 Hybrid Executable Skill & Subagent Catalog"
     labels:
       - "🧠 skill-catalog"
-  - title: "🧪 TDD Evaluation & Benchmark Engine"
+  - title: "🧪 Zero-API TDD Evaluation & Benchmark Engine"
     labels:
       - "🧪 eval-benchmark"
   - title: "🔄 Context-Aware Router & Multi-Runtime Sync"

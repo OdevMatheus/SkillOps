@@ -1,0 +1,22 @@
+{
+  "skill_name": "agent-harness-auditor",
+  "runner": "deterministic-ast",
+  "timestamp": "2026-10-30T14:35:00Z",
+  "with_skill": {
+    "pass_rate_mean": 0.95,
+    "pass_rate_stddev": 0.04,
+    "tokens_mean": 2150,
+    "latency_ms_mean": 2650
+  },
+  "without_skill": {
+    "pass_rate_mean": 0.54,
+    "pass_rate_stddev": 0.13,
+    "tokens_mean": 4680,
+    "latency_ms_mean": 5400
+  },
+  "delta": {
+    "pass_rate_gain": 0.41,
+    "token_reduction_pct": -54.06,
+    "verdict": "CERTIFIED_IMPROVEMENT"
+  }
+}
