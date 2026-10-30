@@ -187,7 +187,9 @@ export function discoverSubagentFiles(repoOrCatalogRoot: string): string[] {
           stack.push(full);
         } else if (
           entry.isFile() &&
-          (entry.name === "SUBAGENT.md" || entry.name.endsWith(".agent.md"))
+          (entry.name === "SUBAGENT.md" ||
+            entry.name === "AGENT.md" ||
+            entry.name.endsWith(".agent.md"))
         ) {
           results.add(path.resolve(full));
         }

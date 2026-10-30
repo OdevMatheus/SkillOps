@@ -140,8 +140,19 @@ describe("SkillOps NPX Core Models & Subagent Contracts (Issue #59)", () => {
     }
 
     const subagentFiles = discoverSubagentFiles(CATALOG_ROOT);
-    expect(subagentFiles.length).toBeGreaterThanOrEqual(1);
+    expect(subagentFiles.length).toBeGreaterThanOrEqual(9);
     const parsedSubagents = subagentFiles.map((f) => parseSubagentFile(f));
+    const subagentNames = parsedSubagents.map((s) => s.manifest.name);
+    for (const requiredSubagent of [
+      "context-scout",
+      "token-budget-governor",
+      "blast-radius-auditor",
+      "red-team-breaker",
+      "tdd-reproducer-agent",
+      "skill-auditor",
+    ]) {
+      expect(subagentNames).toContain(requiredSubagent);
+    }
     const skillAuditor = parsedSubagents.find((s) => s.manifest.name === "skill-auditor");
     expect(skillAuditor).toBeDefined();
     expect(skillAuditor!.manifest.tools).toEqual(["read", "search"]);
