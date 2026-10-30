@@ -277,6 +277,29 @@ def compute_idf_weights(feature_maps: Sequence[dict[str, float]]) -> dict[str, f
     return {feat: 1.0 + math.log((n_docs + 1.0) / (df + 1.0)) for feat, df in doc_freq.items()}
 
 
+def _extract_top_shared_terms(
+    weighted_a: dict[str, float],
+    weighted_b: dict[str, float],
+    shared_keys: set[str],
+) -> list[str]:
+    """Return up to 6 human-readable shared domain terms sorted by contribution descending."""
+    readable_contributions: dict[str, float] = {}
+    for key in shared_keys:
+        if key.startswith(("ug:", "tag:", "dep:")):
+            term = key.split(":", 1)[1]
+            readable_contributions[term] = (
+                readable_contributions.get(term, 0.0) + weighted_a[key] * weighted_b[key]
+            )
+
+    return [
+        term
+        for term, _ in sorted(
+            readable_contributions.items(),
+            key=lambda item: (-item[1], item[0]),
+        )[:6]
+    ]
+
+
 def compute_feature_cosine(
     vec_a: dict[str, float],
     vec_b: dict[str, float],
@@ -302,22 +325,7 @@ def compute_feature_cosine(
 
     dot = sum(weighted_a[k] * weighted_b[k] for k in shared_keys)
     cosine = min(1.0, max(0.0, dot / (norm_a * norm_b)))
-
-    readable_contributions: dict[str, float] = {}
-    for key in shared_keys:
-        if key.startswith(("ug:", "tag:", "dep:")):
-            term = key.split(":", 1)[1]
-            readable_contributions[term] = (
-                readable_contributions.get(term, 0.0) + weighted_a[key] * weighted_b[key]
-            )
-
-    top_terms = [
-        term
-        for term, _ in sorted(
-            readable_contributions.items(),
-            key=lambda item: (-item[1], item[0]),
-        )[:6]
-    ]
+    top_terms = _extract_top_shared_terms(weighted_a, weighted_b, shared_keys)
     return round(cosine, 4), top_terms
 
 
@@ -357,15 +365,40 @@ def compute_collision_matrix(
     feature_maps = [extract_skill_features(m) for m in ordered]
     idf = compute_idf_weights(feature_maps)
 
+    weighted_maps = [{k: v * idf.get(k, 1.0) for k, v in fmap.items()} for fmap in feature_maps]
+    key_sets = [set(wmap) for wmap in weighted_maps]
+    norms = [math.sqrt(sum(val * val for val in wmap.values())) for wmap in weighted_maps]
+
     pairs: list[CollisionPair] = []
     for idx_a, left in enumerate(ordered):
+        wmap_a = weighted_maps[idx_a]
+        keys_a = key_sets[idx_a]
+        norm_a = norms[idx_a]
         for idx_b in range(idx_a + 1, len(ordered)):
             right = ordered[idx_b]
-            sim, shared_terms = compute_feature_cosine(
-                feature_maps[idx_a],
-                feature_maps[idx_b],
-                idf_weights=idf,
-            )
+            norm_b = norms[idx_b]
+            shared_keys = keys_a & key_sets[idx_b]
+            if not shared_keys or norm_a == 0.0 or norm_b == 0.0:
+                if include_ok:
+                    pairs.append(
+                        CollisionPair.from_similarity(
+                            left.name,
+                            right.name,
+                            0.0,
+                            warn_threshold=warn_threshold,
+                            high_risk_threshold=high_risk_threshold,
+                            error_threshold=error_threshold,
+                        )
+                    )
+                continue
+
+            wmap_b = weighted_maps[idx_b]
+            dot = sum(wmap_a[k] * wmap_b[k] for k in shared_keys)
+            sim = round(min(1.0, max(0.0, dot / (norm_a * norm_b))), 4)
+            if not include_ok and sim < warn_threshold:
+                continue
+
+            shared_terms = _extract_top_shared_terms(wmap_a, wmap_b, shared_keys)
             pair = CollisionPair.from_similarity(
                 left.name,
                 right.name,
@@ -375,8 +408,7 @@ def compute_collision_matrix(
                 error_threshold=error_threshold,
                 shared_terms=shared_terms,
             )
-            if include_ok or pair.severity is not CollisionSeverity.OK:
-                pairs.append(pair)
+            pairs.append(pair)
 
     return sorted(
         pairs,
