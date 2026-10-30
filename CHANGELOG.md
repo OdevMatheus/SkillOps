@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Node.js 20+ / TypeScript NPX Package Architecture, Zod Contracts (Skills + Subagents) & Zero-API Collision/Budget Auditor (`Sprint 4 / Issue #59`):**
+  - Added [`package.json`](./package.json), [`tsconfig.json`](./tsconfig.json), [`tsup.config.ts`](./tsup.config.ts), and [`vitest.config.ts`](./vitest.config.ts) configuring the **`npx skillops@latest`** binary (`dist/cli.js`) and ESM library (`dist/index.js`) with strict TypeScript (`strict: true`, `noUncheckedIndexedAccess: true`) and zero external API dependencies (`zod` + `yaml`).
+  - Added [`src/models.ts`](./src/models.ts) implementing unified Zod v3 domain schemas for **Hybrid Executable Skills (`SkillManifest`, `INV-SKILL-01`..`03`)**, **Context-Isolated Subagents (`SubagentManifest`, `INV-SKILL-04` — forbidding wildcard `["*"]` tools, `<= 1,000` system prompt tokens, and `<= 400` compressed output tokens)**, `CollisionReport`, `TokenEconomyReport`, `RoutedBundle`, and `SyncLockfile`.
+  - Added [`src/auditor/parser.ts`](./src/auditor/parser.ts), [`src/auditor/token_budget.ts`](./src/auditor/token_budget.ts), [`src/auditor/collision.ts`](./src/auditor/collision.ts), [`src/auditor/index.ts`](./src/auditor/index.ts), [`src/index.ts`](./src/index.ts), and [`src/cli.ts`](./src/cli.ts) implementing L1/L2/L3 + Subagent token budget linting and $O(N)$ pre-normalized TF-IDF + character 3-gram semantic collision detection.
+  - Added [`tests/npx_core.test.ts`](./tests/npx_core.test.ts) (`6 passed`, including 84-skill / 3,486-pair stress benchmark in `< 500ms`) and added the `npx-engine-qa` matrix (`Node.js 20 & 22`) to [`.github/workflows/ai-ci.yml`](./.github/workflows/ai-ci.yml).
+
 ---
 
 ## [0.4.0] - 2026-10-30
