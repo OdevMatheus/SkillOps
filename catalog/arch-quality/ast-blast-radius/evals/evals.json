@@ -5,7 +5,7 @@
     {
       "id": "eval-01-shared-signature-change",
       "name": "Detect broken callers before changing a shared function signature",
-      "prompt": "Refactor `from_skill_md` in `src/skillops/models.py` to add a new option and verify all callers across `src/` and `tests/`.",
+      "prompt": "Refactor `calculate_invoice_totals` in `src/services/billing.py` to add a new option and verify all callers across `src/` and `tests/`.",
       "fixtures": [],
       "assertions": [
         {
@@ -17,21 +17,21 @@
         {
           "id": "assert-all-callers-identified",
           "type": "regex_match",
-          "target": "from_skill_md",
-          "description": "Downstream callers of from_skill_md were inspected and updated."
+          "target": "calculate_invoice_totals",
+          "description": "Downstream callers of calculate_invoice_totals were inspected and updated."
         }
       ]
     },
     {
       "id": "eval-02-backward-compatible-kwarg",
       "name": "Prefer keyword-only parameter with default on high-blast-radius symbols",
-      "prompt": "Add a `strict_budget: bool` flag to `SkillManifest.from_skill_md` without breaking existing callers.",
+      "prompt": "Add a `strict_currency: bool` flag to `calculate_invoice_totals` without breaking existing callers.",
       "fixtures": [],
       "assertions": [
         {
           "id": "assert-keyword-default",
           "type": "regex_match",
-          "target": "\\*,\\s*strict_budget:\\s*bool\\s*=",
+          "target": "\\*,\\s*strict_currency:\\s*bool\\s*=",
           "description": "Used keyword-only parameter with a safe default value."
         }
       ]

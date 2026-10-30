@@ -1,0 +1,22 @@
+{
+  "skill_name": "security-sast-gate",
+  "runner": "deterministic-ast",
+  "timestamp": "2026-10-30T15:00:00Z",
+  "with_skill": {
+    "pass_rate_mean": 0.96,
+    "pass_rate_stddev": 0.03,
+    "tokens_mean": 1110,
+    "latency_ms_mean": 1980
+  },
+  "without_skill": {
+    "pass_rate_mean": 0.54,
+    "pass_rate_stddev": 0.12,
+    "tokens_mean": 2310,
+    "latency_ms_mean": 4120
+  },
+  "delta": {
+    "pass_rate_gain": 0.42,
+    "token_reduction_pct": -51.95,
+    "verdict": "CERTIFIED_IMPROVEMENT"
+  }
+}

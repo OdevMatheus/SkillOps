@@ -1,0 +1,40 @@
+{
+  "skill_name": "concurrency-race-detector",
+  "schema_version": "1.0",
+  "evals": [
+    {
+      "id": "eval-01-detect-blocking-calls-in-async",
+      "name": "Eliminate synchronous time.sleep and requests calls inside async def",
+      "prompt": "Audit `src/workers/dispatcher.py` for event-loop stalls where `time.sleep` and `requests.post` are called inside an `async def` worker.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-blocking-scanner",
+          "type": "tool_call_contains",
+          "target": "event_loop_blocking_scanner.py",
+          "description": "Agent executed the deterministic event-loop blocking AST scanner."
+        },
+        {
+          "id": "assert-async-sleep-or-to-thread",
+          "type": "regex_match",
+          "target": "asyncio\\.(sleep|to_thread)",
+          "description": "Replaced blocking calls with non-blocking asyncio primitives."
+        }
+      ]
+    },
+    {
+      "id": "eval-02-prevent-orphaned-tasks",
+      "name": "Store strong references or use TaskGroup for background tasks",
+      "prompt": "Fix the fire-and-forget `asyncio.create_task(send_audit_event())` call so tasks are never garbage-collected mid-flight.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-task-group-or-reference-set",
+          "type": "regex_match",
+          "target": "(TaskGroup|add_done_callback)",
+          "description": "Used asyncio.TaskGroup or a strong reference set with add_done_callback."
+        }
+      ]
+    }
+  ]
+}

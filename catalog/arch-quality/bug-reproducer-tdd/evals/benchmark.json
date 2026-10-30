@@ -1,0 +1,22 @@
+{
+  "skill_name": "bug-reproducer-tdd",
+  "runner": "deterministic-ast",
+  "timestamp": "2026-10-30T15:00:00Z",
+  "with_skill": {
+    "pass_rate_mean": 0.96,
+    "pass_rate_stddev": 0.03,
+    "tokens_mean": 1090,
+    "latency_ms_mean": 1950
+  },
+  "without_skill": {
+    "pass_rate_mean": 0.55,
+    "pass_rate_stddev": 0.12,
+    "tokens_mean": 2250,
+    "latency_ms_mean": 4050
+  },
+  "delta": {
+    "pass_rate_gain": 0.41,
+    "token_reduction_pct": -51.56,
+    "verdict": "CERTIFIED_IMPROVEMENT"
+  }
+}
