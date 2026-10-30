@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **5 Elite Context-Isolated Subagents in `catalog/subagents/` (`Sprint 5 / Issue #64`):**
+  - Added [`catalog/subagents/context-scout/SUBAGENT.md`](./catalog/subagents/context-scout/SUBAGENT.md), [`catalog/subagents/token-budget-governor/SUBAGENT.md`](./catalog/subagents/token-budget-governor/SUBAGENT.md), [`catalog/subagents/blast-radius-auditor/SUBAGENT.md`](./catalog/subagents/blast-radius-auditor/SUBAGENT.md), [`catalog/subagents/red-team-breaker/SUBAGENT.md`](./catalog/subagents/red-team-breaker/SUBAGENT.md), and [`catalog/subagents/tdd-reproducer-agent/SUBAGENT.md`](./catalog/subagents/tdd-reproducer-agent/SUBAGENT.md) enforcing `INV-SKILL-04` (`max_output_tokens <= 400`, explicit least-privilege tools, and isolated exploration contracts).
+
 ### Changed
 - **NPX DevOps, Governance & Token Economy Alignment (`Sprint 4 / v0.5.0`):**
   - Updated [`.github/labeler.yml`](./.github/labeler.yml), [`.github/workflows/pr-governance.yml`](./.github/workflows/pr-governance.yml), [`.github/workflows/ai-ci.yml`](./.github/workflows/ai-ci.yml), [`.github/PULL_REQUEST_TEMPLATE.md`](./.github/PULL_REQUEST_TEMPLATE.md), [`.github/ISSUE_TEMPLATE/`](./.github/ISSUE_TEMPLATE/), [`.github/copilot-instructions.md`](./.github/copilot-instructions.md), [`.github/agents/*.agent.md`](./.github/agents/), [`.gitattributes`](./.gitattributes), and [`.skillops.yml`](./.skillops.yml) for the Node.js 20+ / TypeScript `npx skillops@latest` architecture.
