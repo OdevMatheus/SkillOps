@@ -9,7 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.3.0] - 2026-10-29
+
 ### Added
+- **Stress-Test Benchmark Suite for 80+ Skills & Implicit Routing Collapse (`Sprint 2 / Issue #52`):**
+  - Added [`tests/test_auditor_stress.py`](./tests/test_auditor_stress.py) simulating an 84-skill catalog (`3,486` pairwise comparisons) to benchmark sub-second zero-API collision detection, planted `BLOCKING_ERROR` / `HIGH_RISK` identification, and aggregate Level 1 context-window bloat protection (`arXiv:2610.18522`).
+  - Wired `uv run skillops audit --catalog catalog --strict --require-layout --format table` directly into [`.github/workflows/ai-ci.yml`](./.github/workflows/ai-ci.yml) and bumped package version to `0.3.0`.
 - **CLI `skillops audit` Rich Terminal Tables, JSON, and Markdown Reports (`Sprint 2 / Issue #51`):**
   - Updated `audit_command` in [`src/skillops/cli.py`](./src/skillops/cli.py) to delegate directly to `audit_catalog` from `skillops.auditor`, adding `--max-similarity`, `--max-l1-tokens`, and `--require-layout` flags and removing legacy inline cosine helpers.
   - Added dedicated `_emit_audit_report` formatter in [`src/skillops/cli.py`](./src/skillops/cli.py) rendering Rich 3-Level Progressive Disclosure Budget tables, Pairwise Semantic Collision tables, structured JSON payloads (`skills`, `collisions`, `total_l3_scripts_tokens_saved`), and GitHub-flavored Markdown audit tables.
