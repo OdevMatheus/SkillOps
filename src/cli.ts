@@ -3,7 +3,11 @@
  */
 
 import path from "node:path";
-import { auditCatalog } from "./auditor/index.js";
+import {
+  analyzeRepoTokenEconomy,
+  auditCatalog,
+  formatTokenEconomyReport,
+} from "./auditor/index.js";
 import { ExitCode, SKILLOPS_VERSION } from "./models.js";
 
 export function runCli(argv: readonly string[]): number {
@@ -77,6 +81,38 @@ export function runCli(argv: readonly string[]): number {
       (strict && report.high_risk_collisions.length > 0)
     ) {
       return ExitCode.COLLISION_ERROR;
+    }
+    return ExitCode.SUCCESS;
+  }
+
+  if (command === "tokens") {
+    const repoIdx = args.indexOf("--repo");
+    const repoPath =
+      repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd();
+    const catalogIdx = args.indexOf("--catalog");
+    const catalogDir =
+      catalogIdx !== -1 && args[catalogIdx + 1]
+        ? args[catalogIdx + 1]!
+        : path.join(path.resolve(repoPath), "catalog");
+    const budgetIdx = args.indexOf("--budget");
+    const startupTaxBudget =
+      budgetIdx !== -1 && args[budgetIdx + 1]
+        ? Number.parseInt(args[budgetIdx + 1]!, 10)
+        : 2500;
+    const formatIdx = args.indexOf("--format");
+    const rawFormat = formatIdx !== -1 && args[formatIdx + 1] ? args[formatIdx + 1]! : "table";
+    const format: "table" | "json" | "markdown" =
+      rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
+    const strict = args.includes("--strict");
+
+    const report = analyzeRepoTokenEconomy(repoPath, {
+      catalogDir,
+      startupTaxBudget,
+    });
+    process.stdout.write(formatTokenEconomyReport(report, format));
+
+    if (strict && !report.passed_budget) {
+      return ExitCode.BUDGET_OR_CONTRACT_ERROR;
     }
     return ExitCode.SUCCESS;
   }

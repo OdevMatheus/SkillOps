@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Repository Token Economy & Startup Context Tax Analyzer (`Sprint 4 / Issue #60`):**
+  - Added [`src/auditor/token_economy.ts`](./src/auditor/token_economy.ts) implementing `analyzeRepoTokenEconomy` and `formatTokenEconomyReport` (`table`, `json`, `markdown`) to audit always-on Startup Token Tax (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules/*.mdc`, `.mcp.json`) and quantify Progressive Disclosure + Context-Isolated Subagent savings (`>= 75%` token reduction).
+  - Wired `npx skillops@latest tokens` in [`src/cli.ts`](./src/cli.ts) with `--repo`, `--catalog`, `--budget`, `--format`, and `--strict` budget enforcement (`ExitCode.BUDGET_OR_CONTRACT_ERROR`).
+  - Added [`tests/token_economy.test.ts`](./tests/token_economy.test.ts) verifying token economy savings, hotspot detection, and CLI execution.
 - **Node.js 20+ / TypeScript NPX Package Architecture, Zod Contracts (Skills + Subagents) & Zero-API Collision/Budget Auditor (`Sprint 4 / Issue #59`):**
   - Added [`package.json`](./package.json), [`tsconfig.json`](./tsconfig.json), [`tsup.config.ts`](./tsup.config.ts), and [`vitest.config.ts`](./vitest.config.ts) configuring the **`npx skillops@latest`** binary (`dist/cli.js`) and ESM library (`dist/index.js`) with strict TypeScript (`strict: true`, `noUncheckedIndexedAccess: true`) and zero external API dependencies (`zod` + `yaml`).
   - Added [`src/models.ts`](./src/models.ts) implementing unified Zod v3 domain schemas for **Hybrid Executable Skills (`SkillManifest`, `INV-SKILL-01`..`03`)**, **Context-Isolated Subagents (`SubagentManifest`, `INV-SKILL-04` — forbidding wildcard `["*"]` tools, `<= 1,000` system prompt tokens, and `<= 400` compressed output tokens)**, `CollisionReport`, `TokenEconomyReport`, `RoutedBundle`, and `SyncLockfile`.
