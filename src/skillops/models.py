@@ -666,3 +666,77 @@ class RoutedBundle(BaseModel):
     total_l1_tokens: int = Field(default=0, ge=0)
     max_pairwise_similarity: float = Field(default=0.0, ge=0.0, le=1.0)
     passed_invariants: bool = Field(default=True)
+
+
+class RuntimeTarget(StrEnum):
+    """Supported AI coding agent harnesses for multi-runtime transpilation (``ADR-0003``)."""
+
+    CLAUDE = "claude"
+    ANTIGRAVITY = "antigravity"
+    CURSOR = "cursor"
+    CODEX = "codex"
+    COPILOT = "copilot"
+
+
+class SyncedArtifact(BaseModel):
+    """Single file transpiled and synced to a target runtime harness."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    target: RuntimeTarget = Field(..., description="Target AI coding agent runtime.")
+    skill_name: str = Field(..., min_length=1, description="Skill identifier or '_index'.")
+    relative_path: str = Field(
+        ...,
+        min_length=1,
+        description="Relative POSIX path inside the target repository.",
+    )
+    sha256: str = Field(
+        ...,
+        pattern=r"^[0-9a-f]{64}$",
+        description="SHA-256 hex digest of the rendered UTF-8 content.",
+    )
+    action: str = Field(
+        ...,
+        pattern=r"^(created|updated|unchanged|planned|skipped_drift|removed)$",
+        description="Deterministic sync action taken on the artifact.",
+    )
+
+
+class SyncLockEntry(BaseModel):
+    """Checksum entry stored inside ``.skillops-lock.json`` for drift detection."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    target: RuntimeTarget
+    skill_name: str = Field(..., min_length=1)
+    relative_path: str = Field(..., min_length=1)
+    sha256: str = Field(..., pattern=r"^[0-9a-f]{64}$")
+
+
+class SyncLockfile(BaseModel):
+    """Manifest stored at ``.skillops-lock.json`` tracking transpiled runtime artifacts."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: str = Field(default="1.0", pattern=r"^\d+\.\d+$")
+    targets: list[RuntimeTarget] = Field(default_factory=list)
+    skills: list[str] = Field(default_factory=list)
+    artifacts: dict[str, SyncLockEntry] = Field(default_factory=dict)
+
+
+class SyncReport(BaseModel):
+    """Structured output of ``skillops sync`` across target agent runtimes (``ADR-0003``)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    repo_path: str = Field(..., min_length=1)
+    catalog_path: str = Field(..., min_length=1)
+    targets: list[RuntimeTarget] = Field(default_factory=list)
+    selected_skills: list[str] = Field(default_factory=list)
+    dry_run: bool = Field(default=False)
+    force: bool = Field(default=False)
+    artifacts: list[SyncedArtifact] = Field(default_factory=list)
+    drift_conflicts: list[str] = Field(default_factory=list)
+    removed_stale_files: list[str] = Field(default_factory=list)
+    lockfile_path: str = Field(..., min_length=1)
+    passed: bool = Field(default=True)
