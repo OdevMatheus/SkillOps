@@ -1,0 +1,22 @@
+{
+  "skill_name": "prompt-red-teaming",
+  "runner": "deterministic-ast",
+  "timestamp": "2026-10-30T14:40:00Z",
+  "with_skill": {
+    "pass_rate_mean": 0.97,
+    "pass_rate_stddev": 0.03,
+    "tokens_mean": 2080,
+    "latency_ms_mean": 2500
+  },
+  "without_skill": {
+    "pass_rate_mean": 0.56,
+    "pass_rate_stddev": 0.14,
+    "tokens_mean": 4420,
+    "latency_ms_mean": 5100
+  },
+  "delta": {
+    "pass_rate_gain": 0.41,
+    "token_reduction_pct": -52.94,
+    "verdict": "CERTIFIED_IMPROVEMENT"
+  }
+}

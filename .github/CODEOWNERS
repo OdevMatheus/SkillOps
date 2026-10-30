@@ -5,7 +5,7 @@
 /README*.md                       @OdevMatheus
 /.gitignore                       @OdevMatheus
 /.gitattributes                   @OdevMatheus
-/.env.example                     @OdevMatheus
+/.skillops.yml                    @OdevMatheus
 /.github/CODEOWNERS               @OdevMatheus
 /.github/SECURITY.md              @OdevMatheus
 
@@ -18,9 +18,13 @@
 /.github/copilot-instructions.md  @OdevMatheus
 /.github/agents/                  @OdevMatheus
 
-# SkillOps Core Engine & Hybrid Executable Skill Catalog
-/pyproject.toml                   @OdevMatheus
-/src/skillops/                    @OdevMatheus
+# SkillOps NPX Core Engine & Hybrid Executable Skill Catalog
+/package.json                     @OdevMatheus
+/tsconfig.json                    @OdevMatheus
+/tsup.config.ts                   @OdevMatheus
+/vitest.config.ts                 @OdevMatheus
+/src/                             @OdevMatheus
+/tests/                           @OdevMatheus
 /catalog/                         @OdevMatheus
 
 # CI/CD workflows & issue/PR templates

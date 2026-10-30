@@ -1,7 +1,7 @@
 # SkillOps Canonical Contract (`SKILL_CONTRACT.md`)
 
 > **Status:** Canonical Specification (`v0.5.0` — NPX Architecture)  
-> **Related ADRs:** [`ADR-0001`](./docs/architecture/adr/0001-hybrid-executable-skills-architecture.md), [`ADR-0002`](./docs/architecture/adr/0002-semantic-collision-auditor-and-token-budgeting.md), [`ADR-0003`](./docs/architecture/adr/0003-context-aware-dynamic-router-and-multi-runtime-sync.md), [`ADR-0004`](./docs/architecture/adr/0004-tdd-skill-evaluation-engine-openai-agents-sdk.md)  
+> **Related ADRs:** [`ADR-0001`](./docs/architecture/adr/0001-hybrid-executable-skills-architecture.md), [`ADR-0002`](./docs/architecture/adr/0002-semantic-collision-auditor-and-token-budgeting.md), [`ADR-0003`](./docs/architecture/adr/0003-context-aware-dynamic-router-and-multi-runtime-sync.md), [`ADR-0004`](./docs/architecture/adr/0004-zero-api-tdd-evaluation-and-stdio-mcp.md)  
 > **Scope:** Defines the structural, semantic, token-economy, deterministic execution, and TDD evaluation schemas for **Hybrid Executable Skills & Context-Isolated Subagents** managed by the **SkillOps** Node.js 20+ / TypeScript engine (`npx skillops@latest`).
 
 ---

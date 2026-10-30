@@ -65,7 +65,7 @@ flowchart TB
 | **[`ADR-0001`](./adr/0001-hybrid-executable-skills-architecture.md)** | **Hybrid Executable Skills Architecture** | Explains why every skill pairs a concise `SKILL.md` with a deterministic Python 3.12+ CLI tool (`scripts/*.py`) and `evals/`. |
 | **[`ADR-0002`](./adr/0002-semantic-collision-auditor-and-token-budgeting.md)** | **Semantic Collision Auditor & Token Budgeting** | Details the zero-API pairwise cosine similarity audit (`>= 0.72` high-risk, `>= 0.85` error) and 3-level progressive disclosure token limits. |
 | **[`ADR-0003`](./adr/0003-context-aware-dynamic-router-and-multi-runtime-sync.md)** | **Context-Aware Dynamic Router & Multi-Runtime Sync** | Describes repository stack fingerprinting (`npx skillops route`) and multi-runtime transpilation (`npx skillops sync`). |
-| **[`ADR-0004`](./adr/0004-tdd-skill-evaluation-engine-openai-agents-sdk.md)** | **Zero-API Deterministic TDD Skill Evaluation Engine & Stdio MCP** | Specifies offline deterministic AST/subprocess `with_skill` vs. `without_skill` benchmarking (`npx skillops eval`) and local JSON-RPC 2.0 `stdio` MCP server (`npx skillops mcp`). |
+| **[`ADR-0004`](./adr/0004-zero-api-tdd-evaluation-and-stdio-mcp.md)** | **Zero-API Deterministic TDD Skill Evaluation Engine & Stdio MCP** | Specifies offline deterministic AST/subprocess `with_skill` vs. `without_skill` benchmarking (`npx skillops eval`) and local JSON-RPC 2.0 `stdio` MCP server (`npx skillops mcp`). |
 
 ---
 

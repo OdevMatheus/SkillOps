@@ -1,0 +1,40 @@
+{
+  "skill_name": "agent-harness-auditor",
+  "schema_version": "1.0",
+  "evals": [
+    {
+      "id": "eval-01-detect-implicit-routing-collapse",
+      "name": "Audit a harness with overlapping skills and missing negative triggers",
+      "prompt": "Our Claude Code setup has 24 skills loaded simultaneously and frequently activates the wrong skill. Audit the harness and remediate the routing collapse.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-harness-linter",
+          "type": "tool_call_contains",
+          "target": "harness_linter.py",
+          "description": "Agent executed the deterministic harness linter script."
+        },
+        {
+          "id": "assert-enforced-negative-triggers-and-cap",
+          "type": "regex_match",
+          "target": "(negative_triggers|12|cosine|0\\.58)",
+          "description": "Agent enforced negative triggers, cosine orthogonality, and active skill cardinality limits."
+        }
+      ]
+    },
+    {
+      "id": "eval-02-harden-subagent-tool-permissions",
+      "name": "Replace wildcard subagent tool permissions with least-privilege isolation",
+      "prompt": "Review our subagent manifests and fix any unsafe tool permissions or unbounded return payloads.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-subagent-isolation-and-budget",
+          "type": "regex_match",
+          "target": "(context_isolation:\\s*true|max_output_tokens)",
+          "description": "Subagent is locked to isolated context and <= 400 max output tokens."
+        }
+      ]
+    }
+  ]
+}
