@@ -73,41 +73,13 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
 
-      - name: Run TypeScript Typecheck, Vitest, Build & NPX Audit Gate
+      - name: Run TypeScript Lint, Typecheck, Vitest, Build & NPX Audit/Tokens/Eval Gate
         run: |
-          if [ -f "package.json" ]; then
-            npm ci
-            npm run typecheck
-            npm test
-            npm run build
-            node dist/cli.js audit --catalog catalog --strict --require-layout
-          fi
-
-  python-engine-qa:
-    name: Python ${{ matrix.python-version }} QA & Deterministic Eval Gate
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.12", "3.13"]
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up uv & Python ${{ matrix.python-version }}
-        uses: astral-sh/setup-uv@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Run Ruff, Mypy (--strict), Pytest & Deterministic SkillOps Audit
-        run: |
-          if [ -f "pyproject.toml" ]; then
-            uv sync --all-extras --dev
-            uv run ruff check src tests catalog
-            uv run ruff format --check src tests catalog
-            uv run mypy --strict src tests
-            uv run pytest --cov=skillops --cov-report=term-missing
-            uv run skillops audit --catalog catalog --strict --require-layout --format table
-          else
-            echo "OK — Python 3.12+ CI pipeline ready (awaiting pyproject.toml in Sprint 1 Issue #45)."
-          fi
+          npm ci
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
+          node dist/cli.js audit --catalog catalog --strict --require-layout
+          node dist/cli.js tokens --strict --budget 4000
+          node dist/cli.js eval --catalog catalog --strict
