@@ -1,0 +1,40 @@
+{
+  "skill_name": "bug-reproducer-tdd",
+  "schema_version": "1.0",
+  "evals": [
+    {
+      "id": "eval-01-red-green-repro-harness",
+      "name": "Synthesize failing test before modifying production implementation",
+      "prompt": "Reproduce and fix the off-by-one boundary crash in `paginate_cursor()` using a deterministic failing regression test.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-repro-harness-check",
+          "type": "tool_call_contains",
+          "target": "repro_harness_check.py",
+          "description": "Agent validated the reproduction test harness using repro_harness_check.py."
+        },
+        {
+          "id": "assert-explicit-test-function",
+          "type": "regex_match",
+          "target": "def\\s+test_repro_",
+          "description": "Created a dedicated deterministic reproduction test function."
+        }
+      ]
+    },
+    {
+      "id": "eval-02-zero-sleep-flakiness",
+      "name": "Eliminate sleep calls and skipped decorators in regression suites",
+      "prompt": "Clean up the flaky reproduction test in `tests/test_repro_timeout.py` so it passes `repro_harness_check.py`.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-pytest-raises-or-assert",
+          "type": "regex_match",
+          "target": "(pytest\\.raises|assert\\s+)",
+          "description": "Verified explicit assertion without sleep or skip decorators."
+        }
+      ]
+    }
+  ]
+}

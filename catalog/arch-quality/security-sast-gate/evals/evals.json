@@ -1,0 +1,40 @@
+{
+  "skill_name": "security-sast-gate",
+  "schema_version": "1.0",
+  "evals": [
+    {
+      "id": "eval-01-remediate-shell-true-and-yaml-load",
+      "name": "Replace subprocess shell=True and unsafe yaml.load sinks",
+      "prompt": "Audit `src/utils/importer.py` for OWASP command injection and unsafe deserialization vulnerabilities.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-owasp-ast-scanner",
+          "type": "tool_call_contains",
+          "target": "owasp_ast_scanner.py",
+          "description": "Agent executed the deterministic OWASP SAST AST scanner."
+        },
+        {
+          "id": "assert-safe-load-and-shell-false",
+          "type": "regex_match",
+          "target": "(yaml\\.safe_load|shell=False)",
+          "description": "Replaced unsafe sinks with yaml.safe_load() and shell=False argv execution."
+        }
+      ]
+    },
+    {
+      "id": "eval-02-upgrade-weak-hashes",
+      "name": "Upgrade broken MD5/SHA1 cryptographic hashes to SHA-256",
+      "prompt": "Fix the weak `hashlib.md5` token signature verification in `src/auth/tokens.py`.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-sha256-or-compare-digest",
+          "type": "regex_match",
+          "target": "(sha256|compare_digest)",
+          "description": "Upgraded digest to hashlib.sha256() and constant-time comparison."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "skill_name": "concurrency-race-detector",
+  "runner": "deterministic-ast",
+  "timestamp": "2026-10-30T15:00:00Z",
+  "with_skill": {
+    "pass_rate_mean": 0.95,
+    "pass_rate_stddev": 0.03,
+    "tokens_mean": 1140,
+    "latency_ms_mean": 2050
+  },
+  "without_skill": {
+    "pass_rate_mean": 0.56,
+    "pass_rate_stddev": 0.11,
+    "tokens_mean": 2360,
+    "latency_ms_mean": 4200
+  },
+  "delta": {
+    "pass_rate_gain": 0.39,
+    "token_reduction_pct": -51.69,
+    "verdict": "CERTIFIED_IMPROVEMENT"
+  }
+}
