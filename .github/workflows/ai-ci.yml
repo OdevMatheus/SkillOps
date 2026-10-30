@@ -56,6 +56,33 @@ jobs:
             echo "OK — Catalog directory not yet populated (pre-development readiness phase)."
           fi
 
+  npx-engine-qa:
+    name: Node.js ${{ matrix.node-version }} NPX Engine & TypeScript QA Gate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["20", "22"]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Run TypeScript Typecheck, Vitest, Build & NPX Audit Gate
+        run: |
+          if [ -f "package.json" ]; then
+            npm ci
+            npm run typecheck
+            npm test
+            npm run build
+            node dist/cli.js audit --catalog catalog --strict --require-layout
+          fi
+
   python-engine-qa:
     name: Python ${{ matrix.python-version }} QA & Deterministic Eval Gate
     runs-on: ubuntu-latest

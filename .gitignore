@@ -3,7 +3,8 @@
 .env.*
 !.env.example
 
-# Python 3.12+ Bytecode, Virtual Environments & Package Artifacts
+# Node.js / NPX & Python 3.12+ Artifacts
+node_modules/
 __pycache__/
 *.py[cod]
 *$py.class

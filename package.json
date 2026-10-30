@@ -1,0 +1,63 @@
+{
+  "name": "skillops",
+  "version": "0.5.0",
+  "description": "SkillOps — The Zero-API NPX Engine & Benchmark-Verified Library of High-End AI Coding Agent Skills & Context-Isolated Subagents with Token Economy Auditing.",
+  "type": "module",
+  "license": "MIT",
+  "author": "OdevMatheus <matheusvita007@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/OdevMatheus/SkillOps.git"
+  },
+  "bin": {
+    "skillops": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "catalog",
+    ".github/agents",
+    "SKILL_CONTRACT.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "skillops": "node dist/cli.js"
+  },
+  "dependencies": {
+    "yaml": "^2.7.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.7"
+  },
+  "keywords": [
+    "ai-agents",
+    "agent-skills",
+    "subagents",
+    "token-economy",
+    "claude-code",
+    "cursor",
+    "antigravity",
+    "codex",
+    "github-copilot",
+    "mcp",
+    "context-engineering"
+  ]
+}
