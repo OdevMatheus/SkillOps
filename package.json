@@ -1,6 +1,6 @@
 {
-  "name": "skillops",
-  "version": "0.5.0",
+  "name": "skillops-cli",
+  "version": "1.0.0",
   "description": "SkillOps — The Zero-API NPX Engine & Benchmark-Verified Library of High-End AI Coding Agent Skills & Context-Isolated Subagents with Token Economy Auditing.",
   "type": "module",
   "license": "MIT",
@@ -9,7 +9,12 @@
     "type": "git",
     "url": "https://github.com/OdevMatheus/SkillOps.git"
   },
+  "homepage": "https://github.com/OdevMatheus/SkillOps#readme",
+  "bugs": {
+    "url": "https://github.com/OdevMatheus/SkillOps/issues"
+  },
   "bin": {
+    "skillops-cli": "./dist/cli.js",
     "skillops": "./dist/cli.js"
   },
   "main": "./dist/index.js",
@@ -24,6 +29,7 @@
     "dist",
     "catalog",
     ".github/agents",
+    "docs/BENCHMARKS.md",
     "SKILL_CONTRACT.md",
     "README.md",
     "LICENSE"
@@ -33,6 +39,7 @@
   },
   "scripts": {
     "build": "tsup",
+    "prepublishOnly": "npm run build && npm test",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

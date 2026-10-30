@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [1.0.0] - 2026-10-30
 
 ### Added
+- **Official NPM Package Configuration (`skillops-cli`) & Automated NPM Publish Workflow (`Sprint 5 / Issue #67`):**
+  - Configured [`package.json`](./package.json) as `skillops-cli` (`v1.0.0`) exposing both `skillops-cli` and `skillops` binaries (`npx skillops-cli@latest <command>`), and added [`.github/workflows/npm-publish.yml`](./.github/workflows/npm-publish.yml) with NPM Provenance (`--provenance`).
+  - Published [`docs/BENCHMARKS.md`](./docs/BENCHMARKS.md) documenting the `v1.0.0` Token Economy & Deterministic TDD Benchmark Showcase (`95.53%` Startup Token Tax reduction, `10/10 CERTIFIED_IMPROVEMENT` skills, `+39.1%` mean pass-rate lift, `-51.05%` mean task token reduction, `max pairwise cosine = 0.0661 < 0.58`).
+- **Track 2 & Track 3 Surgical Engineering & Security Skills (`Sprint 5 / Issue #66`):**
+  - Added [`catalog/python-backend/concurrency-race-detector/SKILL.md`](./catalog/python-backend/concurrency-race-detector/SKILL.md) (`scripts/event_loop_blocking_scanner.py`), [`catalog/arch-quality/bug-reproducer-tdd/SKILL.md`](./catalog/arch-quality/bug-reproducer-tdd/SKILL.md) (`scripts/repro_harness_check.py`), and [`catalog/arch-quality/security-sast-gate/SKILL.md`](./catalog/arch-quality/security-sast-gate/SKILL.md) (`scripts/owasp_ast_scanner.py`) with `evals/evals.json` and `evals/benchmark.json`.
 - **Track 1 High-End Token Economy & AI Harness Skills (`Sprint 5 / Issue #65`):**
   - Added [`catalog/ai-engineering/context-pruner-advisor/SKILL.md`](./catalog/ai-engineering/context-pruner-advisor/SKILL.md) (`scripts/context_pruner.py`), [`catalog/ai-engineering/agent-harness-auditor/SKILL.md`](./catalog/ai-engineering/agent-harness-auditor/SKILL.md) (`scripts/harness_linter.py`), and [`catalog/ai-engineering/prompt-red-teaming/SKILL.md`](./catalog/ai-engineering/prompt-red-teaming/SKILL.md) (`scripts/injection_scanner.py`) alongside [`catalog/ai-engineering/mcp-architect/SKILL.md`](./catalog/ai-engineering/mcp-architect/SKILL.md), each with deterministic `evals/evals.json` and `evals/benchmark.json` suites (`CERTIFIED_IMPROVEMENT`).
 - **5 Elite Context-Isolated Subagents in `catalog/subagents/` (`Sprint 5 / Issue #64`):**
