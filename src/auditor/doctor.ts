@@ -338,10 +338,32 @@ export function diagnoseRepository(
  */
 export function formatDoctorReport(
   report: DoctorReport,
-  format: "table" | "json" | "markdown" = "table",
+  format: "table" | "json" | "markdown" | "github" = "table",
 ): string {
   if (format === "json") {
     return JSON.stringify(report, null, 2);
+  }
+
+  if (format === "github") {
+    const lines: string[] = [];
+    for (const art of report.artifacts) {
+      if (art.status !== "healthy") {
+        lines.push(
+          `::error file=${art.relative_path},title=SkillOps Lockfile ${art.status.toUpperCase()}::Artifact '${art.relative_path}' (${art.target} :: ${art.item_name}) is ${art.status}.`,
+        );
+      }
+    }
+    for (const check of report.checks) {
+      if (check.status === "fail") {
+        lines.push(`::error title=SkillOps Doctor (${check.title})::${check.summary}`);
+      } else if (check.status === "warn") {
+        lines.push(`::warning title=SkillOps Doctor (${check.title})::${check.summary}`);
+      }
+    }
+    lines.push(
+      `::notice title=SkillOps Doctor::Overall status ${report.status.toUpperCase()} (${report.healthy_artifacts_count}/${report.tracked_artifacts_count} artifacts healthy, Startup Tax ${report.startup_tax_tokens}/${report.startup_tax_budget}t).`,
+    );
+    return lines.join("\n");
   }
 
   if (format === "markdown") {

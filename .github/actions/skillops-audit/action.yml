@@ -1,5 +1,5 @@
 name: "SkillOps Audit (Zero-API NPX Token Economy & Collision Gate)"
-description: "Audits AI Coding Agent Skills & Context-Isolated Subagents for Startup Token Tax, L1/L2/L3 progressive disclosure budgets, and semantic collisions."
+description: "Audits AI Coding Agent Skills & Context-Isolated Subagents for Startup Token Tax, L1/L2/L3 progressive disclosure budgets, lockfile drift, and semantic collisions."
 author: "OdevMatheus"
 branding:
   icon: "shield"
@@ -11,7 +11,15 @@ inputs:
     required: false
     default: "catalog"
   strict:
-    description: "Fail on high-risk semantic collisions (cosine >= 0.72)."
+    description: "Fail on high-risk semantic collisions (cosine >= 0.72) or Startup Token Tax violations."
+    required: false
+    default: "true"
+  tokens-check:
+    description: "Also run Startup Token Tax & Lockfile Doctor checks with native GitHub annotations."
+    required: false
+    default: "true"
+  step-summary:
+    description: "Append Markdown Token Economy and Doctor reports to $GITHUB_STEP_SUMMARY."
     required: false
     default: "true"
   node-version:
@@ -27,11 +35,25 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
 
-    - name: Run SkillOps NPX Semantic Collision & Token Budget Audit
+    - name: Run SkillOps NPX Semantic Collision, Token Tax & Lockfile Audit
       shell: bash
       run: |
         STRICT_FLAG=""
         if [ "${{ inputs.strict }}" = "true" ]; then
           STRICT_FLAG="--strict"
         fi
-        npx skillops@latest audit --catalog "${{ inputs.catalog-path }}" --format table $STRICT_FLAG
+        if [ -f "dist/cli.js" ]; then
+          SKILLOPS_CMD="node dist/cli.js"
+        else
+          SKILLOPS_CMD="npx --yes skillops-cli@latest"
+        fi
+        $SKILLOPS_CMD audit --catalog "${{ inputs.catalog-path }}" --format github $STRICT_FLAG
+        if [ "${{ inputs.tokens-check }}" = "true" ]; then
+          $SKILLOPS_CMD tokens --catalog "${{ inputs.catalog-path }}" --format github $STRICT_FLAG
+          $SKILLOPS_CMD doctor --catalog "${{ inputs.catalog-path }}" --format github
+        fi
+        if [ "${{ inputs.step-summary }}" = "true" ] && [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+          $SKILLOPS_CMD tokens --catalog "${{ inputs.catalog-path }}" --format markdown >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          $SKILLOPS_CMD doctor --catalog "${{ inputs.catalog-path }}" --format markdown >> "$GITHUB_STEP_SUMMARY"
+        fi

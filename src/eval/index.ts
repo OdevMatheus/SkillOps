@@ -207,10 +207,25 @@ export function evaluateCatalog(
 
 export function formatEvalSummary(
   summary: CatalogEvalSummary,
-  format: "table" | "json" | "markdown" | "html" = "table",
+  format: "table" | "json" | "markdown" | "html" | "github" = "table",
 ): string {
   if (format === "json") {
     return `${JSON.stringify(summary, null, 2)}\n`;
+  }
+
+  if (format === "github") {
+    const lines: string[] = [];
+    for (const b of summary.benchmarks) {
+      if (b.delta.verdict !== "CERTIFIED_IMPROVEMENT") {
+        lines.push(
+          `::error title=SkillOps Eval Regression (${b.skill_name})::Verdict ${b.delta.verdict} (lift +${(b.delta.pass_rate_gain * 100).toFixed(1)}%, token delta ${b.delta.token_reduction_pct.toFixed(2)}%).`,
+        );
+      }
+    }
+    lines.push(
+      `::notice title=SkillOps Deterministic Benchmark::Evaluated ${summary.skills_evaluated} skills (mean lift +${(summary.mean_pass_rate_gain * 100).toFixed(1)}%, mean token delta ${summary.mean_token_reduction_pct.toFixed(2)}%).`,
+    );
+    return `${lines.join("\n")}\n`;
   }
 
   if (format === "markdown") {

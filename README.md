@@ -1,6 +1,6 @@
 # SkillOps (`npx skillops-cli@latest`)
 
-> **The Zero-API Node.js 20+ / TypeScript Engine & Benchmark-Verified Library for AI Coding Agent Skills & Context-Isolated Subagents (`v1.0.0`)**  
+> **The Zero-API Node.js 20+ / TypeScript Engine & Benchmark-Verified Library for AI Coding Agent Skills & Context-Isolated Subagents (`v1.1.0`)**  
 > *Stop installing unverified Markdown prompt essays that bloat your Startup Token Tax. Audit semantic collisions offline, quantify token economy savings (`npx skillops-cli@latest tokens`), dynamically route context-aware skill + subagent bundles across 5 agent runtimes (`npx skillops-cli@latest sync`), and prove positive task lift (`with_skill` vs. `without_skill`) with 100% deterministic, zero-API AST & subprocess TDD evaluations.*
 
 [![CI Governance](https://img.shields.io/badge/governance-1%20Issue%20%3D%201%20PR-blue.svg)](./AGENTS.md)
@@ -100,8 +100,11 @@ flowchart LR
 | **`npx skillops route`** | Fingerprints a target repository (`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `Dockerfile`, AST/files) and selects an optimal collision-free bundle. | Emits `<= 12` skills (`<= 1,500` L1 tokens) guaranteed free of semantic collisions + matched Subagents. |
 | **`npx skillops sync`** | Transpiles and installs a routed skill + subagent bundle across **Claude Code, Antigravity, Cursor, Codex CLI, and GitHub Copilot**. | Writes deterministic runtime artifacts and `.skillops-lock.json` SHA-256 drift protection. |
 | **`npx skillops add <name>`** | Surgically installs a single Skill or Context-Isolated Subagent into the target repository across selected runtimes. | Updates `.skillops-lock.json` without touching unmanaged files. |
+| **`npx skillops remove <name>`** | Surgically uninstalls a single synced Skill or Subagent from active runtimes and updates `AGENTS.md` and `.skillops-lock.json`. | Refuses to delete locally edited files unless `--force` is passed. |
+| **`npx skillops clean`** | Removes all SkillOps-managed runtime artifacts tracked in `.skillops-lock.json` and deletes the lockfile. | Preserves unmanaged files and non-generated `AGENTS.md` content. |
+| **`npx skillops doctor`** / **`status`** | Diagnoses Node/Python runtimes, `.skillops.yml` schema validity, `.skillops-lock.json` SHA-256 artifact drift (`healthy`, `drifted`, `missing`), and Startup Token Tax. | Supports `--format table\|json\|markdown\|github` and `--strict`. |
 | **`npx skillops eval`** | Runs 100% offline deterministic `with_skill` vs. `without_skill` AST & subprocess TDD evaluation scenarios. | Requires $\Delta\text{PassRate} \ge +15\%$ and zero critical regressions (`INV-SKILL-05`). |
-| **`npx skillops mcp`** | Starts a local **Model Context Protocol (MCP)** server over `stdio` exposing 6 `SkillOps` tools (`audit_catalog`, `analyze_repo_tokens`, `route_repo_skills`, `run_skill_script`, `get_skill_benchmark`, `list_catalog_items`). | Compatible with Claude Code, Antigravity, Cursor, and Codex MCP clients. |
+| **`npx skillops mcp`** | Starts a local **Model Context Protocol (MCP)** server over `stdio` exposing 7 `SkillOps` tools (`audit_catalog`, `analyze_repo_tokens`, `route_repo_skills`, `run_skill_script`, `get_skill_benchmark`, `list_catalog_items`, `diagnose_repo`). | Compatible with Claude Code, Antigravity, Cursor, and Codex MCP clients. |
 
 ---
 

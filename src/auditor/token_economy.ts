@@ -361,10 +361,29 @@ export function analyzeRepoTokenEconomy(
  */
 export function formatTokenEconomyReport(
   report: TokenEconomyReport,
-  format: "table" | "json" | "markdown" = "table",
+  format: "table" | "json" | "markdown" | "github" = "table",
 ): string {
   if (format === "json") {
     return JSON.stringify(report, null, 2);
+  }
+
+  if (format === "github") {
+    const lines: string[] = [];
+    for (const h of report.hotspots) {
+      const level = h.severity === "CRITICAL" || h.severity === "HIGH" ? "error" : "warning";
+      lines.push(
+        `::${level} file=${h.path},title=SkillOps Token Hotspot (${h.severity})::${h.issue} — ${h.recommendation}`,
+      );
+    }
+    if (!report.passed_budget) {
+      lines.push(
+        `::error title=SkillOps Startup Token Tax Exceeded::Startup Token Tax ${report.startup_token_tax} exceeds budget ${report.startup_tax_budget}.`,
+      );
+    }
+    lines.push(
+      `::notice title=SkillOps Token Economy::Startup Tax ${report.startup_token_tax}/${report.startup_tax_budget} tokens (${report.token_savings_pct.toFixed(2)}% saved via Progressive Disclosure).`,
+    );
+    return `${lines.join("\n")}\n`;
   }
 
   if (format === "markdown") {
