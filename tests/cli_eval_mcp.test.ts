@@ -10,8 +10,10 @@ import {
   evaluateCatalog,
   formatDoctorReport,
   formatEvalSummary,
+  formatHarnessInspectionReport,
   formatTokenEconomyReport,
   handleMcpJsonRpcRequest,
+  inspectHarnesses,
   loadSkillOpsConfig,
 } from "../src/index.js";
 import { runCli } from "../src/cli.js";
@@ -387,5 +389,72 @@ describe("SkillOps NPX Complete CLI, Deterministic Eval Runner & Stdio MCP Serve
         "github",
       ]),
     ).toBe(ExitCode.SUCCESS);
+  });
+
+  it("audits Startup Token Tax across all 20 AI coding agents, reports detected harnesses in doctor, and executes 'skillops harnesses' (Issue #113)", () => {
+    const tmpRepo = fs.mkdtempSync(path.join(os.tmpdir(), "skillops-tokens-top20-"));
+    try {
+      // Seed always-on instruction files and MCP configs from multiple AI coding agents
+      fs.writeFileSync(path.join(tmpRepo, ".windsurfrules"), "Always use strict TypeScript.\n", "utf-8");
+      fs.writeFileSync(path.join(tmpRepo, "CONVENTIONS.md"), "Follow Aider conventions.\n", "utf-8");
+      fs.writeFileSync(path.join(tmpRepo, ".goosehints"), "Use pytest for Python.\n", "utf-8");
+      fs.mkdirSync(path.join(tmpRepo, ".junie"), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmpRepo, ".junie", "guidelines.md"),
+        "JetBrains Junie guidelines.\n",
+        "utf-8",
+      );
+      fs.mkdirSync(path.join(tmpRepo, ".windsurf", "rules"), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmpRepo, ".windsurf", "rules", "always.md"),
+        "---\ntrigger: always_on\n---\nAlways-on Windsurf rule.\n",
+        "utf-8",
+      );
+      fs.mkdirSync(path.join(tmpRepo, ".codex"), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmpRepo, ".codex", "config.toml"),
+        '[mcp_servers.skillops]\ncommand = "npx"\nargs = ["-y", "skillops-cli@latest", "mcp"]\n',
+        "utf-8",
+      );
+      fs.mkdirSync(path.join(tmpRepo, ".zed"), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmpRepo, ".zed", "settings.json"),
+        JSON.stringify({ context_servers: { skillops: { command: "npx" } } }, null, 2),
+        "utf-8",
+      );
+
+      const tokenReport = analyzeRepoTokenEconomy(tmpRepo, { catalogDir: CATALOG_ROOT });
+      const paths = tokenReport.inspected_files.map((f) => f.path);
+      expect(paths).toContain(".windsurfrules");
+      expect(paths).toContain("CONVENTIONS.md");
+      expect(paths).toContain(".goosehints");
+      expect(paths).toContain(".junie/guidelines.md");
+      expect(paths).toContain(".windsurf/rules/always.md");
+      expect(paths).toContain(".codex/config.toml");
+      expect(paths).toContain(".zed/settings.json");
+
+      const docReport = diagnoseRepository(tmpRepo, { catalogDir: CATALOG_ROOT });
+      expect(docReport.detected_harnesses).toEqual(
+        expect.arrayContaining(["codex", "windsurf", "zed", "aider", "goose", "junie"]),
+      );
+      expect(docReport.checks.some((c) => c.id === "detected_harnesses")).toBe(true);
+
+      const harnessReport = inspectHarnesses(tmpRepo);
+      expect(harnessReport.total_supported).toBe(20);
+      expect(harnessReport.detected_count).toBe(6);
+      expect(formatHarnessInspectionReport(harnessReport, "markdown")).toContain(
+        "SkillOps Universal Top-20 AI Coding Agent Harnesses",
+      );
+      expect(formatHarnessInspectionReport(harnessReport, "table")).toContain("[DETECTED] windsurf");
+
+      expect(
+        runCli(["node", "cli.js", "harnesses", "--repo", tmpRepo, "--format", "table"]),
+      ).toBe(ExitCode.SUCCESS);
+      expect(
+        runCli(["node", "cli.js", "harnesses", "--repo", tmpRepo, "--format", "json"]),
+      ).toBe(ExitCode.SUCCESS);
+    } finally {
+      fs.rmSync(tmpRepo, { recursive: true, force: true });
+    }
   });
 });

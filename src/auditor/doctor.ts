@@ -13,8 +13,12 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import {
+  ALL_RUNTIME_TARGETS,
+  RUNTIME_HARNESS_SPECS,
+  type RuntimeHarnessSpec,
   type RuntimeTarget,
   SyncLockfileSchema,
+  detectInstalledHarnesses,
   loadSkillOpsConfig,
 } from "../models.js";
 import { analyzeRepoTokenEconomy } from "./token_economy.js";
@@ -32,6 +36,7 @@ export interface DoctorCheckItem {
   readonly id:
     | "node_runtime"
     | "python_runtime"
+    | "detected_harnesses"
     | "skillops_config"
     | "lockfile_integrity"
     | "startup_token_tax";
@@ -45,6 +50,7 @@ export interface DoctorReport {
   readonly repo_path: string;
   readonly node_version: string;
   readonly python_version: string | null;
+  readonly detected_harnesses: readonly RuntimeTarget[];
   readonly config_present: boolean;
   readonly config_valid: boolean;
   readonly config_error?: string;
@@ -60,6 +66,18 @@ export interface DoctorReport {
   readonly startup_tax_within_budget: boolean;
   readonly checks: readonly DoctorCheckItem[];
   readonly remediation: readonly string[];
+}
+
+export interface HarnessInspectionEntry extends RuntimeHarnessSpec {
+  readonly detected: boolean;
+}
+
+export interface HarnessInspectionReport {
+  readonly repo_path: string;
+  readonly total_supported: number;
+  readonly detected_count: number;
+  readonly detected_harnesses: readonly RuntimeTarget[];
+  readonly harnesses: readonly HarnessInspectionEntry[];
 }
 
 export interface DiagnoseRepositoryOptions {
@@ -156,6 +174,18 @@ export function diagnoseRepository(
       "Install Python 3.12+ on PATH to execute Python-based Level 3 deterministic scripts.",
     );
   }
+
+  // 2.5. Detected AI Coding Agent Harnesses (Top 20)
+  const detectedHarnesses = detectInstalledHarnesses(resolvedRepo);
+  checks.push({
+    id: "detected_harnesses",
+    title: "Detected AI Coding Harnesses (Top 20)",
+    status: "pass",
+    summary:
+      detectedHarnesses.length > 0
+        ? `Detected ${detectedHarnesses.length} AI coding harness(es): ${detectedHarnesses.join(", ")}.`
+        : "No repo-local AI harness folders detected yet (ready to sync all 20 agents).",
+  });
 
   // 3. Declarative Config (.skillops.yml) Check
   const loadedCfg = loadSkillOpsConfig(resolvedRepo);
@@ -315,6 +345,7 @@ export function diagnoseRepository(
     repo_path: repoLabel,
     node_version: nodeVersion,
     python_version: pythonVersion,
+    detected_harnesses: detectedHarnesses,
     config_present: configPresent,
     config_valid: configValid,
     ...(configError ? { config_error: configError } : {}),
@@ -331,6 +362,80 @@ export function diagnoseRepository(
     checks,
     remediation,
   };
+}
+
+/**
+ * Inspect all 20 supported AI coding agent harnesses and report which ones are detected in `repoPath`.
+ */
+export function inspectHarnesses(repoPath: string): HarnessInspectionReport {
+  const resolvedRepo = path.resolve(repoPath);
+  const repoLabel = path.basename(resolvedRepo) || ".";
+  const detectedHarnesses = detectInstalledHarnesses(resolvedRepo);
+  const detectedSet = new Set<RuntimeTarget>(detectedHarnesses);
+
+  const harnesses: HarnessInspectionEntry[] = ALL_RUNTIME_TARGETS.map((target) => ({
+    ...RUNTIME_HARNESS_SPECS[target],
+    detected: detectedSet.has(target),
+  }));
+
+  return {
+    repo_path: repoLabel,
+    total_supported: harnesses.length,
+    detected_count: detectedHarnesses.length,
+    detected_harnesses: detectedHarnesses,
+    harnesses,
+  };
+}
+
+/**
+ * Format a `HarnessInspectionReport` as a terminal table, Markdown table, or JSON string.
+ */
+export function formatHarnessInspectionReport(
+  report: HarnessInspectionReport,
+  format: "table" | "json" | "markdown" = "table",
+): string {
+  if (format === "json") {
+    return `${JSON.stringify(report, null, 2)}\n`;
+  }
+
+  if (format === "markdown") {
+    const lines: string[] = [
+      `## SkillOps Universal Top-20 AI Coding Agent Harnesses (\`${report.repo_path}\`)`,
+      "",
+      `- **Supported AI Coding Harnesses:** \`${report.total_supported}\``,
+      `- **Detected in Repository:** \`${report.detected_count}\` (${
+        report.detected_harnesses.length > 0 ? report.detected_harnesses.join(", ") : "none"
+      })`,
+      "",
+      "| Target ID | AI Coding Agent / IDE | Vendor | Category | Skills Path | Subagents Path | MCP Config | Detected |",
+      "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: |",
+      ...report.harnesses.map(
+        (h) =>
+          `| \`${h.id}\` | **${h.displayName}** | ${h.vendor} | \`${h.category}\` | \`${h.skillsDir}\` | \`${h.subagentsDir}\` | ${
+            h.mcpConfigPath ? `\`${h.mcpConfigPath}\`` : "—"
+          } | ${h.detected ? "YES" : "NO"} |`,
+      ),
+      "",
+    ];
+    return lines.join("\n");
+  }
+
+  const lines: string[] = [
+    `=== SkillOps Universal Top-20 AI Coding Harnesses (${report.repo_path}) ===`,
+    `Supported Harnesses : ${report.total_supported}`,
+    `Detected in Repo    : ${report.detected_count} (${
+      report.detected_harnesses.length > 0 ? report.detected_harnesses.join(", ") : "none"
+    })`,
+    "-".repeat(92),
+    ...report.harnesses.map(
+      (h) =>
+        `  [${h.detected ? "DETECTED" : "READY   "}] ${h.id.padEnd(11)} | ${h.displayName.padEnd(32)} | skills=${h.skillsDir} | mcp=${
+          h.mcpConfigPath ?? "n/a"
+        }`,
+    ),
+    "",
+  ];
+  return lines.join("\n");
 }
 
 /**
@@ -373,6 +478,9 @@ export function formatDoctorReport(
       `- **Overall Status:** \`${report.status.toUpperCase()}\``,
       `- **Node.js Runtime:** \`${report.node_version}\``,
       `- **Python Runtime:** \`${report.python_version ?? "not detected"}\``,
+      `- **Detected AI Harnesses:** \`${
+        report.detected_harnesses.length > 0 ? report.detected_harnesses.join(", ") : "none"
+      }\``,
       `- **Tracked Artifacts:** \`${report.healthy_artifacts_count}/${report.tracked_artifacts_count}\` healthy (\`${report.drifted_artifacts_count}\` drifted, \`${report.missing_artifacts_count}\` missing)`,
       `- **Startup Token Tax:** \`${report.startup_tax_tokens} / ${report.startup_tax_budget}\` tokens`,
       "",
@@ -417,6 +525,9 @@ export function formatDoctorReport(
     `Overall Status     : ${report.status.toUpperCase()}`,
     `Node.js Runtime    : ${report.node_version}`,
     `Python Runtime     : ${report.python_version ?? "not detected"}`,
+    `Detected Harnesses : ${
+      report.detected_harnesses.length > 0 ? report.detected_harnesses.join(", ") : "none"
+    }`,
     `Declarative Config : ${
       !report.config_present
         ? "not present (defaults)"

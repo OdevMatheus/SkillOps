@@ -12,7 +12,9 @@ import {
   auditCatalogTokenBudgets,
   diagnoseRepository,
   formatDoctorReport,
+  formatHarnessInspectionReport,
   formatTokenEconomyReport,
+  inspectHarnesses,
 } from "./auditor/index.js";
 import { evaluateCatalog, formatEvalSummary } from "./eval/index.js";
 import { startMcpStdioServer } from "./mcp/index.js";
@@ -85,12 +87,13 @@ export function runCli(argv: readonly string[]): number {
         "  add       Install a specific high-end Skill or Subagent into active runtimes",
         "  remove    Surgically uninstall a synced Skill or Subagent from active runtimes",
         "  clean     Remove all SkillOps-managed runtime artifacts tracked in .skillops-lock.json",
+        "  harnesses List all 20 supported AI coding agents, target paths, MCP support & repo detection",
         "  doctor    Diagnose Node/Python environment, .skillops.yml config & lockfile SHA-256 drift",
         "  status    Alias for 'doctor' — inspect repository lockfile drift and token tax status",
         "  tokens    Analyze repository Startup Token Tax and Progressive Disclosure savings",
         "  audit     Run L1/L2/L3 token budget linter, Subagent check & collision matrix",
         "  route     Fingerprint repository stack and compile optimal <=12 skill bundle",
-        "  sync      Transpile Skills & Subagents across Claude, Antigravity, Cursor, Codex & Copilot",
+        "  sync      Transpile Skills & Subagents across all 20 AI coding agents (Claude, Cursor, Windsurf, etc.)",
         "  eval      Execute zero-API deterministic TDD benchmarks (with_skill vs without_skill)",
         "  mcp       Start native JSON-RPC 2.0 stdio Model Context Protocol server",
         "",
@@ -536,6 +539,21 @@ export function runCli(argv: readonly string[]): number {
     if (strict && !summary.passed) {
       return ExitCode.EVAL_REGRESSION_ERROR;
     }
+    return ExitCode.SUCCESS;
+  }
+
+  if (command === "harnesses") {
+    const repoIdx = args.indexOf("--repo");
+    const repoPath = path.resolve(
+      repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd(),
+    );
+    const formatIdx = args.indexOf("--format");
+    const rawFormat = formatIdx !== -1 && args[formatIdx + 1] ? args[formatIdx + 1]! : "table";
+    const format: "table" | "json" | "markdown" =
+      rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
+
+    const report = inspectHarnesses(repoPath);
+    process.stdout.write(formatHarnessInspectionReport(report, format));
     return ExitCode.SUCCESS;
   }
 

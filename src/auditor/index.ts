@@ -39,8 +39,12 @@ export {
   type DoctorCheckItem,
   type DoctorReport,
   type DiagnoseRepositoryOptions,
+  type HarnessInspectionEntry,
+  type HarnessInspectionReport,
   diagnoseRepository,
   formatDoctorReport,
+  inspectHarnesses,
+  formatHarnessInspectionReport,
 } from "./doctor.js";
 
 
