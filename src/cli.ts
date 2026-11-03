@@ -17,13 +17,14 @@ import {
 import { evaluateCatalog, formatEvalSummary } from "./eval/index.js";
 import { startMcpStdioServer } from "./mcp/index.js";
 import {
-  ALL_RUNTIME_TARGETS,
+  CORE_RUNTIME_TARGETS,
   ExitCode,
   type RuntimeTarget,
   SKILLOPS_VERSION,
   type SkillOpsConfig,
   SkillOpsConfigSchema,
   loadSkillOpsConfig,
+  resolveRuntimeTargets,
 } from "./models.js";
 import {
   fingerprintRepository,
@@ -113,6 +114,14 @@ export function runCli(argv: readonly string[]): number {
     const catalogDir = resolveCatalogDir(args, repoPath);
     const profile = fingerprintRepository(repoPath);
 
+    const targetsIdx = args.indexOf("--targets");
+    const initTargets =
+      targetsIdx !== -1 && args[targetsIdx + 1]
+        ? resolveRuntimeTargets(args[targetsIdx + 1]!, repoPath)
+        : profile.detected_harnesses.length > 0
+          ? profile.detected_harnesses
+          : [...CORE_RUNTIME_TARGETS];
+
     const configPayload = SkillOpsConfigSchema.parse({
       version: "1.0",
       catalog_dir: path.relative(repoPath, catalogDir).replace(/\\/g, "/") || "catalog",
@@ -126,7 +135,7 @@ export function runCli(argv: readonly string[]): number {
         languages: profile.languages,
         frameworks: profile.frameworks,
       },
-      targets: [...ALL_RUNTIME_TARGETS],
+      targets: initTargets,
     });
 
     const configPath = path.join(repoPath, ".skillops.yml");
@@ -361,14 +370,17 @@ export function runCli(argv: readonly string[]): number {
     }
     const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
     const targetsIdx = args.indexOf("--targets");
-    const rawTargets =
-      targetsIdx !== -1 && args[targetsIdx + 1]
-        ? args[targetsIdx + 1]!
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean)
-        : (cfgRes.config?.targets ?? [...ALL_RUNTIME_TARGETS]);
-    const targets = rawTargets as RuntimeTarget[];
+    let targets: RuntimeTarget[];
+    try {
+      targets =
+        targetsIdx !== -1 && args[targetsIdx + 1]
+          ? resolveRuntimeTargets(args[targetsIdx + 1]!, repoPath)
+          : (cfgRes.config?.targets ?? [...CORE_RUNTIME_TARGETS]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`Invalid --targets: ${msg}\n`);
+      return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+    }
     const dryRun = args.includes("--dry-run");
     const force = args.includes("--force");
     const formatIdx = args.indexOf("--format");
@@ -404,14 +416,17 @@ export function runCli(argv: readonly string[]): number {
     }
     const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
     const targetsIdx = args.indexOf("--targets");
-    const rawTargets =
-      targetsIdx !== -1 && args[targetsIdx + 1]
-        ? args[targetsIdx + 1]!
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean)
-        : (cfgRes.config?.targets ?? [...ALL_RUNTIME_TARGETS]);
-    const targets = rawTargets as RuntimeTarget[];
+    let targets: RuntimeTarget[];
+    try {
+      targets =
+        targetsIdx !== -1 && args[targetsIdx + 1]
+          ? resolveRuntimeTargets(args[targetsIdx + 1]!, repoPath)
+          : (cfgRes.config?.targets ?? [...CORE_RUNTIME_TARGETS]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`Invalid --targets: ${msg}\n`);
+      return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+    }
     const dryRun = args.includes("--dry-run");
     const force = args.includes("--force");
 
@@ -446,14 +461,7 @@ export function runCli(argv: readonly string[]): number {
     }
     const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
     const targetsIdx = args.indexOf("--targets");
-    const rawTargets =
-      targetsIdx !== -1 && args[targetsIdx + 1]
-        ? args[targetsIdx + 1]!
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean)
-        : undefined;
-    const targets = rawTargets as RuntimeTarget[] | undefined;
+    const rawTargetsArg = targetsIdx !== -1 && args[targetsIdx + 1] ? args[targetsIdx + 1] : undefined;
     const dryRun = args.includes("--dry-run");
     const force = args.includes("--force");
     const formatIdx = args.indexOf("--format");
@@ -462,6 +470,7 @@ export function runCli(argv: readonly string[]): number {
       rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
 
     try {
+      const targets = rawTargetsArg ? resolveRuntimeTargets(rawTargetsArg, repoPath) : undefined;
       const report = removeSkillOrSubagent(repoPath, catalogDir, itemName, {
         targets,
         dryRun,
