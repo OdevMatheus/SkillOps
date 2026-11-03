@@ -320,7 +320,7 @@ export function formatRoutedBundle(
 		bundle.total_l1_tokens,
 		bundle.max_l1_tokens,
 		{
-			width: 18,
+			width: 10,
 			unit: "tokens",
 			colorEnabled,
 		},
@@ -329,11 +329,11 @@ export function formatRoutedBundle(
 		[
 			{
 				command: "npx skillops-cli quickstart",
-				description: "Install this recommended bundle & wire MCP in 1 step",
+				description: "Install recommended bundle & wire MCP",
 			},
 			{
 				command: `npx skillops-cli info ${topSkill}`,
-				description: `Inspect ${topSkill} triggers, L3 scripts & AI invocation guide`,
+				description: `Inspect ${topSkill} triggers & L3 scripts`,
 			},
 		],
 		colorEnabled,

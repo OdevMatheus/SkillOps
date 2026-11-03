@@ -518,7 +518,7 @@ export function formatTokenEconomyReport(
 	const startupBar = renderProgressBar(
 		report.startup_token_tax,
 		report.startup_tax_budget,
-		{ width: 18, unit: "tokens" },
+		{ width: 10, unit: "tokens" },
 	);
 
 	const lines: string[] = [
@@ -546,12 +546,11 @@ export function formatTokenEconomyReport(
 		renderNextSteps([
 			{
 				command: "npx skillops-cli quickstart",
-				description:
-					"Sync Progressive Disclosure Skills & Context-Isolated Subagents",
+				description: "Sync Progressive Disclosure Skills & Subagents",
 			},
 			{
 				command: "npx skillops-cli doctor",
-				description: "Inspect repository lockfile & startup tax diagnostics",
+				description: "Inspect lockfile & startup tax diagnostics",
 			},
 		]).trimEnd(),
 	);

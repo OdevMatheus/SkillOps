@@ -15,7 +15,7 @@ import {
 	searchCatalog,
 } from "../src/framework/index.js";
 import { ExitCode } from "../src/models.js";
-import { suggestCommand } from "../src/ui/index.js";
+import { suggestCommand, visibleLength } from "../src/ui/index.js";
 
 const CATALOG_DIR = path.resolve(process.cwd(), "catalog");
 const tempDirs: string[] = [];
@@ -48,6 +48,10 @@ describe("SkillOps Library Explorer (info & search)", () => {
 		);
 		expect(tableOut).toContain("HYBRID EXECUTABLE SKILL");
 		expect(tableOut).toContain("npx skillops-cli add bug-reproducer-tdd");
+		expect(tableOut).not.toMatch(/(?:🚀|📚|🛠️|⚙️|🌐|💡|⚡|📦|🔍)/u);
+		for (const line of tableOut.split("\n")) {
+			expect(visibleLength(line)).toBeLessThanOrEqual(78);
+		}
 
 		const mdOut = formatCatalogItemInfo(skillInfo, "markdown", false);
 		expect(mdOut).toContain("## Skill: `bug-reproducer-tdd`");
@@ -79,6 +83,10 @@ describe("SkillOps Library Explorer (info & search)", () => {
 		const tableOut = formatCatalogSearchReport(secSearch, "table", false);
 		expect(tableOut).toContain("SkillOps Library Search");
 		expect(tableOut).toContain("security-sast-gate");
+		expect(tableOut).not.toMatch(/(?:🚀|📚|🛠️|⚙️|🌐|💡|⚡|📦|🔍)/u);
+		for (const line of tableOut.split("\n")) {
+			expect(visibleLength(line)).toBeLessThanOrEqual(78);
+		}
 
 		const mdOut = formatCatalogSearchReport(secSearch, "markdown", false);
 		expect(mdOut).toContain("| SKILL | `security-sast-gate` |");
@@ -176,6 +184,10 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 		expect(rendered).toContain("[1/4]");
 		expect(rendered).toContain("[4/4]");
 		expect(rendered).toContain("Using Your Skills & Subagents");
+		expect(rendered).not.toMatch(/(?:🚀|📚|🛠️|⚙️|🌐|💡|⚡|📦|🔍)/u);
+		for (const line of rendered.split("\n")) {
+			expect(visibleLength(line)).toBeLessThanOrEqual(78);
+		}
 	});
 
 	it("supports CLI commands info, search, create, quickstart/setup, install, recommend, budget, and uninstall", () => {

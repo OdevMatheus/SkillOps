@@ -1,6 +1,6 @@
 # SkillOps (`npx skillops-cli@latest`)
 
-> **The Zero-API Framework & Benchmark-Verified Library for High-End AI Coding Skills & Context-Isolated Subagents (`v1.3.0`)**  
+> **The Zero-API Framework & Benchmark-Verified Library for High-End AI Coding Skills & Context-Isolated Subagents (`v1.3.1`)**  
 > *Explore, search, inspect, and install benchmark-verified AI Coding Skills and Context-Isolated Subagents in 10 seconds (`npx skillops-cli@latest quickstart`), scaffold and certify your own custom Skills & Subagents (`npx skillops-cli@latest create skill <name>`), enforce Startup Token Tax budgets (`npx skillops-cli@latest budget`), and transpile natively across the Top 20 AI coding agents & IDEs — 100% offline with zero API keys.*
 
 [![CI Governance](https://img.shields.io/badge/governance-1%20Issue%20%3D%201%20PR-blue.svg)](./AGENTS.md)
