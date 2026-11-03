@@ -35,12 +35,72 @@ export interface AnalyzeTokenEconomyOptions {
 
 const ALWAYS_ON_INSTRUCTION_CANDIDATES = [
   "CLAUDE.md",
+  ".claude/CLAUDE.md",
   "AGENTS.md",
   "GEMINI.md",
+  ".gemini/GEMINI.md",
+  "AGENT.md",
+  "CONVENTIONS.md",
   ".github/copilot-instructions.md",
+  ".cursorrules",
+  ".windsurfrules",
+  ".clinerules",
+  ".roorules",
+  ".kilocoderules",
+  ".continuerules",
+  ".rules",
+  ".goosehints",
+  ".junie/guidelines.md",
+  ".openhands/microagents/repo.md",
+  ".trae/rules/project_rules.md",
+  ".kiro/steering/product.md",
+  ".kiro/steering/tech.md",
+  ".kiro/steering/structure.md",
 ] as const;
 
-const MCP_CONFIG_CANDIDATES = [".mcp.json", ".cursor/mcp.json"] as const;
+const MCP_CONFIG_CANDIDATES = [
+  ".mcp.json",
+  ".cursor/mcp.json",
+  ".vscode/mcp.json",
+  ".gemini/settings.json",
+  ".codex/config.toml",
+  ".roo/mcp.json",
+  ".kilocode/mcp.json",
+  ".zed/settings.json",
+  ".continue/mcpServers/skillops.yaml",
+  ".amp/settings.json",
+  "opencode.json",
+  ".kiro/settings/mcp.json",
+  ".amazonq/mcp.json",
+] as const;
+
+function countMcpServersInConfig(rawText: string, relPath: string): number {
+  if (relPath.endsWith(".toml")) {
+    const matches = rawText.match(/^\[mcp_servers\.[^\]]+\]/gm);
+    return matches ? matches.length : 0;
+  }
+  try {
+    const parsed = YAML.parse(rawText) as Record<string, unknown> | null;
+    if (!parsed || typeof parsed !== "object") {
+      return 0;
+    }
+    if (Array.isArray(parsed.mcpServers)) {
+      return parsed.mcpServers.length;
+    }
+    const serversObj =
+      (parsed.mcpServers as Record<string, unknown> | undefined) ??
+      (parsed.servers as Record<string, unknown> | undefined) ??
+      (parsed.context_servers as Record<string, unknown> | undefined) ??
+      (parsed["amp.mcpServers"] as Record<string, unknown> | undefined) ??
+      (parsed.mcp as Record<string, unknown> | undefined);
+    if (serversObj && typeof serversObj === "object" && !Array.isArray(serversObj)) {
+      return Object.keys(serversObj).length;
+    }
+    return 0;
+  } catch {
+    return 1;
+  }
+}
 
 /**
  * Unisolated exploration token baseline per subagent delegation when an agent lacks
@@ -147,78 +207,86 @@ export function analyzeRepoTokenEconomy(
     });
   }
 
-  // 2. Scan .cursor/rules/*.mdc for Always-On rules (`alwaysApply: true` or missing globs)
-  const cursorRulesDir = path.join(resolvedRepo, ".cursor", "rules");
-  if (fs.existsSync(cursorRulesDir) && fs.statSync(cursorRulesDir).isDirectory()) {
-    const entries = fs
-      .readdirSync(cursorRulesDir, { withFileTypes: true })
-      .filter((e) => e.isFile() && (e.name.endsWith(".mdc") || e.name.endsWith(".md")))
-      .sort((a, b) => a.name.localeCompare(b.name));
+  // 2. Scan .cursor/rules/*.mdc and .windsurf/rules/*.md for Always-On rules
+  const scopedRuleDirs: Array<{
+    dirPath: string;
+    relPrefix: string;
+    isAlwaysOn: (fm: Record<string, unknown>) => boolean;
+    label: string;
+  }> = [
+    {
+      dirPath: path.join(resolvedRepo, ".cursor", "rules"),
+      relPrefix: ".cursor/rules",
+      isAlwaysOn: (fm) => fm.alwaysApply === true,
+      label: "Cursor",
+    },
+    {
+      dirPath: path.join(resolvedRepo, ".windsurf", "rules"),
+      relPrefix: ".windsurf/rules",
+      isAlwaysOn: (fm) => fm.trigger === "always_on" || fm.alwaysApply === true,
+      label: "Windsurf",
+    },
+  ];
 
-    for (const entry of entries) {
-      const fullPath = path.join(cursorRulesDir, entry.name);
-      const relPath = `.cursor/rules/${entry.name}`;
-      const rawText = fs.readFileSync(fullPath, "utf-8");
-      const lines = countLines(rawText);
-      const tokens = estimateTokenCount(rawText);
+  for (const ruleGroup of scopedRuleDirs) {
+    if (fs.existsSync(ruleGroup.dirPath) && fs.statSync(ruleGroup.dirPath).isDirectory()) {
+      const entries = fs
+        .readdirSync(ruleGroup.dirPath, { withFileTypes: true })
+        .filter((e) => e.isFile() && (e.name.endsWith(".mdc") || e.name.endsWith(".md")))
+        .sort((a, b) => a.name.localeCompare(b.name));
 
-      let alwaysApply = false;
-      try {
-        const [fm] = splitFrontmatter(rawText, relPath);
-        alwaysApply = fm.alwaysApply === true;
-      } catch {
-        // If frontmatter is missing in an .mdc file, treat as un-scoped rule
-        alwaysApply = true;
-      }
+      for (const entry of entries) {
+        const fullPath = path.join(ruleGroup.dirPath, entry.name);
+        const relPath = `${ruleGroup.relPrefix}/${entry.name}`;
+        const rawText = fs.readFileSync(fullPath, "utf-8");
+        const lines = countLines(rawText);
+        const tokens = estimateTokenCount(rawText);
 
-      if (alwaysApply) {
-        startupTokenTax += tokens;
-      }
+        let alwaysApply = false;
+        try {
+          const [fm] = splitFrontmatter(rawText, relPath);
+          alwaysApply = ruleGroup.isAlwaysOn(fm);
+        } catch {
+          // If frontmatter is missing, treat as un-scoped rule
+          alwaysApply = true;
+        }
 
-      inspectedFiles.push({
-        path: relPath,
-        category: "always_on_cursor_rule",
-        always_loaded_on_startup: alwaysApply,
-        lines,
-        estimated_tokens: tokens,
-        notes: alwaysApply
-          ? "Cursor rule with alwaysApply: true (loaded into every turn)."
-          : "Scoped Cursor rule (loaded on demand).",
-      });
+        if (alwaysApply) {
+          startupTokenTax += tokens;
+        }
 
-      if (alwaysApply && tokens > 250) {
-        hotspots.push({
+        inspectedFiles.push({
           path: relPath,
-          severity: tokens > 600 ? "CRITICAL" : "HIGH",
-          wasted_tokens: Math.max(1, tokens - 80),
-          issue: `Unscoped Cursor rule '${relPath}' sets 'alwaysApply: true' (${tokens} tokens).`,
-          recommendation:
-            "Set 'alwaysApply: false' and add explicit 'globs' or convert into a Progressive Disclosure Skill.",
+          category: "always_on_cursor_rule",
+          always_loaded_on_startup: alwaysApply,
+          lines,
+          estimated_tokens: tokens,
+          notes: alwaysApply
+            ? `${ruleGroup.label} rule with always-on activation (loaded into every turn).`
+            : `Scoped ${ruleGroup.label} rule (loaded on demand).`,
         });
+
+        if (alwaysApply && tokens > 250) {
+          hotspots.push({
+            path: relPath,
+            severity: tokens > 600 ? "CRITICAL" : "HIGH",
+            wasted_tokens: Math.max(1, tokens - 80),
+            issue: `Unscoped ${ruleGroup.label} rule '${relPath}' is always-on (${tokens} tokens).`,
+            recommendation:
+              "Set 'alwaysApply: false' / 'trigger: model_decision' and add explicit 'globs' or convert into a Progressive Disclosure Skill.",
+          });
+        }
       }
     }
   }
 
-  // 3. Scan MCP Server Configurations (.mcp.json, .cursor/mcp.json)
+  // 3. Scan MCP Server Configurations across all MCP-enabled AI coding agents
   for (const relMcp of MCP_CONFIG_CANDIDATES) {
     const fullMcp = path.join(resolvedRepo, relMcp);
     if (fs.existsSync(fullMcp) && fs.statSync(fullMcp).isFile()) {
       const rawText = fs.readFileSync(fullMcp, "utf-8");
       const lines = countLines(rawText);
-      let serverCount = 0;
-      try {
-        const parsed = YAML.parse(rawText) as Record<string, unknown> | null;
-        if (parsed && typeof parsed === "object") {
-          const serversObj =
-            (parsed.mcpServers as Record<string, unknown> | undefined) ??
-            (parsed.servers as Record<string, unknown> | undefined);
-          if (serversObj && typeof serversObj === "object") {
-            serverCount = Object.keys(serversObj).length;
-          }
-        }
-      } catch {
-        serverCount = 1;
-      }
+      const serverCount = countMcpServersInConfig(rawText, relMcp);
 
       const rawTokens = estimateTokenCount(rawText);
       const estimatedMcpTax = rawTokens + serverCount * MCP_SERVER_SCHEMA_OVERHEAD_TOKENS;
