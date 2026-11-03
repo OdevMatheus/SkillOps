@@ -6,7 +6,9 @@ import { describe, expect, it } from "vitest";
 import {
   ExitCode,
   addSkillOrSubagent,
+  cleanSyncedArtifacts,
   fingerprintRepository,
+  removeSkillOrSubagent,
   routeRepository,
   syncRepository,
 } from "../src/index.js";
@@ -188,6 +190,71 @@ describe("SkillOps NPX Router & Multi-Runtime Subagent/Skill Transpiler (Issue #
           "claude",
         ]),
       ).toBe(ExitCode.SUCCESS);
+    } finally {
+      fs.rmSync(tmpRepo, { recursive: true, force: true });
+    }
+  });
+
+  it("supports surgical 'removeSkillOrSubagent' and 'cleanSyncedArtifacts' lifecycle commands with drift protection (Issue #103)", () => {
+    const tmpRepo = fs.mkdtempSync(path.join(os.tmpdir(), "skillops-remove-clean-"));
+    try {
+      syncRepository(tmpRepo, CATALOG_ROOT, {
+        targets: ["claude", "cursor", "codex"],
+      });
+
+      const claudeMcpSkill = path.join(
+        tmpRepo,
+        ".claude",
+        "skills",
+        "mcp-architect",
+        "SKILL.md",
+      );
+      expect(fs.existsSync(claudeMcpSkill)).toBe(true);
+
+      // Surgically remove mcp-architect via CLI
+      expect(
+        runCli([
+          "node",
+          "cli.js",
+          "remove",
+          "mcp-architect",
+          "--repo",
+          tmpRepo,
+          "--catalog",
+          CATALOG_ROOT,
+        ]),
+      ).toBe(ExitCode.SUCCESS);
+
+      expect(fs.existsSync(claudeMcpSkill)).toBe(false);
+      expect(
+        fs.existsSync(path.join(tmpRepo, ".cursor", "rules", "skillops-mcp-architect.mdc")),
+      ).toBe(false);
+
+      // Simulate local drift on a remaining file before clean
+      const remainingFile = path.join(tmpRepo, ".claude", "agents", "context-scout.md");
+      expect(fs.existsSync(remainingFile)).toBe(true);
+      fs.appendFileSync(remainingFile, "\n<!-- local edit -->\n", "utf-8");
+
+      const conflictClean = cleanSyncedArtifacts(tmpRepo, CATALOG_ROOT, { force: false });
+      expect(conflictClean.passed).toBe(false);
+      expect(conflictClean.drift_conflicts).toContain(".claude/agents/context-scout.md");
+      expect(fs.existsSync(path.join(tmpRepo, ".skillops-lock.json"))).toBe(true);
+
+      // Force clean removes all remaining managed files and .skillops-lock.json
+      expect(
+        runCli([
+          "node",
+          "cli.js",
+          "clean",
+          "--repo",
+          tmpRepo,
+          "--catalog",
+          CATALOG_ROOT,
+          "--force",
+        ]),
+      ).toBe(ExitCode.SUCCESS);
+      expect(fs.existsSync(path.join(tmpRepo, ".skillops-lock.json"))).toBe(false);
+      expect(fs.existsSync(remainingFile)).toBe(false);
     } finally {
       fs.rmSync(tmpRepo, { recursive: true, force: true });
     }
