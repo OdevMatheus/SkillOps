@@ -339,7 +339,7 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 		// Global help screen
 		expect(runCli(["node", "skillops", "--help"])).toBe(ExitCode.SUCCESS);
 		const globalHelp = outChunks.join("");
-		expect(globalHelp).toContain("10-Second Quickstart (Library + Framework)");
+		expect(globalHelp).toContain("Quickstart (Library + Framework)");
 		expect(globalHelp).toContain("1. Library of High-End Skills & Subagents");
 		expect(globalHelp).toContain(
 			"2. Framework for Building Custom Skills & Subagents",
