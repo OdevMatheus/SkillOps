@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+title: "SkillOps: Zero-API Token Economy, Semantic Collision Auditor, Multi-Harness Transpiler & Deterministic TDD Evaluation Engine for AI Coding Agents"
+message: "If you use SkillOps, its Hybrid Executable Skill contract, or its deterministic TDD benchmark suite in your research or engineering systems, please cite it using the metadata below."
+type: software
+authors:
+  - alias: "OdevMatheus"
+    name: "OdevMatheus"
+    website: "https://github.com/OdevMatheus"
+repository-code: "https://github.com/OdevMatheus/SkillOps"
+url: "https://github.com/OdevMatheus/SkillOps"
+license: MIT
+version: "1.2.1"
+date-released: "2026-11-03"
+keywords:
+  - ai-coding-agents
+  - token-economy
+  - progressive-disclosure
+  - semantic-routing
+  - model-context-protocol
+  - mcp
+  - claude-code
+  - cursor
+  - codex
+  - antigravity
+  - github-copilot
+  - windsurf
+  - deterministic-evaluation
+abstract: >-
+  SkillOps (npx skillops-cli@latest) is a 100% offline, zero-API Node.js 20+ and TypeScript platform
+  that eliminates Startup Token Tax bloat and implicit semantic routing collapse across the Top 20
+  AI coding agents, IDEs, and CLI harnesses. It pairs a 3-level progressive disclosure linter,
+  TF-IDF/MinHash semantic collision auditor, context-aware repository fingerprinter, universal 20-harness
+  transpiler, and JSON-RPC 2.0 stdio Model Context Protocol (MCP) server with a benchmark-verified catalog
+  of Hybrid Executable Skills (SKILL.md + deterministic Python 3.12+ AST/CLI tools + comparative
+  with_skill vs. without_skill TDD evaluations) and Context-Isolated Subagents.
