@@ -13,16 +13,23 @@
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
+import YAML from "yaml";
 import {
   analyzeRepoTokenEconomy,
   auditCatalog,
   auditCatalogTokenBudgets,
   diagnoseRepository,
   discoverSkillDirectories,
+  inspectHarnesses,
   parseSkillDirectory,
 } from "../auditor/index.js";
 import { evaluateCatalog } from "../eval/index.js";
-import { SKILLOPS_VERSION } from "../models.js";
+import {
+  CORE_RUNTIME_TARGETS,
+  RUNTIME_HARNESS_SPECS,
+  type RuntimeTarget,
+  SKILLOPS_VERSION,
+} from "../models.js";
 import { routeRepository } from "../router/index.js";
 
 export interface JsonRpcRequest {
@@ -134,6 +141,18 @@ const MCP_TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: "list_supported_harnesses",
+    description:
+      "Inspect all 20 supported AI coding agents, IDEs, and CLI harnesses (target paths, MCP support, and repository auto-detection).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        repo_path: { type: "string", description: "Target repository root path." },
+      },
+      additionalProperties: false,
+    },
+  },
 ] as const;
 
 export function handleMcpJsonRpcRequest(
@@ -237,6 +256,9 @@ export function handleMcpJsonRpcRequest(
           catalogDir: context.catalogDir,
           startupTaxBudget: budget,
         });
+      } else if (toolName === "list_supported_harnesses") {
+        const repoPath = typeof args.repo_path === "string" ? args.repo_path : context.repoPath;
+        payload = inspectHarnesses(repoPath);
       } else {
         return {
           jsonrpc: "2.0",
@@ -306,4 +328,269 @@ export function startMcpStdioServer(context: McpServerContext): void {
       process.stderr.write(`[skillops-mcp] Parse error: ${msg}\n`);
     }
   });
+}
+
+// ---------------------------------------------------------------------------
+// Universal MCP Server Registration (`npx skillops-cli@latest mcp-setup`)
+// ---------------------------------------------------------------------------
+
+export interface McpSetupOptions {
+  readonly targets?: readonly RuntimeTarget[];
+  readonly dryRun?: boolean;
+  readonly serverName?: string;
+}
+
+export interface McpConfigAction {
+  readonly target: RuntimeTarget;
+  readonly display_name: string;
+  readonly relative_path: string;
+  readonly status: "created" | "updated" | "unchanged" | "unsupported";
+}
+
+export interface McpSetupReport {
+  readonly repo_path: string;
+  readonly dry_run: boolean;
+  readonly targets_requested: readonly RuntimeTarget[];
+  readonly configured_count: number;
+  readonly actions: readonly McpConfigAction[];
+}
+
+function buildUpdatedMcpConfigContent(
+  target: RuntimeTarget,
+  existingRaw: string | null,
+  serverName: string,
+): string {
+  const mcpArgs = ["-y", "skillops-cli@latest", "mcp"];
+
+  if (target === "codex") {
+    const tomlBlock = [
+      `[mcp_servers.${serverName}]`,
+      'command = "npx"',
+      'args = ["-y", "skillops-cli@latest", "mcp"]',
+    ].join("\n");
+
+    if (!existingRaw || !existingRaw.trim()) {
+      return `${tomlBlock}\n`;
+    }
+    const blockRegex = new RegExp(
+      `\\[mcp_servers\\.${serverName}\\][\\s\\S]*?(?=\\r?\\n\\[|$)`,
+    );
+    if (blockRegex.test(existingRaw)) {
+      return `${existingRaw.replace(blockRegex, tomlBlock).trimEnd()}\n`;
+    }
+    return `${existingRaw.trimEnd()}\n\n${tomlBlock}\n`;
+  }
+
+  if (target === "continue") {
+    const doc = {
+      name: "SkillOps MCP Server",
+      version: SKILLOPS_VERSION,
+      schema: "v1",
+      mcpServers: [
+        {
+          name: serverName,
+          command: "npx",
+          args: mcpArgs,
+        },
+      ],
+    };
+    return YAML.stringify(doc);
+  }
+
+  let parsedObj: Record<string, unknown> = {};
+  if (existingRaw && existingRaw.trim()) {
+    try {
+      const loaded = JSON.parse(existingRaw) as unknown;
+      if (loaded && typeof loaded === "object" && !Array.isArray(loaded)) {
+        parsedObj = { ...(loaded as Record<string, unknown>) };
+      }
+    } catch {
+      parsedObj = {};
+    }
+  }
+
+  if (target === "copilot") {
+    const servers =
+      parsedObj.servers &&
+      typeof parsedObj.servers === "object" &&
+      !Array.isArray(parsedObj.servers)
+        ? { ...(parsedObj.servers as Record<string, unknown>) }
+        : {};
+    servers[serverName] = {
+      type: "stdio",
+      command: "npx",
+      args: mcpArgs,
+    };
+    parsedObj.servers = servers;
+    return `${JSON.stringify(parsedObj, null, 2)}\n`;
+  }
+
+  if (target === "zed") {
+    const contextServers =
+      parsedObj.context_servers &&
+      typeof parsedObj.context_servers === "object" &&
+      !Array.isArray(parsedObj.context_servers)
+        ? { ...(parsedObj.context_servers as Record<string, unknown>) }
+        : {};
+    contextServers[serverName] = {
+      command: {
+        path: "npx",
+        args: mcpArgs,
+      },
+    };
+    parsedObj.context_servers = contextServers;
+    return `${JSON.stringify(parsedObj, null, 2)}\n`;
+  }
+
+  if (target === "amp") {
+    const ampServers =
+      parsedObj["amp.mcpServers"] &&
+      typeof parsedObj["amp.mcpServers"] === "object" &&
+      !Array.isArray(parsedObj["amp.mcpServers"])
+        ? { ...(parsedObj["amp.mcpServers"] as Record<string, unknown>) }
+        : {};
+    ampServers[serverName] = {
+      command: "npx",
+      args: mcpArgs,
+    };
+    parsedObj["amp.mcpServers"] = ampServers;
+    return `${JSON.stringify(parsedObj, null, 2)}\n`;
+  }
+
+  if (target === "opencode") {
+    if (!("$schema" in parsedObj)) {
+      parsedObj.$schema = "https://opencode.ai/config.json";
+    }
+    const mcpMap =
+      parsedObj.mcp && typeof parsedObj.mcp === "object" && !Array.isArray(parsedObj.mcp)
+        ? { ...(parsedObj.mcp as Record<string, unknown>) }
+        : {};
+    mcpMap[serverName] = {
+      type: "local",
+      command: ["npx", ...mcpArgs],
+      enabled: true,
+    };
+    parsedObj.mcp = mcpMap;
+    return `${JSON.stringify(parsedObj, null, 2)}\n`;
+  }
+
+  // Standard mcpServers JSON (claude, antigravity, cursor, roocode, kilocode, kiro, amazonq)
+  const mcpServers =
+    parsedObj.mcpServers &&
+    typeof parsedObj.mcpServers === "object" &&
+    !Array.isArray(parsedObj.mcpServers)
+      ? { ...(parsedObj.mcpServers as Record<string, unknown>) }
+      : {};
+  mcpServers[serverName] = {
+    command: "npx",
+    args: mcpArgs,
+  };
+  parsedObj.mcpServers = mcpServers;
+  return `${JSON.stringify(parsedObj, null, 2)}\n`;
+}
+
+/**
+ * Idempotently register the SkillOps stdio MCP server (`npx -y skillops-cli@latest mcp`)
+ * across all requested AI coding agent harnesses that support MCP.
+ */
+export function setupMcpForHarnesses(
+  repoPath: string,
+  options: McpSetupOptions = {},
+): McpSetupReport {
+  const resolvedRepo = path.resolve(repoPath);
+  const targets = options.targets ?? CORE_RUNTIME_TARGETS;
+  const dryRun = options.dryRun ?? false;
+  const serverName = options.serverName ?? "skillops";
+  const actions: McpConfigAction[] = [];
+
+  for (const target of targets) {
+    const spec = RUNTIME_HARNESS_SPECS[target];
+    if (!spec.supportsMcp || !spec.mcpConfigPath) {
+      actions.push({
+        target,
+        display_name: spec.displayName,
+        relative_path: "n/a",
+        status: "unsupported",
+      });
+      continue;
+    }
+
+    const absPath = path.join(resolvedRepo, spec.mcpConfigPath);
+    const exists = fs.existsSync(absPath) && fs.statSync(absPath).isFile();
+    const existingRaw = exists ? fs.readFileSync(absPath, "utf-8") : null;
+    const updatedRaw = buildUpdatedMcpConfigContent(target, existingRaw, serverName);
+
+    let status: "created" | "updated" | "unchanged";
+    if (!exists) {
+      status = "created";
+    } else if (existingRaw === updatedRaw) {
+      status = "unchanged";
+    } else {
+      status = "updated";
+    }
+
+    if (!dryRun && (status === "created" || status === "updated")) {
+      fs.mkdirSync(path.dirname(absPath), { recursive: true });
+      fs.writeFileSync(absPath, updatedRaw, "utf-8");
+    }
+
+    actions.push({
+      target,
+      display_name: spec.displayName,
+      relative_path: spec.mcpConfigPath,
+      status,
+    });
+  }
+
+  const configuredCount = actions.filter((a) => a.status !== "unsupported").length;
+
+  return {
+    repo_path: path.basename(resolvedRepo) || ".",
+    dry_run: dryRun,
+    targets_requested: [...targets],
+    configured_count: configuredCount,
+    actions,
+  };
+}
+
+/**
+ * Format an `McpSetupReport` as a terminal table, Markdown report, or JSON string.
+ */
+export function formatMcpSetupReport(
+  report: McpSetupReport,
+  format: "table" | "json" | "markdown" = "table",
+): string {
+  if (format === "json") {
+    return `${JSON.stringify(report, null, 2)}\n`;
+  }
+
+  if (format === "markdown") {
+    const lines: string[] = [
+      `## SkillOps Universal MCP Server Registration (\`${report.repo_path}\`)`,
+      "",
+      `- **Mode:** \`${report.dry_run ? "DRY-RUN" : "WRITE"}\``,
+      `- **Configured MCP Harnesses:** \`${report.configured_count}/${report.targets_requested.length}\``,
+      "",
+      "| Target | AI Coding Agent / IDE | MCP Config File | Status |",
+      "| :--- | :--- | :--- | :---: |",
+      ...report.actions.map(
+        (a) =>
+          `| \`${a.target}\` | **${a.display_name}** | \`${a.relative_path}\` | \`${a.status.toUpperCase()}\` |`,
+      ),
+      "",
+    ];
+    return lines.join("\n");
+  }
+
+  const lines: string[] = [
+    `=== SkillOps Universal MCP Server Setup [${report.dry_run ? "DRY-RUN" : "WRITE"}] ===`,
+    `Targets Requested : ${report.targets_requested.join(", ")}`,
+    `MCP Harnesses     : ${report.configured_count} configured`,
+    ...report.actions.map(
+      (a) =>
+        `  [${a.status.toUpperCase().padEnd(11)}] ${a.target.padEnd(11)} -> ${a.relative_path} (${a.display_name})`,
+    ),
+    "",
+  ];
+  return lines.join("\n");
 }

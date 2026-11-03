@@ -17,7 +17,11 @@ import {
   inspectHarnesses,
 } from "./auditor/index.js";
 import { evaluateCatalog, formatEvalSummary } from "./eval/index.js";
-import { startMcpStdioServer } from "./mcp/index.js";
+import {
+  formatMcpSetupReport,
+  setupMcpForHarnesses,
+  startMcpStdioServer,
+} from "./mcp/index.js";
 import {
   CORE_RUNTIME_TARGETS,
   ExitCode,
@@ -96,6 +100,7 @@ export function runCli(argv: readonly string[]): number {
         "  sync      Transpile Skills & Subagents across all 20 AI coding agents (Claude, Cursor, Windsurf, etc.)",
         "  eval      Execute zero-API deterministic TDD benchmarks (with_skill vs without_skill)",
         "  mcp       Start native JSON-RPC 2.0 stdio Model Context Protocol server",
+        "  mcp-setup Register SkillOps MCP server across all MCP-compatible AI coding IDEs & agents",
         "",
       ].join("\n"),
     );
@@ -598,6 +603,39 @@ export function runCli(argv: readonly string[]): number {
     );
     const catalogDir = resolveCatalogDir(args, repoPath);
     startMcpStdioServer({ repoPath, catalogDir });
+    return ExitCode.SUCCESS;
+  }
+
+  if (command === "mcp-setup") {
+    const repoIdx = args.indexOf("--repo");
+    const repoPath = path.resolve(
+      repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd(),
+    );
+    const cfgRes = loadSkillOpsConfig(repoPath);
+    if (cfgRes.error) {
+      process.stderr.write(`Invalid .skillops.yml at ${cfgRes.configPath}: ${cfgRes.error}\n`);
+      return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+    }
+    const targetsIdx = args.indexOf("--targets");
+    let targets: RuntimeTarget[];
+    try {
+      targets =
+        targetsIdx !== -1 && args[targetsIdx + 1]
+          ? resolveRuntimeTargets(args[targetsIdx + 1]!, repoPath)
+          : (cfgRes.config?.targets ?? [...CORE_RUNTIME_TARGETS]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`Invalid --targets: ${msg}\n`);
+      return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+    }
+    const dryRun = args.includes("--dry-run");
+    const formatIdx = args.indexOf("--format");
+    const rawFormat = formatIdx !== -1 && args[formatIdx + 1] ? args[formatIdx + 1]! : "table";
+    const format: "table" | "json" | "markdown" =
+      rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
+
+    const report = setupMcpForHarnesses(repoPath, { targets, dryRun });
+    process.stdout.write(formatMcpSetupReport(report, format));
     return ExitCode.SUCCESS;
   }
 

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-11-03
+
+### Added
+- **Universal MCP Server Registration (`npx skillops-cli@latest mcp-setup`) & `v1.2.0` Release (`Sprint 7 / Issue #114`):**
+  - Added `setupMcpForHarnesses` and `formatMcpSetupReport` (`table`, `json`, `markdown`) in [`src/mcp/index.ts`](./src/mcp/index.ts) and wired `npx skillops-cli@latest mcp-setup` (`--targets all|auto|core|<list>`, `--dry-run`) in [`src/cli.ts`](./src/cli.ts) to idempotently register the `skillops` stdio MCP server across all 13 MCP-capable IDEs and CLI agents (`.mcp.json`, `.gemini/settings.json`, `.cursor/mcp.json`, `.codex/config.toml`, `.vscode/mcp.json`, `.roo/mcp.json`, `.kilocode/mcp.json`, `.zed/settings.json`, `.continue/mcpServers/skillops.yaml`, `.amp/settings.json`, `opencode.json`, `.kiro/settings/mcp.json`, `.amazonq/mcp.json`).
+  - Added the `list_supported_harnesses` tool to the JSON-RPC 2.0 `stdio` MCP server in [`src/mcp/index.ts`](./src/mcp/index.ts) and bumped `SKILLOPS_VERSION` / `package.json` to `1.2.0`.
+- **Top-20 Startup Token Tax Analyzer, Doctor Harness Detection & `npx skillops-cli@latest harnesses` (`Sprint 7 / Issue #113`):**
+  - Expanded [`src/auditor/token_economy.ts`](./src/auditor/token_economy.ts) to inspect 22 always-on instruction files across all 20 AI coding agents (`.windsurfrules`, `.clinerules`, `.roorules`, `.kilocoderules`, `.rules`, `CONVENTIONS.md`, `.goosehints`, `.junie/guidelines.md`, `.windsurf/rules/*.md` with `trigger: always_on`, etc.) and 13 MCP configuration formats (JSON, `.codex/config.toml`, `.continue/mcpServers/*.yaml`, `.zed/settings.json`, `opencode.json`).
+  - Added `detected_harnesses` to `DoctorReport`, implemented `inspectHarnesses` and `formatHarnessInspectionReport` in [`src/auditor/doctor.ts`](./src/auditor/doctor.ts), and wired `npx skillops-cli@latest harnesses` (`--format table|json|markdown`).
+- **Native Multi-Harness Transpilers Across `sync`, `add`, `remove`, and `clean` for All 20 AI Agents (`Sprint 7 / Issue #112`):**
+  - Expanded [`src/sync/adapters.ts`](./src/sync/adapters.ts) to transpile Hybrid Executable Skills (`SKILL.md` + `scripts/*.py`) and Context-Isolated Subagents into the native progressive-disclosure or scoped rule formats of all 20 AI coding agents (Windsurf `trigger: model_decision`, Cline/Roo/Kilo/Continue/Trae/AmazonQ `globs`, Kiro `inclusion: fileMatch`, OpenHands `triggers`, and managed index blocks in `AGENTS.md`, `CONVENTIONS.md`, `.rules`, `.goosehints`, and `.junie/guidelines.md`).
+  - Added `--targets all|auto|core|<comma-separated>` resolution in [`src/cli.ts`](./src/cli.ts) and generalized `stripSkillOpsManagedBlock` for clean uninstalls across all 5 index-file harnesses.
+- **Universal Top-20 `RuntimeTarget` Registry & Auto-Detection Matrix (`Sprint 7 / Issue #111`):**
+  - Expanded `RuntimeTargetSchema` in [`src/models.ts`](./src/models.ts) from 5 to 20 AI coding agents (`claude`, `antigravity`, `cursor`, `codex`, `copilot`, `windsurf`, `cline`, `roocode`, `kilocode`, `zed`, `continue`, `aider`, `openhands`, `amp`, `opencode`, `goose`, `kiro`, `trae`, `junie`, `amazonq`) and added `RUNTIME_HARNESS_SPECS`, `detectInstalledHarnesses(repoPath)`, and `resolveTargetRuntimes(spec, repoPath)`.
+
+---
+
 ## [1.1.0] - 2026-11-03
 
 ### Added

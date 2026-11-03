@@ -4,17 +4,21 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  ALL_RUNTIME_TARGETS,
   ExitCode,
+  SKILLOPS_VERSION,
   analyzeRepoTokenEconomy,
   diagnoseRepository,
   evaluateCatalog,
   formatDoctorReport,
   formatEvalSummary,
   formatHarnessInspectionReport,
+  formatMcpSetupReport,
   formatTokenEconomyReport,
   handleMcpJsonRpcRequest,
   inspectHarnesses,
   loadSkillOpsConfig,
+  setupMcpForHarnesses,
 } from "../src/index.js";
 import { runCli } from "../src/cli.js";
 
@@ -453,6 +457,90 @@ describe("SkillOps NPX Complete CLI, Deterministic Eval Runner & Stdio MCP Serve
       expect(
         runCli(["node", "cli.js", "harnesses", "--repo", tmpRepo, "--format", "json"]),
       ).toBe(ExitCode.SUCCESS);
+    } finally {
+      fs.rmSync(tmpRepo, { recursive: true, force: true });
+    }
+  });
+
+  it("idempotently configures MCP server across all 13 MCP-capable harnesses via 'skillops mcp-setup' and exposes list_supported_harnesses MCP tool (Issue #114)", () => {
+    expect(SKILLOPS_VERSION).toBe("1.2.0");
+    const tmpRepo = fs.mkdtempSync(path.join(os.tmpdir(), "skillops-mcp-setup-"));
+    try {
+      // Dry-run across all 20 targets should not write files
+      const dryRunReport = setupMcpForHarnesses(tmpRepo, {
+        targets: [...ALL_RUNTIME_TARGETS],
+        dryRun: true,
+      });
+      expect(dryRunReport.dry_run).toBe(true);
+      expect(dryRunReport.configured_count).toBe(13);
+      expect(dryRunReport.actions.filter((a) => a.status === "unsupported")).toHaveLength(7);
+      expect(fs.existsSync(path.join(tmpRepo, ".mcp.json"))).toBe(false);
+
+      // Actual run across all 20 targets creates all 13 MCP config files
+      const firstReport = setupMcpForHarnesses(tmpRepo, {
+        targets: [...ALL_RUNTIME_TARGETS],
+        dryRun: false,
+      });
+      expect(firstReport.configured_count).toBe(13);
+      expect(firstReport.actions.filter((a) => a.status === "created")).toHaveLength(13);
+      expect(fs.existsSync(path.join(tmpRepo, ".mcp.json"))).toBe(true);
+      expect(fs.existsSync(path.join(tmpRepo, ".vscode", "mcp.json"))).toBe(true);
+      expect(fs.existsSync(path.join(tmpRepo, ".codex", "config.toml"))).toBe(true);
+      expect(fs.existsSync(path.join(tmpRepo, ".zed", "settings.json"))).toBe(true);
+      expect(fs.existsSync(path.join(tmpRepo, ".continue", "mcpServers", "skillops.yaml"))).toBe(
+        true,
+      );
+      expect(fs.existsSync(path.join(tmpRepo, "opencode.json"))).toBe(true);
+
+      // Second run should be 100% idempotent ("unchanged")
+      const secondReport = setupMcpForHarnesses(tmpRepo, {
+        targets: [...ALL_RUNTIME_TARGETS],
+        dryRun: false,
+      });
+      expect(secondReport.configured_count).toBe(13);
+      expect(secondReport.actions.filter((a) => a.status === "unchanged")).toHaveLength(13);
+      expect(formatMcpSetupReport(secondReport, "markdown")).toContain(
+        "SkillOps Universal MCP Server Registration",
+      );
+      expect(formatMcpSetupReport(secondReport, "table")).toContain("claude");
+
+      // CLI invocation test
+      expect(
+        runCli([
+          "node",
+          "cli.js",
+          "mcp-setup",
+          "--repo",
+          tmpRepo,
+          "--targets",
+          "all",
+          "--format",
+          "table",
+        ]),
+      ).toBe(ExitCode.SUCCESS);
+
+      // MCP list_supported_harnesses tool test
+      const mcpHarnessesRes = handleMcpJsonRpcRequest(
+        {
+          jsonrpc: "2.0",
+          id: 114,
+          method: "tools/call",
+          params: {
+            name: "list_supported_harnesses",
+            arguments: { repo_path: tmpRepo },
+          },
+        },
+        { repoPath: tmpRepo, catalogDir: CATALOG_ROOT },
+      );
+      const mcpText = (
+        mcpHarnessesRes!.result as { content: Array<{ type: string; text: string }> }
+      ).content[0]!.text;
+      const mcpPayload = JSON.parse(mcpText) as {
+        total_supported: number;
+        detected_harnesses: string[];
+      };
+      expect(mcpPayload.total_supported).toBe(20);
+      expect(mcpPayload.detected_harnesses.length).toBeGreaterThanOrEqual(10);
     } finally {
       fs.rmSync(tmpRepo, { recursive: true, force: true });
     }
