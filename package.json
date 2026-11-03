@@ -1,7 +1,7 @@
 {
   "name": "skillops-cli",
-  "version": "1.2.1",
-  "description": "SkillOps — The Zero-API NPX Engine & Benchmark-Verified Library of High-End AI Coding Agent Skills & Context-Isolated Subagents with Universal Top-20 AI Agent Transpilation & Token Economy Auditing.",
+  "version": "1.3.0",
+  "description": "SkillOps — The Zero-API Framework & Benchmark-Verified Library for High-End AI Coding Skills & Context-Isolated Subagents with Universal Top-20 AI Agent Transpilation & Token Economy Auditing.",
   "type": "module",
   "license": "MIT",
   "author": "OdevMatheus <matheusvita007@gmail.com>",
