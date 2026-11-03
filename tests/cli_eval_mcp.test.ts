@@ -8,6 +8,7 @@ import {
   evaluateCatalog,
   formatEvalSummary,
   handleMcpJsonRpcRequest,
+  loadSkillOpsConfig,
 } from "../src/index.js";
 import { runCli } from "../src/cli.js";
 
@@ -157,6 +158,73 @@ describe("SkillOps NPX Complete CLI, Deterministic Eval Runner & Stdio MCP Serve
         ]),
       ).toBe(ExitCode.SUCCESS);
       expect(fs.existsSync(htmlReportPath)).toBe(true);
+    } finally {
+      fs.rmSync(tmpRepo, { recursive: true, force: true });
+    }
+  });
+
+  it("auto-loads and validates .skillops.yml across CLI commands with CLI flag precedence (Issue #102)", () => {
+    const tmpRepo = fs.mkdtempSync(path.join(os.tmpdir(), "skillops-cfg-test-"));
+    try {
+      expect(
+        runCli([
+          "node",
+          "cli.js",
+          "init",
+          "--repo",
+          tmpRepo,
+          "--catalog",
+          CATALOG_ROOT,
+        ]),
+      ).toBe(ExitCode.SUCCESS);
+
+      const loaded = loadSkillOpsConfig(tmpRepo);
+      expect(loaded.exists).toBe(true);
+      expect(loaded.error).toBeNull();
+      expect(loaded.config).not.toBeNull();
+      expect(loaded.config!.token_economy.startup_tax_budget).toBe(2500);
+
+      // Customize .skillops.yml to only target "claude" and max_active_skills: 2
+      fs.writeFileSync(
+        path.join(tmpRepo, ".skillops.yml"),
+        [
+          'version: "1.0"',
+          `catalog_dir: "${CATALOG_ROOT.replace(/\\/g, "/")}"`,
+          "token_economy:",
+          "  startup_tax_budget: 1800",
+          "  max_active_skills: 2",
+          "  max_l1_tokens: 900",
+          "  max_similarity: 0.78",
+          "detected_stack:",
+          "  languages: [typescript]",
+          "  frameworks: []",
+          "targets:",
+          "  - claude",
+          "",
+        ].join("\n"),
+        "utf-8",
+      );
+
+      // Run sync without --targets or --catalog; should auto-load from .skillops.yml
+      expect(runCli(["node", "cli.js", "sync", "--repo", tmpRepo])).toBe(ExitCode.SUCCESS);
+      const lockRaw = JSON.parse(
+        fs.readFileSync(path.join(tmpRepo, ".skillops-lock.json"), "utf-8"),
+      ) as {
+        targets: string[];
+        selected_skills: string[];
+      };
+      expect(lockRaw.targets).toEqual(["claude"]);
+      expect(lockRaw.selected_skills.length).toBeLessThanOrEqual(2);
+
+      // Corrupt .skillops.yml and verify BUDGET_OR_CONTRACT_ERROR exit code
+      fs.writeFileSync(
+        path.join(tmpRepo, ".skillops.yml"),
+        "version: 1.0\ntargets: [invalid_runtime]\n",
+        "utf-8",
+      );
+      expect(runCli(["node", "cli.js", "tokens", "--repo", tmpRepo])).toBe(
+        ExitCode.BUDGET_OR_CONTRACT_ERROR,
+      );
     } finally {
       fs.rmSync(tmpRepo, { recursive: true, force: true });
     }

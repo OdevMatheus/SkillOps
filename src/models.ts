@@ -571,3 +571,86 @@ export const SyncReportSchema = z
   })
   .strict();
 export type SyncReport = z.infer<typeof SyncReportSchema>;
+
+// ---------------------------------------------------------------------------
+// 6. Declarative Workspace Configuration (.skillops.yml — Issue #102)
+// ---------------------------------------------------------------------------
+
+export const SkillOpsTokenEconomyConfigSchema = z
+  .object({
+    startup_tax_budget: z.number().int().min(100).default(2500),
+    max_active_skills: z.number().int().min(1).max(12).default(12),
+    max_l1_tokens: z.number().int().min(40).default(1500),
+    max_similarity: z.number().min(0.1).max(0.99).default(0.78),
+  })
+  .strict();
+export type SkillOpsTokenEconomyConfig = z.infer<typeof SkillOpsTokenEconomyConfigSchema>;
+
+export const SkillOpsDetectedStackConfigSchema = z
+  .object({
+    languages: z.array(z.string()).default([]),
+    frameworks: z.array(z.string()).default([]),
+  })
+  .strict();
+export type SkillOpsDetectedStackConfig = z.infer<typeof SkillOpsDetectedStackConfigSchema>;
+
+export const SkillOpsConfigSchema = z
+  .object({
+    version: z.string().min(1).default("1.0"),
+    catalog_dir: z.string().min(1).default("catalog"),
+    token_economy: SkillOpsTokenEconomyConfigSchema.default({
+      startup_tax_budget: 2500,
+      max_active_skills: 12,
+      max_l1_tokens: 1500,
+      max_similarity: 0.78,
+    }),
+    detected_stack: SkillOpsDetectedStackConfigSchema.default({
+      languages: [],
+      frameworks: [],
+    }),
+    targets: z.array(RuntimeTargetSchema).min(1).default([...ALL_RUNTIME_TARGETS]),
+  })
+  .strict();
+export type SkillOpsConfig = z.infer<typeof SkillOpsConfigSchema>;
+
+export interface LoadedSkillOpsConfigResult {
+  readonly config: SkillOpsConfig | null;
+  readonly configPath: string;
+  readonly exists: boolean;
+  readonly error: string | null;
+}
+
+/**
+ * Load and validate `.skillops.yml` from a repository root if present.
+ */
+export function loadSkillOpsConfig(repoPath: string): LoadedSkillOpsConfigResult {
+  const configPath = `${repoPath.replace(/\\/g, "/").replace(/\/+$/, "")}/.skillops.yml`;
+  if (!fs.existsSync(configPath) || !fs.statSync(configPath).isFile()) {
+    return {
+      config: null,
+      configPath,
+      exists: false,
+      error: null,
+    };
+  }
+
+  try {
+    const rawYaml = fs.readFileSync(configPath, "utf-8");
+    const parsedYaml: unknown = YAML.parse(rawYaml);
+    const validated = SkillOpsConfigSchema.parse(parsedYaml);
+    return {
+      config: validated,
+      configPath,
+      exists: true,
+      error: null,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      config: null,
+      configPath,
+      exists: true,
+      error: message,
+    };
+  }
+}

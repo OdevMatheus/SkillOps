@@ -19,6 +19,9 @@ import {
   ExitCode,
   type RuntimeTarget,
   SKILLOPS_VERSION,
+  type SkillOpsConfig,
+  SkillOpsConfigSchema,
+  loadSkillOpsConfig,
 } from "./models.js";
 import {
   fingerprintRepository,
@@ -29,10 +32,21 @@ import { addSkillOrSubagent, formatSyncReport, syncRepository } from "./sync/ind
 
 const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-function resolveCatalogDir(args: readonly string[], repoPath?: string): string {
+function resolveCatalogDir(
+  args: readonly string[],
+  repoPath?: string,
+  loadedConfig?: SkillOpsConfig | null,
+): string {
   const catalogIdx = args.indexOf("--catalog");
   if (catalogIdx !== -1 && args[catalogIdx + 1]) {
     return path.resolve(args[catalogIdx + 1]!);
+  }
+  const baseRepo = repoPath ? path.resolve(repoPath) : process.cwd();
+  if (loadedConfig?.catalog_dir) {
+    const cfgCatalog = path.resolve(baseRepo, loadedConfig.catalog_dir);
+    if (fs.existsSync(cfgCatalog)) {
+      return cfgCatalog;
+    }
   }
   if (repoPath) {
     const repoCatalog = path.join(path.resolve(repoPath), "catalog");
@@ -87,7 +101,7 @@ export function runCli(argv: readonly string[]): number {
     const catalogDir = resolveCatalogDir(args, repoPath);
     const profile = fingerprintRepository(repoPath);
 
-    const configPayload = {
+    const configPayload = SkillOpsConfigSchema.parse({
       version: "1.0",
       catalog_dir: path.relative(repoPath, catalogDir).replace(/\\/g, "/") || "catalog",
       token_economy: {
@@ -101,7 +115,7 @@ export function runCli(argv: readonly string[]): number {
         frameworks: profile.frameworks,
       },
       targets: [...ALL_RUNTIME_TARGETS],
-    };
+    });
 
     const configPath = path.join(repoPath, ".skillops.yml");
     fs.mkdirSync(repoPath, { recursive: true });
@@ -113,7 +127,15 @@ export function runCli(argv: readonly string[]): number {
   }
 
   if (command === "list") {
-    const catalogDir = resolveCatalogDir(args);
+    const repoIdx = args.indexOf("--repo");
+    const repoPath =
+      repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd();
+    const cfgRes = loadSkillOpsConfig(repoPath);
+    if (cfgRes.error) {
+      process.stderr.write(`Invalid .skillops.yml at ${cfgRes.configPath}: ${cfgRes.error}\n`);
+      return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+    }
+    const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
     const formatIdx = args.indexOf("--format");
     const rawFormat = formatIdx !== -1 && args[formatIdx + 1] ? args[formatIdx + 1]! : "table";
     const summary = auditCatalogTokenBudgets(catalogDir, { requireLayout: false });
@@ -173,7 +195,15 @@ export function runCli(argv: readonly string[]): number {
   }
 
   if (command === "audit") {
-    const catalogDir = resolveCatalogDir(args);
+    const repoIdx = args.indexOf("--repo");
+    const repoPath =
+      repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd();
+    const cfgRes = loadSkillOpsConfig(repoPath);
+    if (cfgRes.error) {
+      process.stderr.write(`Invalid .skillops.yml at ${cfgRes.configPath}: ${cfgRes.error}\n`);
+      return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+    }
+    const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
     const strict = args.includes("--strict");
     const requireLayout = args.includes("--require-layout");
     const formatIdx = args.indexOf("--format");
@@ -216,12 +246,17 @@ export function runCli(argv: readonly string[]): number {
     const repoIdx = args.indexOf("--repo");
     const repoPath =
       repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd();
-    const catalogDir = resolveCatalogDir(args, repoPath);
+    const cfgRes = loadSkillOpsConfig(repoPath);
+    if (cfgRes.error) {
+      process.stderr.write(`Invalid .skillops.yml at ${cfgRes.configPath}: ${cfgRes.error}\n`);
+      return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+    }
+    const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
     const budgetIdx = args.indexOf("--budget");
     const startupTaxBudget =
       budgetIdx !== -1 && args[budgetIdx + 1]
         ? Number.parseInt(args[budgetIdx + 1]!, 10)
-        : 2500;
+        : (cfgRes.config?.token_economy.startup_tax_budget ?? 2500);
     const formatIdx = args.indexOf("--format");
     const rawFormat = formatIdx !== -1 && args[formatIdx + 1] ? args[formatIdx + 1]! : "table";
     const format: "table" | "json" | "markdown" =
@@ -244,15 +279,40 @@ export function runCli(argv: readonly string[]): number {
     const repoIdx = args.indexOf("--repo");
     const repoPath =
       repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd();
-    const catalogDir = resolveCatalogDir(args, repoPath);
+    const cfgRes = loadSkillOpsConfig(repoPath);
+    if (cfgRes.error) {
+      process.stderr.write(`Invalid .skillops.yml at ${cfgRes.configPath}: ${cfgRes.error}\n`);
+      return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+    }
+    const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
     const taskIdx = args.indexOf("--task");
     const taskPrompt = taskIdx !== -1 && args[taskIdx + 1] ? args[taskIdx + 1]! : "";
+    const maxSkillsIdx = args.indexOf("--max-skills");
+    const maxSkills =
+      maxSkillsIdx !== -1 && args[maxSkillsIdx + 1]
+        ? Number.parseInt(args[maxSkillsIdx + 1]!, 10)
+        : (cfgRes.config?.token_economy.max_active_skills ?? 12);
+    const maxL1Idx = args.indexOf("--max-l1-tokens");
+    const maxL1Tokens =
+      maxL1Idx !== -1 && args[maxL1Idx + 1]
+        ? Number.parseInt(args[maxL1Idx + 1]!, 10)
+        : (cfgRes.config?.token_economy.max_l1_tokens ?? 1500);
+    const maxSimIdx = args.indexOf("--max-similarity");
+    const maxSimilarity =
+      maxSimIdx !== -1 && args[maxSimIdx + 1]
+        ? Number.parseFloat(args[maxSimIdx + 1]!)
+        : (cfgRes.config?.token_economy.max_similarity ?? 0.78);
     const formatIdx = args.indexOf("--format");
     const rawFormat = formatIdx !== -1 && args[formatIdx + 1] ? args[formatIdx + 1]! : "table";
     const format: "table" | "json" | "markdown" =
       rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
 
-    const bundle = routeRepository(repoPath, catalogDir, { taskPrompt });
+    const bundle = routeRepository(repoPath, catalogDir, {
+      taskPrompt,
+      maxSkills,
+      maxL1Tokens,
+      maxSimilarity,
+    });
     process.stdout.write(formatRoutedBundle(bundle, format));
     return bundle.passed_invariants ? ExitCode.SUCCESS : ExitCode.ERROR;
   }
@@ -261,7 +321,12 @@ export function runCli(argv: readonly string[]): number {
     const repoIdx = args.indexOf("--repo");
     const repoPath =
       repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd();
-    const catalogDir = resolveCatalogDir(args, repoPath);
+    const cfgRes = loadSkillOpsConfig(repoPath);
+    if (cfgRes.error) {
+      process.stderr.write(`Invalid .skillops.yml at ${cfgRes.configPath}: ${cfgRes.error}\n`);
+      return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+    }
+    const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
     const targetsIdx = args.indexOf("--targets");
     const rawTargets =
       targetsIdx !== -1 && args[targetsIdx + 1]
@@ -269,7 +334,7 @@ export function runCli(argv: readonly string[]): number {
             .split(",")
             .map((t) => t.trim())
             .filter(Boolean)
-        : [...ALL_RUNTIME_TARGETS];
+        : (cfgRes.config?.targets ?? [...ALL_RUNTIME_TARGETS]);
     const targets = rawTargets as RuntimeTarget[];
     const dryRun = args.includes("--dry-run");
     const force = args.includes("--force");
@@ -278,7 +343,14 @@ export function runCli(argv: readonly string[]): number {
     const format: "table" | "json" | "markdown" =
       rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
 
-    const report = syncRepository(repoPath, catalogDir, { targets, dryRun, force });
+    const report = syncRepository(repoPath, catalogDir, {
+      targets,
+      dryRun,
+      force,
+      maxSkills: cfgRes.config?.token_economy.max_active_skills,
+      maxL1Tokens: cfgRes.config?.token_economy.max_l1_tokens,
+      maxSimilarity: cfgRes.config?.token_economy.max_similarity,
+    });
     process.stdout.write(formatSyncReport(report, format));
     return report.passed ? ExitCode.SUCCESS : ExitCode.ERROR;
   }
@@ -292,7 +364,12 @@ export function runCli(argv: readonly string[]): number {
     const repoIdx = args.indexOf("--repo");
     const repoPath =
       repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd();
-    const catalogDir = resolveCatalogDir(args, repoPath);
+    const cfgRes = loadSkillOpsConfig(repoPath);
+    if (cfgRes.error) {
+      process.stderr.write(`Invalid .skillops.yml at ${cfgRes.configPath}: ${cfgRes.error}\n`);
+      return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+    }
+    const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
     const targetsIdx = args.indexOf("--targets");
     const rawTargets =
       targetsIdx !== -1 && args[targetsIdx + 1]
@@ -300,7 +377,7 @@ export function runCli(argv: readonly string[]): number {
             .split(",")
             .map((t) => t.trim())
             .filter(Boolean)
-        : [...ALL_RUNTIME_TARGETS];
+        : (cfgRes.config?.targets ?? [...ALL_RUNTIME_TARGETS]);
     const targets = rawTargets as RuntimeTarget[];
     const dryRun = args.includes("--dry-run");
     const force = args.includes("--force");
