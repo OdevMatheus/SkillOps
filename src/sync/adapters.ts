@@ -26,6 +26,8 @@ import {
 } from "../auditor/parser.js";
 import {
   ALL_RUNTIME_TARGETS,
+  CORE_RUNTIME_TARGETS,
+  RUNTIME_HARNESS_SPECS,
   type RoutedBundle,
   type RuntimeTarget,
   SKILLOPS_VERSION,
@@ -75,20 +77,21 @@ export function computeSha256(content: string): string {
   return crypto.createHash("sha256").update(content, "utf-8").digest("hex");
 }
 
-function renderSkillFilesForRuntime(
+export function renderSkillFilesForRuntime(
   parsed: ParsedSkillDirectory,
   target: RuntimeTarget,
 ): PlannedFile[] {
   const name = parsed.manifest.name;
+  const spec = RUNTIME_HARNESS_SPECS[target];
   const files: PlannedFile[] = [];
+  const globs =
+    parsed.manifest.routing_signals.files_any.length > 0
+      ? parsed.manifest.routing_signals.files_any
+      : ["**/*"];
+  const body = parsed.markdownBody.trim();
 
-  if (target === "claude" || target === "antigravity" || target === "codex") {
-    const baseDir =
-      target === "claude"
-        ? `.claude/skills/${name}`
-        : target === "antigravity"
-          ? `.agent/skills/${name}`
-          : `.codex/skills/${name}`;
+  if (spec.skillFormat === "progressive-skill-dir") {
+    const baseDir = `${spec.skillsDir}/${name}`;
 
     files.push({
       target,
@@ -120,60 +123,122 @@ function renderSkillFilesForRuntime(
   }
 
   if (target === "cursor") {
-    const globs =
-      parsed.manifest.routing_signals.files_any.length > 0
-        ? parsed.manifest.routing_signals.files_any
-        : ["**/*"];
     const mdcFrontmatter = YAML.stringify({
       description: parsed.manifest.description,
       globs,
       alwaysApply: false,
     }).trim();
-    const mdcContent = `---\n${mdcFrontmatter}\n---\n\n${parsed.markdownBody.trim()}\n`;
     files.push({
       target,
       itemName: name,
       relativePath: `.cursor/rules/skillops-${name}.mdc`,
-      content: mdcContent,
+      content: `---\n${mdcFrontmatter}\n---\n\n${body}\n`,
     });
     return files;
   }
 
-  // target === "copilot"
-  const applyTo =
-    parsed.manifest.routing_signals.files_any.length > 0
-      ? parsed.manifest.routing_signals.files_any.join(",")
-      : "**";
-  const instrFrontmatter = YAML.stringify({
-    applyTo,
-    description: parsed.manifest.description,
-  }).trim();
-  files.push({
-    target,
-    itemName: name,
-    relativePath: `.github/instructions/skillops-${name}.instructions.md`,
-    content: `---\n${instrFrontmatter}\n---\n\n${parsed.markdownBody.trim()}\n`,
-  });
+  if (target === "copilot") {
+    const applyTo =
+      parsed.manifest.routing_signals.files_any.length > 0
+        ? parsed.manifest.routing_signals.files_any.join(",")
+        : "**";
+    const instrFrontmatter = YAML.stringify({
+      applyTo,
+      description: parsed.manifest.description,
+    }).trim();
+    files.push({
+      target,
+      itemName: name,
+      relativePath: `.github/instructions/skillops-${name}.instructions.md`,
+      content: `---\n${instrFrontmatter}\n---\n\n${body}\n`,
+    });
 
-  const promptFrontmatter = YAML.stringify({
-    mode: "agent",
+    const promptFrontmatter = YAML.stringify({
+      mode: "agent",
+      description: parsed.manifest.description,
+    }).trim();
+    files.push({
+      target,
+      itemName: name,
+      relativePath: `.github/prompts/skillops-${name}.prompt.md`,
+      content: `---\n${promptFrontmatter}\n---\n\n${body}\n`,
+    });
+    return files;
+  }
+
+  if (target === "windsurf") {
+    const wsFrontmatter = YAML.stringify({
+      trigger: "model_decision",
+      description: parsed.manifest.description,
+      globs,
+    }).trim();
+    files.push({
+      target,
+      itemName: name,
+      relativePath: `.windsurf/rules/skillops-${name}.md`,
+      content: `---\n${wsFrontmatter}\n---\n\n${body}\n`,
+    });
+    return files;
+  }
+
+  if (target === "openhands") {
+    const ohFrontmatter = YAML.stringify({
+      name,
+      type: "knowledge",
+      version: parsed.manifest.version,
+      agent: "CodeActAgent",
+      triggers: parsed.manifest.tags,
+    }).trim();
+    files.push({
+      target,
+      itemName: name,
+      relativePath: `.openhands/microagents/skillops-${name}.md`,
+      content: `---\n${ohFrontmatter}\n---\n\n${body}\n`,
+    });
+    return files;
+  }
+
+  if (target === "kiro") {
+    const kiroFrontmatter = YAML.stringify({
+      inclusion: "fileMatch",
+      fileMatchPattern: globs[0] ?? "**/*",
+      description: parsed.manifest.description,
+    }).trim();
+    files.push({
+      target,
+      itemName: name,
+      relativePath: `.kiro/steering/skillops-${name}.md`,
+      content: `---\n${kiroFrontmatter}\n---\n\n${body}\n`,
+    });
+    return files;
+  }
+
+  // Remaining markdown-rule harnesses: cline, roocode, kilocode, zed, continue, aider, trae, amazonq, junie
+  const ruleFrontmatter = YAML.stringify({
+    name,
     description: parsed.manifest.description,
+    track: parsed.manifest.track,
+    tags: parsed.manifest.tags,
+    globs,
+    alwaysApply: false,
   }).trim();
   files.push({
     target,
     itemName: name,
-    relativePath: `.github/prompts/skillops-${name}.prompt.md`,
-    content: `---\n${promptFrontmatter}\n---\n\n${parsed.markdownBody.trim()}\n`,
+    relativePath: `${spec.skillsDir}/skillops-${name}.md`,
+    content: `---\n${ruleFrontmatter}\n---\n\n${body}\n`,
   });
 
   return files;
 }
 
-function renderSubagentFilesForRuntime(
+export function renderSubagentFilesForRuntime(
   subagent: ParsedSubagentFile,
   target: RuntimeTarget,
 ): PlannedFile[] {
   const name = subagent.manifest.name;
+  const spec = RUNTIME_HARNESS_SPECS[target];
+  const promptBody = subagent.systemPromptBody.trim();
   const fm = YAML.stringify({
     name: subagent.manifest.name,
     description: subagent.manifest.description,
@@ -181,28 +246,37 @@ function renderSubagentFilesForRuntime(
     tools: subagent.manifest.tools,
     max_output_tokens: subagent.manifest.max_output_tokens,
   }).trim();
-  const normalizedDoc = `---\n${fm}\n---\n\n${subagent.systemPromptBody.trim()}\n`;
+  const normalizedDoc = `---\n${fm}\n---\n\n${promptBody}\n`;
 
-  if (target === "claude") {
+  if (
+    target === "claude" ||
+    target === "antigravity" ||
+    target === "codex" ||
+    target === "amp" ||
+    target === "goose" ||
+    target === "opencode"
+  ) {
     return [
       {
         target,
         itemName: name,
-        relativePath: `.claude/agents/${name}.md`,
+        relativePath: `${spec.subagentsDir}/${name}.md`,
         content: normalizedDoc,
       },
     ];
   }
-  if (target === "antigravity") {
+
+  if (target === "copilot") {
     return [
       {
         target,
         itemName: name,
-        relativePath: `.agent/agents/${name}.md`,
+        relativePath: `.github/agents/${name}.agent.md`,
         content: normalizedDoc,
       },
     ];
   }
+
   if (target === "cursor") {
     const mdcFm = YAML.stringify({
       description: `[Subagent: ${name}] ${subagent.manifest.description}`,
@@ -213,27 +287,69 @@ function renderSubagentFilesForRuntime(
         target,
         itemName: name,
         relativePath: `.cursor/rules/skillops-agent-${name}.mdc`,
-        content: `---\n${mdcFm}\n---\n\n${subagent.systemPromptBody.trim()}\n`,
-      },
-    ];
-  }
-  if (target === "codex") {
-    return [
-      {
-        target,
-        itemName: name,
-        relativePath: `.codex/agents/${name}.md`,
-        content: normalizedDoc,
+        content: `---\n${mdcFm}\n---\n\n${promptBody}\n`,
       },
     ];
   }
 
-  // target === "copilot"
+  if (target === "continue") {
+    const contFm = YAML.stringify({
+      name,
+      description: subagent.manifest.description,
+      invokable: true,
+    }).trim();
+    return [
+      {
+        target,
+        itemName: name,
+        relativePath: `.continue/prompts/skillops-agent-${name}.prompt`,
+        content: `---\n${contFm}\n---\n\n${promptBody}\n`,
+      },
+    ];
+  }
+
+  if (target === "openhands") {
+    const ohFm = YAML.stringify({
+      name: `agent-${name}`,
+      type: "knowledge",
+      version: "1.0.0",
+      agent: "CodeActAgent",
+      triggers: [name, ...subagent.manifest.tags],
+    }).trim();
+    return [
+      {
+        target,
+        itemName: name,
+        relativePath: `.openhands/microagents/skillops-agent-${name}.md`,
+        content: `---\n${ohFm}\n---\n\n${promptBody}\n`,
+      },
+    ];
+  }
+
+  if (target === "amazonq") {
+    const qPayload = {
+      name,
+      description: subagent.manifest.description,
+      prompt: promptBody,
+      tools: subagent.manifest.tools,
+      max_output_tokens: subagent.manifest.max_output_tokens,
+    };
+    return [
+      {
+        target,
+        itemName: name,
+        relativePath: `.amazonq/cli-agents/skillops-agent-${name}.json`,
+        content: `${JSON.stringify(qPayload, null, 2)}\n`,
+      },
+    ];
+  }
+
+  // Remaining harnesses: windsurf, cline, roocode, kilocode, zed, aider, kiro, trae, junie
   return [
     {
       target,
       itemName: name,
-      relativePath: `.github/agents/${name}.agent.md`,
+      relativePath: `${spec.subagentsDir}/skillops-agent-${name}.md`,
       content: normalizedDoc,
     },
   ];
@@ -426,7 +542,7 @@ export function syncRepository(
 ): SyncReport {
   const resolvedRepo = path.resolve(repoPath);
   const resolvedCatalog = path.resolve(catalogDir);
-  const targets = options.targets?.length ? options.targets : ALL_RUNTIME_TARGETS;
+  const targets = options.targets?.length ? options.targets : CORE_RUNTIME_TARGETS;
   const dryRun = options.dryRun ?? false;
   const force = options.force ?? false;
 
@@ -492,7 +608,7 @@ export function addSkillOrSubagent(
 ): SyncReport {
   const resolvedRepo = path.resolve(repoPath);
   const resolvedCatalog = path.resolve(catalogDir);
-  const targets = options.targets?.length ? options.targets : ALL_RUNTIME_TARGETS;
+  const targets = options.targets?.length ? options.targets : CORE_RUNTIME_TARGETS;
   const dryRun = options.dryRun ?? false;
   const force = options.force ?? false;
 

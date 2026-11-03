@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  ALL_RUNTIME_TARGETS,
   ExitCode,
   addSkillOrSubagent,
   cleanSyncedArtifacts,
@@ -255,6 +256,121 @@ describe("SkillOps NPX Router & Multi-Runtime Subagent/Skill Transpiler (Issue #
       ).toBe(ExitCode.SUCCESS);
       expect(fs.existsSync(path.join(tmpRepo, ".skillops-lock.json"))).toBe(false);
       expect(fs.existsSync(remainingFile)).toBe(false);
+    } finally {
+      fs.rmSync(tmpRepo, { recursive: true, force: true });
+    }
+  });
+
+  it("transpiles Skills and Subagents natively across all Top 20 AI coding agents (--targets all & --targets auto) (Issue #112)", () => {
+    const tmpRepo = fs.mkdtempSync(path.join(os.tmpdir(), "skillops-top20-sync-"));
+    try {
+      expect(
+        runCli([
+          "node",
+          "cli.js",
+          "add",
+          "mcp-architect",
+          "--repo",
+          tmpRepo,
+          "--catalog",
+          CATALOG_ROOT,
+          "--targets",
+          "all",
+        ]),
+      ).toBe(ExitCode.SUCCESS);
+
+      expect(
+        runCli([
+          "node",
+          "cli.js",
+          "add",
+          "context-scout",
+          "--repo",
+          tmpRepo,
+          "--catalog",
+          CATALOG_ROOT,
+          "--targets",
+          "all",
+        ]),
+      ).toBe(ExitCode.SUCCESS);
+
+      // Verify all 20 AI coding agent skill artifacts on disk
+      const expectedSkillPaths = [
+        ".claude/skills/mcp-architect/SKILL.md",
+        ".agent/skills/mcp-architect/SKILL.md",
+        ".cursor/rules/skillops-mcp-architect.mdc",
+        ".codex/skills/mcp-architect/SKILL.md",
+        ".github/instructions/skillops-mcp-architect.instructions.md",
+        ".github/prompts/skillops-mcp-architect.prompt.md",
+        ".windsurf/rules/skillops-mcp-architect.md",
+        ".clinerules/skillops-mcp-architect.md",
+        ".roo/rules/skillops-mcp-architect.md",
+        ".kilocode/rules/skillops-mcp-architect.md",
+        ".zed/rules/skillops-mcp-architect.md",
+        ".continue/rules/skillops-mcp-architect.md",
+        ".aider/conventions/skillops-mcp-architect.md",
+        ".openhands/microagents/skillops-mcp-architect.md",
+        ".amp/skills/mcp-architect/SKILL.md",
+        ".goose/skills/mcp-architect/SKILL.md",
+        ".opencode/skills/mcp-architect/SKILL.md",
+        ".kiro/steering/skillops-mcp-architect.md",
+        ".trae/rules/skillops-mcp-architect.md",
+        ".amazonq/rules/skillops-mcp-architect.md",
+        ".junie/skills/skillops-mcp-architect.md",
+      ];
+      for (const rel of expectedSkillPaths) {
+        expect(fs.existsSync(path.join(tmpRepo, rel)), `Missing skill artifact: ${rel}`).toBe(true);
+      }
+
+      // Verify all 20 AI coding agent subagent artifacts on disk
+      const expectedSubagentPaths = [
+        ".claude/agents/context-scout.md",
+        ".agent/agents/context-scout.md",
+        ".cursor/rules/skillops-agent-context-scout.mdc",
+        ".codex/agents/context-scout.md",
+        ".github/agents/context-scout.agent.md",
+        ".windsurf/workflows/skillops-agent-context-scout.md",
+        ".clinerules/workflows/skillops-agent-context-scout.md",
+        ".roo/rules-architect/skillops-agent-context-scout.md",
+        ".kilocode/workflows/skillops-agent-context-scout.md",
+        ".zed/rules/skillops-agent-context-scout.md",
+        ".continue/prompts/skillops-agent-context-scout.prompt",
+        ".aider/conventions/skillops-agent-context-scout.md",
+        ".openhands/microagents/skillops-agent-context-scout.md",
+        ".amp/agents/context-scout.md",
+        ".goose/agents/context-scout.md",
+        ".opencode/agent/context-scout.md",
+        ".kiro/agents/skillops-agent-context-scout.md",
+        ".trae/agents/skillops-agent-context-scout.md",
+        ".amazonq/cli-agents/skillops-agent-context-scout.json",
+        ".junie/agents/skillops-agent-context-scout.md",
+      ];
+      for (const rel of expectedSubagentPaths) {
+        expect(fs.existsSync(path.join(tmpRepo, rel)), `Missing subagent artifact: ${rel}`).toBe(
+          true,
+        );
+      }
+
+      // Verify lockfile recorded all 20 targets
+      const lockRaw = JSON.parse(
+        fs.readFileSync(path.join(tmpRepo, ".skillops-lock.json"), "utf-8"),
+      ) as { targets: string[]; artifacts: Record<string, unknown> };
+      expect(lockRaw.targets).toHaveLength(ALL_RUNTIME_TARGETS.length);
+      expect(Object.keys(lockRaw.artifacts).length).toBeGreaterThanOrEqual(40);
+
+      // Clean all 20 runtimes cleanly
+      expect(
+        runCli([
+          "node",
+          "cli.js",
+          "clean",
+          "--repo",
+          tmpRepo,
+          "--catalog",
+          CATALOG_ROOT,
+        ]),
+      ).toBe(ExitCode.SUCCESS);
+      expect(fs.existsSync(path.join(tmpRepo, ".skillops-lock.json"))).toBe(false);
     } finally {
       fs.rmSync(tmpRepo, { recursive: true, force: true });
     }
