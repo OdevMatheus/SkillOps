@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.0] - 2026-11-03
+
+### Added
+- **Zero-Dependency ANSI TUI Aesthetic Engine (`Sprint 9 / Issue #125`):**
+  - Added [`src/ui/terminal.ts`](./src/ui/terminal.ts) providing zero-dependency ANSI color/style helpers (respecting `NO_COLOR`, `FORCE_COLOR`, and TTY detection), Unicode rounded box panels (`renderBox`), official SkillOps Framework & Library header banners (`renderHeaderBanner`), ANSI-aware aligned tables (`renderTable`), visual token budget progress bars (`renderTokenBar` / `renderProgressBar`), semantic status/type badges (`formatBadge`), guided next-step footers (`renderNextSteps`), and how-to-use-in-your-AI cards (`renderHowToUseInAi`).
+- **Library Explorer, 1-Step Quickstart & Framework Scaffolder (`Sprint 9 / Issue #126`):**
+  - Added [`src/framework/index.ts`](./src/framework/index.ts) implementing:
+    - `npx skillops-cli quickstart` (alias `setup`): 1-command onboarding wizard that detects repository stack + active AI harnesses, routes and installs the optimal collision-free Skill + Subagent bundle, registers the local MCP server across detected IDEs, and prints an interactive guide on how to invoke each installed artifact.
+    - `npx skillops-cli info <name>` (aliases `show`, `inspect`): Detailed TUI inspection card for any Skill or Context-Isolated Subagent with L1/L2 token metrics, Level 3 scripts, TDD benchmark lift, and exact invocation instructions for Claude Code, Cursor, Antigravity, Codex, Windsurf, Copilot, etc.
+    - `npx skillops-cli search <query>` (alias `find`): Keyword, tag, track, and trigger phrase search across all Hybrid Skills and Context-Isolated Subagents (`--type skill|subagent`).
+    - `npx skillops-cli create <skill|subagent> <name>` (alias `new`): 1-command Framework Scaffolder that generates a complete contract-compliant custom Skill (`SKILL.md` meeting `INV-SKILL-01..04`, executable `scripts/<name>_check.py --json`, and `evals/evals.json`) or Context-Isolated Subagent (`SUBAGENT.md` with `max_output_tokens: 400`).
+  - Added intuitive command and flag aliases across [`src/cli.ts`](./src/cli.ts): `install` / `i` (`add`), `uninstall` / `rm` (`remove`), `recommend` (`route`), `budget` (`tokens`), `--project` / `-p` (`--repo`), and `--harness` / `-t` (`--targets`).
+- **3-Pillar Framework/Library Help System, Per-Command `--help`, Fuzzy Typo Suggestions & Interactive Reports (`Sprint 9 / Issue #127`):**
+  - Added [`src/ui/help.ts`](./src/ui/help.ts) organizing `npx skillops-cli --help` around SkillOps's 3 core pillars (**1. Library of High-End Skills & Subagents**, **2. Framework for Building Custom Skills & Subagents**, **3. Universal Runtime Sync, Token Economy & Diagnostics**) and adding per-command help (`npx skillops-cli <cmd> --help` / `npx skillops-cli help <cmd>`).
+  - Added Levenshtein fuzzy command suggestion (`Did you mean 'install'?`) on unknown CLI commands, visual token budget progress bars on `list`, `route`/`recommend`, and `tokens`/`budget`, and an interactive **"Using Your Skills & Subagents"** guide on `sync`/`add`/`install`.
+
+---
+
 ## [1.2.1] - 2026-11-03
 
 ### Added
