@@ -54,6 +54,14 @@ import {
 	removeSkillOrSubagent,
 	syncRepository,
 } from "./sync/index.js";
+import {
+	findCommandHelpSpec,
+	renderCommandHelp,
+	renderGlobalHelp,
+	renderNextSteps,
+	renderProgressBar,
+	suggestCommand,
+} from "./ui/index.js";
 
 const PACKAGE_ROOT = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -164,39 +172,6 @@ function resolveCatalogDir(
 
 export function runCli(argv: readonly string[]): number {
 	const args = argv.slice(2);
-	if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
-		process.stdout.write(
-			[
-				`SkillOps v${SKILLOPS_VERSION} — The Zero-API NPX Engine for High-End AI Skills & Subagents`,
-				"",
-				"Usage: npx skillops-cli <command> [options]",
-				"",
-				"Commands:",
-				"  quickstart  1-step onboarding: detect stack, route bundle, sync agents & configure MCP (alias: setup)",
-				"  init        Scaffold .skillops.yml and detect repository agent harnesses",
-				"  list        Browse bundled high-end Skills & Subagents with token budgets",
-				"  search      Search the Library of Skills & Subagents by keyword (alias: find)",
-				"  info        Inspect a Skill or Subagent's triggers, scripts & AI usage (aliases: show, inspect)",
-				"  add         Install one or more Skills/Subagents into active runtimes (alias: install)",
-				"  remove      Surgically uninstall a synced Skill or Subagent (aliases: uninstall, rm)",
-				"  clean       Remove all SkillOps-managed runtime artifacts tracked in .skillops-lock.json",
-				"  create      Scaffold a custom Skill or Subagent using the SkillOps Framework (alias: new)",
-				"  harnesses   List all 20 supported AI coding agents, target paths, MCP support & repo detection",
-				"  doctor      Diagnose Node/Python environment, .skillops.yml config & lockfile SHA-256 drift",
-				"  status      Alias for 'doctor' — inspect repository lockfile drift and token tax status",
-				"  tokens      Analyze repository Startup Token Tax and Progressive Disclosure savings (alias: budget)",
-				"  audit       Run L1/L2/L3 token budget linter, Subagent check & collision matrix",
-				"  route       Fingerprint repository stack and compile optimal <=12 skill bundle (alias: recommend)",
-				"  sync        Transpile Skills & Subagents across all 20 AI coding agents (Claude, Cursor, Windsurf, etc.)",
-				"  eval        Execute zero-API deterministic TDD benchmarks (with_skill vs without_skill)",
-				"  mcp         Start native JSON-RPC 2.0 stdio Model Context Protocol server",
-				"  mcp-setup   Register SkillOps MCP server across all MCP-compatible AI coding IDEs & agents",
-				"",
-			].join("\n"),
-		);
-		return ExitCode.SUCCESS;
-	}
-
 	if (
 		args.includes("--version") ||
 		args.includes("-V") ||
@@ -206,7 +181,38 @@ export function runCli(argv: readonly string[]): number {
 		return ExitCode.SUCCESS;
 	}
 
-	const command = args[0];
+	if (args[0] === "help") {
+		const targetCmd = args[1];
+		if (targetCmd && !targetCmd.startsWith("-")) {
+			const spec = findCommandHelpSpec(targetCmd);
+			if (spec) {
+				process.stdout.write(renderCommandHelp(spec, SKILLOPS_VERSION));
+				return ExitCode.SUCCESS;
+			}
+		}
+		process.stdout.write(renderGlobalHelp(SKILLOPS_VERSION));
+		return ExitCode.SUCCESS;
+	}
+
+	if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
+		process.stdout.write(renderGlobalHelp(SKILLOPS_VERSION));
+		return ExitCode.SUCCESS;
+	}
+
+	if (args.includes("--help") || args.includes("-h")) {
+		const firstCmd = args[0];
+		if (firstCmd) {
+			const spec = findCommandHelpSpec(firstCmd);
+			if (spec) {
+				process.stdout.write(renderCommandHelp(spec, SKILLOPS_VERSION));
+				return ExitCode.SUCCESS;
+			}
+		}
+		process.stdout.write(renderGlobalHelp(SKILLOPS_VERSION));
+		return ExitCode.SUCCESS;
+	}
+
+	const command = args[0] ?? "";
 
 	if (command === "quickstart" || command === "setup") {
 		const repoPath = path.resolve(
@@ -444,9 +450,15 @@ export function runCli(argv: readonly string[]): number {
 			return ExitCode.SUCCESS;
 		}
 
+		const l1Bar = renderProgressBar(summary.totalL1Tokens, 1500, {
+			width: 18,
+			unit: "tokens",
+		});
+		const firstSkill = summary.skills[0]?.skillName ?? "security-sast-gate";
 		const lines = [
 			`=== SkillOps Catalog (v${SKILLOPS_VERSION}) ===`,
 			`Skills (${summary.skills.length}) — Total L1 Routing Tax: ${summary.totalL1Tokens} tokens`,
+			`L1 Budget Meter: ${l1Bar}`,
 			...summary.skills.map(
 				(s) =>
 					`  [SKILL] ${s.skillName} — L1: ${s.l1Tokens}t | L2: ${s.l2Lines} lines (${s.l2Tokens}t) | L3 Scripts: ${s.scriptsCount}`,
@@ -456,7 +468,21 @@ export function runCli(argv: readonly string[]): number {
 				(a) =>
 					`  [SUBAGENT] ${a.subagentName} (prompt=${a.systemPromptTokens}t, max_out<=${a.maxOutputTokens}t, tools=${a.tools.length})`,
 			),
-			"",
+			renderNextSteps([
+				{
+					command: `npx skillops-cli info ${firstSkill}`,
+					description:
+						"Inspect triggers, L3 scripts & how to invoke in your AI",
+				},
+				{
+					command: "npx skillops-cli search <keyword>",
+					description: "Search Skills & Subagents by domain or signal",
+				},
+				{
+					command: "npx skillops-cli quickstart",
+					description: "Auto-detect project stack & install optimal bundle",
+				},
+			]),
 		];
 		process.stdout.write(lines.join("\n"));
 		return ExitCode.SUCCESS;
@@ -912,8 +938,10 @@ export function runCli(argv: readonly string[]): number {
 		return ExitCode.SUCCESS;
 	}
 
+	const suggestion = suggestCommand(command);
+	const hint = suggestion ? ` Did you mean '${suggestion}'?` : "";
 	process.stderr.write(
-		`Unknown command '${command}'. Run 'npx skillops@latest --help'.\n`,
+		`Unknown command '${command}'.${hint} Run 'npx skillops-cli --help'.\n`,
 	);
 	return ExitCode.ERROR;
 }

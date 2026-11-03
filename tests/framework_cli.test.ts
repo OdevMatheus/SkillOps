@@ -15,6 +15,7 @@ import {
 	searchCatalog,
 } from "../src/framework/index.js";
 import { ExitCode } from "../src/models.js";
+import { suggestCommand } from "../src/ui/index.js";
 
 const CATALOG_DIR = path.resolve(process.cwd(), "catalog");
 const tempDirs: string[] = [];
@@ -321,5 +322,56 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 		const createdJson = JSON.parse(outChunks.join("")) as { name: string };
 		expect(createdJson.name).toBe("redis-cache-guard");
 		expect(errChunks).toEqual([]);
+	});
+
+	it("renders 3-Pillar Framework/Library global help, per-command --help, and fuzzy typo suggestions (Issue #127)", () => {
+		const outChunks: string[] = [];
+		const errChunks: string[] = [];
+		vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+			outChunks.push(String(chunk));
+			return true;
+		});
+		vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+			errChunks.push(String(chunk));
+			return true;
+		});
+
+		// Global help screen
+		expect(runCli(["node", "skillops", "--help"])).toBe(ExitCode.SUCCESS);
+		const globalHelp = outChunks.join("");
+		expect(globalHelp).toContain("10-Second Quickstart (Library + Framework)");
+		expect(globalHelp).toContain("1. Library of High-End Skills & Subagents");
+		expect(globalHelp).toContain(
+			"2. Framework for Building Custom Skills & Subagents",
+		);
+		expect(globalHelp).toContain(
+			"3. Universal Runtime Sync, Token Economy & Diagnostics",
+		);
+		outChunks.length = 0;
+
+		// Per-command --help via flag and via 'help <cmd>'
+		expect(runCli(["node", "skillops", "quickstart", "--help"])).toBe(
+			ExitCode.SUCCESS,
+		);
+		expect(outChunks.join("")).toContain("skillops quickstart");
+		expect(outChunks.join("")).toContain("Options & Flags");
+		outChunks.length = 0;
+
+		expect(runCli(["node", "skillops", "help", "create"])).toBe(
+			ExitCode.SUCCESS,
+		);
+		expect(outChunks.join("")).toContain("skillops create");
+		expect(outChunks.join("")).toContain("graphql-schema-guard");
+		outChunks.length = 0;
+
+		// Fuzzy typo suggestions
+		expect(suggestCommand("instal")).toBe("install");
+		expect(suggestCommand("quikstart")).toBe("quickstart");
+		expect(suggestCommand("recomend")).toBe("recommend");
+
+		expect(runCli(["node", "skillops", "instal"])).toBe(ExitCode.ERROR);
+		expect(errChunks.join("")).toContain(
+			"Unknown command 'instal'. Did you mean 'install'?",
+		);
 	});
 });

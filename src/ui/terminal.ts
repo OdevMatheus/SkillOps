@@ -279,6 +279,22 @@ export function renderTokenBar(
 	return `${prefix}[${filledStr}${emptyStr}] ${style.bold(pctStr, c)} (${current} / ${max} ${unit})`;
 }
 
+/**
+ * Alias for renderTokenBar used across token/budget progress visualizations.
+ */
+export const renderProgressBar = renderTokenBar;
+
+/**
+ * Render a stylized section header with a bold cyan rule.
+ */
+export function renderSectionHeader(
+	title: string,
+	colorEnabled?: boolean,
+): string {
+	const c = colorEnabled;
+	return `\n  ${style.bold(style.cyan(title, c), c)}\n  ${style.dim("─".repeat(Math.max(24, visibleLength(title))), c)}`;
+}
+
 export type BadgeType =
 	| "pass"
 	| "warn"
@@ -471,12 +487,44 @@ export function levenshteinDistance(a: string, b: string): number {
 	return prevRow[n] ?? 0;
 }
 
+export const DEFAULT_VALID_COMMANDS: readonly string[] = [
+	"quickstart",
+	"setup",
+	"init",
+	"list",
+	"search",
+	"find",
+	"info",
+	"show",
+	"inspect",
+	"add",
+	"install",
+	"remove",
+	"uninstall",
+	"rm",
+	"clean",
+	"create",
+	"new",
+	"harnesses",
+	"doctor",
+	"status",
+	"tokens",
+	"budget",
+	"audit",
+	"route",
+	"recommend",
+	"sync",
+	"eval",
+	"mcp",
+	"mcp-setup",
+];
+
 /**
  * Suggest the closest valid CLI command when a user makes a typo.
  */
 export function suggestCommand(
 	unknownCommand: string,
-	validCommands: readonly string[],
+	validCommands: readonly string[] = DEFAULT_VALID_COMMANDS,
 ): string | null {
 	const needle = unknownCommand.trim().toLowerCase();
 	if (!needle) {
