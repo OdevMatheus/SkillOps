@@ -17,6 +17,7 @@ import {
   analyzeRepoTokenEconomy,
   auditCatalog,
   auditCatalogTokenBudgets,
+  diagnoseRepository,
   discoverSkillDirectories,
   parseSkillDirectory,
 } from "../auditor/index.js";
@@ -120,6 +121,19 @@ const MCP_TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: "diagnose_repo",
+    description:
+      "Diagnose repository environment (Node.js/Python), declarative .skillops.yml config, .skillops-lock.json SHA-256 artifact drift, and Startup Token Tax.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        repo_path: { type: "string", description: "Target repository root path." },
+        startup_tax_budget: { type: "number", description: "Optional startup token budget override." },
+      },
+      additionalProperties: false,
+    },
+  },
 ] as const;
 
 export function handleMcpJsonRpcRequest(
@@ -215,6 +229,14 @@ export function handleMcpJsonRpcRequest(
         payload = evaluateCatalog(context.catalogDir, { skillFilter });
       } else if (toolName === "list_catalog_items") {
         payload = auditCatalogTokenBudgets(context.catalogDir, { requireLayout: false });
+      } else if (toolName === "diagnose_repo") {
+        const repoPath = typeof args.repo_path === "string" ? args.repo_path : context.repoPath;
+        const budget =
+          typeof args.startup_tax_budget === "number" ? args.startup_tax_budget : undefined;
+        payload = diagnoseRepository(repoPath, {
+          catalogDir: context.catalogDir,
+          startupTaxBudget: budget,
+        });
       } else {
         return {
           jsonrpc: "2.0",

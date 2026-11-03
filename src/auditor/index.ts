@@ -34,3 +34,13 @@ export {
   formatTokenEconomyReport,
 } from "./token_economy.js";
 
+export {
+  type LockfileArtifactDiagnostic,
+  type DoctorCheckItem,
+  type DoctorReport,
+  type DiagnoseRepositoryOptions,
+  diagnoseRepository,
+  formatDoctorReport,
+} from "./doctor.js";
+
+

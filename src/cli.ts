@@ -10,6 +10,8 @@ import {
   analyzeRepoTokenEconomy,
   auditCatalog,
   auditCatalogTokenBudgets,
+  diagnoseRepository,
+  formatDoctorReport,
   formatTokenEconomyReport,
 } from "./auditor/index.js";
 import { evaluateCatalog, formatEvalSummary } from "./eval/index.js";
@@ -82,6 +84,8 @@ export function runCli(argv: readonly string[]): number {
         "  add       Install a specific high-end Skill or Subagent into active runtimes",
         "  remove    Surgically uninstall a synced Skill or Subagent from active runtimes",
         "  clean     Remove all SkillOps-managed runtime artifacts tracked in .skillops-lock.json",
+        "  doctor    Diagnose Node/Python environment, .skillops.yml config & lockfile SHA-256 drift",
+        "  status    Alias for 'doctor' — inspect repository lockfile drift and token tax status",
         "  tokens    Analyze repository Startup Token Tax and Progressive Disclosure savings",
         "  audit     Run L1/L2/L3 token budget linter, Subagent check & collision matrix",
         "  route     Fingerprint repository stack and compile optimal <=12 skill bundle",
@@ -498,6 +502,38 @@ export function runCli(argv: readonly string[]): number {
 
     if (strict && !summary.passed) {
       return ExitCode.EVAL_REGRESSION_ERROR;
+    }
+    return ExitCode.SUCCESS;
+  }
+
+  if (command === "doctor" || command === "status") {
+    const repoIdx = args.indexOf("--repo");
+    const repoPath = path.resolve(
+      repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd(),
+    );
+    const loadedConfigRes = loadSkillOpsConfig(repoPath);
+    const catalogDir = resolveCatalogDir(args, repoPath, loadedConfigRes.config);
+    const formatIdx = args.indexOf("--format");
+    const rawFormat = formatIdx !== -1 && args[formatIdx + 1] ? args[formatIdx + 1]! : "table";
+    const format: "table" | "json" | "markdown" =
+      rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
+    const strict = args.includes("--strict");
+
+    const report = diagnoseRepository(repoPath, { catalogDir });
+    process.stdout.write(`${formatDoctorReport(report, format)}\n`);
+
+    if (!report.config_valid) {
+      return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+    }
+    if (
+      !report.lockfile_valid ||
+      report.drifted_artifacts_count > 0 ||
+      report.missing_artifacts_count > 0
+    ) {
+      return ExitCode.ERROR;
+    }
+    if (strict && report.status !== "pass") {
+      return ExitCode.BUDGET_OR_CONTRACT_ERROR;
     }
     return ExitCode.SUCCESS;
   }
