@@ -1,14 +1,14 @@
 # SkillOps Canonical Contract (`SKILL_CONTRACT.md`)
 
-> **Status:** Canonical Specification (`v0.5.0` — NPX Architecture)  
+> **Status:** Canonical Specification (`v1.2.0` — Universal Top-20 AI Harnesses & NPX Architecture)  
 > **Related ADRs:** [`ADR-0001`](./docs/architecture/adr/0001-hybrid-executable-skills-architecture.md), [`ADR-0002`](./docs/architecture/adr/0002-semantic-collision-auditor-and-token-budgeting.md), [`ADR-0003`](./docs/architecture/adr/0003-context-aware-dynamic-router-and-multi-runtime-sync.md), [`ADR-0004`](./docs/architecture/adr/0004-zero-api-tdd-evaluation-and-stdio-mcp.md)  
-> **Scope:** Defines the structural, semantic, token-economy, deterministic execution, and TDD evaluation schemas for **Hybrid Executable Skills & Context-Isolated Subagents** managed by the **SkillOps** Node.js 20+ / TypeScript engine (`npx skillops@latest`).
+> **Scope:** Defines the structural, semantic, token-economy, deterministic execution, and TDD evaluation schemas for **Hybrid Executable Skills & Context-Isolated Subagents** managed by the **SkillOps** Node.js 20+ / TypeScript engine (`npx skillops@latest`) across all **20 supported AI coding agents** (`claude`, `antigravity`, `cursor`, `codex`, `copilot`, `windsurf`, `cline`, `roocode`, `kilocode`, `zed`, `continue`, `aider`, `openhands`, `amp`, `opencode`, `goose`, `kiro`, `trae`, `junie`, `amazonq`).
 
 ---
 
 ## 1. Scientific Motivation & Core Principles
 
-Modern AI coding harnesses (Claude Code, Antigravity/Gemini CLI, Cursor, OpenAI Codex CLI, GitHub Copilot) rely on `SKILL.md` modules and specialized subagents to guide agent behavior. Empirical research revealed two critical failure modes in community skill libraries:
+Modern AI coding harnesses (Claude Code, Antigravity/Gemini CLI, Cursor, OpenAI Codex CLI, GitHub Copilot, Windsurf, Cline, Roo Code, Kilo Code, Zed AI, Continue.dev, Aider, OpenHands, Sourcegraph Amp, OpenCode, Block Goose, AWS Kiro, Trae IDE, JetBrains Junie, and Amazon Q Developer) rely on `SKILL.md` modules, scoped rule files, and specialized subagents to guide agent behavior. Empirical research revealed two critical failure modes in community skill libraries:
 
 1. **Implicit Routing Collapse (*Lost in Implicit Routing*, `arXiv:2610.18522`):**
    - Loading dozens of overlapping or poorly differentiated skill descriptions into a workspace drops implicit skill selection recall from **73.6% down to 27.4%**, and in **51.6% of tasks** the agent loads **zero skills**.
