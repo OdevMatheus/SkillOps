@@ -5,7 +5,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   ExitCode,
+  diagnoseRepository,
   evaluateCatalog,
+  formatDoctorReport,
   formatEvalSummary,
   handleMcpJsonRpcRequest,
   loadSkillOpsConfig,
@@ -225,6 +227,96 @@ describe("SkillOps NPX Complete CLI, Deterministic Eval Runner & Stdio MCP Serve
       expect(runCli(["node", "cli.js", "tokens", "--repo", tmpRepo])).toBe(
         ExitCode.BUDGET_OR_CONTRACT_ERROR,
       );
+    } finally {
+      fs.rmSync(tmpRepo, { recursive: true, force: true });
+    }
+  });
+
+  it("diagnoses repository health, lockfile SHA-256 drift, and missing artifacts via doctor/status and MCP diagnose_repo (Issue #104)", () => {
+    const tmpRepo = fs.mkdtempSync(path.join(os.tmpdir(), "skillops-doctor-test-"));
+    try {
+      expect(
+        runCli([
+          "node",
+          "cli.js",
+          "init",
+          "--repo",
+          tmpRepo,
+          "--catalog",
+          CATALOG_ROOT,
+        ]),
+      ).toBe(ExitCode.SUCCESS);
+      expect(
+        runCli([
+          "node",
+          "cli.js",
+          "sync",
+          "--repo",
+          tmpRepo,
+          "--catalog",
+          CATALOG_ROOT,
+          "--targets",
+          "claude,cursor",
+        ]),
+      ).toBe(ExitCode.SUCCESS);
+
+      const healthyReport = diagnoseRepository(tmpRepo, { catalogDir: CATALOG_ROOT });
+      expect(healthyReport.config_valid).toBe(true);
+      expect(healthyReport.lockfile_valid).toBe(true);
+      expect(healthyReport.drifted_artifacts_count).toBe(0);
+      expect(healthyReport.missing_artifacts_count).toBe(0);
+      expect(healthyReport.healthy_artifacts_count).toBeGreaterThan(0);
+      expect(formatDoctorReport(healthyReport, "markdown")).toContain(
+        "SkillOps Doctor & Lockfile Status Report",
+      );
+
+      expect(
+        runCli(["node", "cli.js", "status", "--repo", tmpRepo, "--catalog", CATALOG_ROOT]),
+      ).toBe(ExitCode.SUCCESS);
+
+      // Verify MCP diagnose_repo tool
+      const mcpDiagRes = handleMcpJsonRpcRequest(
+        {
+          jsonrpc: "2.0",
+          id: 99,
+          method: "tools/call",
+          params: {
+            name: "diagnose_repo",
+            arguments: { repo_path: tmpRepo },
+          },
+        },
+        { repoPath: tmpRepo, catalogDir: CATALOG_ROOT },
+      );
+      const mcpText = (
+        mcpDiagRes!.result as { content: Array<{ type: string; text: string }> }
+      ).content[0]!.text;
+      const mcpDiagPayload = JSON.parse(mcpText) as {
+        healthy_artifacts_count: number;
+        drifted_artifacts_count: number;
+      };
+      expect(mcpDiagPayload.healthy_artifacts_count).toBe(
+        healthyReport.healthy_artifacts_count,
+      );
+      expect(mcpDiagPayload.drifted_artifacts_count).toBe(0);
+
+      // Introduce local drift on the first tracked artifact and delete the second
+      const firstArtifact = healthyReport.artifacts[0]!;
+      const secondArtifact = healthyReport.artifacts[1]!;
+      fs.appendFileSync(
+        path.join(tmpRepo, firstArtifact.relative_path),
+        "\n<!-- local edit -->\n",
+        "utf-8",
+      );
+      fs.unlinkSync(path.join(tmpRepo, secondArtifact.relative_path));
+
+      const driftedReport = diagnoseRepository(tmpRepo, { catalogDir: CATALOG_ROOT });
+      expect(driftedReport.drifted_artifacts_count).toBe(1);
+      expect(driftedReport.missing_artifacts_count).toBe(1);
+      expect(driftedReport.status).toBe("fail");
+
+      expect(
+        runCli(["node", "cli.js", "doctor", "--repo", tmpRepo, "--catalog", CATALOG_ROOT]),
+      ).toBe(ExitCode.ERROR);
     } finally {
       fs.rmSync(tmpRepo, { recursive: true, force: true });
     }
