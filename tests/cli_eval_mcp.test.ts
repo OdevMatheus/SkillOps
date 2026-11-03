@@ -5,10 +5,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   ExitCode,
+  analyzeRepoTokenEconomy,
   diagnoseRepository,
   evaluateCatalog,
   formatDoctorReport,
   formatEvalSummary,
+  formatTokenEconomyReport,
   handleMcpJsonRpcRequest,
   loadSkillOpsConfig,
 } from "../src/index.js";
@@ -320,5 +322,70 @@ describe("SkillOps NPX Complete CLI, Deterministic Eval Runner & Stdio MCP Serve
     } finally {
       fs.rmSync(tmpRepo, { recursive: true, force: true });
     }
+  });
+
+  it("emits native GitHub Actions workflow commands (--format github) across audit, tokens, eval, and doctor (Issue #105)", () => {
+    const tokenReport = analyzeRepoTokenEconomy(REPO_ROOT, { catalogDir: CATALOG_ROOT });
+    const ghTokens = formatTokenEconomyReport(tokenReport, "github");
+    expect(ghTokens).toContain("::notice title=SkillOps Token Economy::");
+
+    const evalSummary = evaluateCatalog(CATALOG_ROOT);
+    const ghEval = formatEvalSummary(evalSummary, "github");
+    expect(ghEval).toContain("::notice title=SkillOps Deterministic Benchmark::");
+
+    const docReport = diagnoseRepository(REPO_ROOT, { catalogDir: CATALOG_ROOT });
+    const ghDoctor = formatDoctorReport(docReport, "github");
+    expect(ghDoctor).toContain("::notice title=SkillOps Doctor::");
+
+    expect(
+      runCli([
+        "node",
+        "cli.js",
+        "audit",
+        "--catalog",
+        CATALOG_ROOT,
+        "--format",
+        "github",
+        "--strict",
+      ]),
+    ).toBe(ExitCode.SUCCESS);
+    expect(
+      runCli([
+        "node",
+        "cli.js",
+        "tokens",
+        "--repo",
+        REPO_ROOT,
+        "--catalog",
+        CATALOG_ROOT,
+        "--format",
+        "github",
+      ]),
+    ).toBe(ExitCode.SUCCESS);
+    expect(
+      runCli([
+        "node",
+        "cli.js",
+        "eval",
+        "--catalog",
+        CATALOG_ROOT,
+        "--format",
+        "github",
+        "--strict",
+      ]),
+    ).toBe(ExitCode.SUCCESS);
+    expect(
+      runCli([
+        "node",
+        "cli.js",
+        "doctor",
+        "--repo",
+        REPO_ROOT,
+        "--catalog",
+        CATALOG_ROOT,
+        "--format",
+        "github",
+      ]),
+    ).toBe(ExitCode.SUCCESS);
   });
 });

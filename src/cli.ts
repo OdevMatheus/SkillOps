@@ -224,6 +224,25 @@ export function runCli(argv: readonly string[]): number {
     const report = auditCatalog(catalogDir, { requireLayout });
     if (format === "json") {
       process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    } else if (format === "github") {
+      const ghLines: string[] = [];
+      for (const err of report.budget_errors) {
+        ghLines.push(`::error title=SkillOps Budget/Contract Error::${err}`);
+      }
+      for (const col of report.blocking_collisions) {
+        ghLines.push(
+          `::error title=SkillOps Blocking Collision::${col.skill_a} <-> ${col.skill_b} cosine=${col.similarity.toFixed(4)} (shared: ${col.shared_terms.join(", ")})`,
+        );
+      }
+      for (const col of report.high_risk_collisions) {
+        ghLines.push(
+          `::warning title=SkillOps High-Risk Collision::${col.skill_a} <-> ${col.skill_b} cosine=${col.similarity.toFixed(4)} (shared: ${col.shared_terms.join(", ")})`,
+        );
+      }
+      ghLines.push(
+        `::notice title=SkillOps Catalog Audit::Audited ${report.skills_audited} skills and ${report.subagents_audited} subagents (L1=${report.total_l1_tokens}t, max_cosine=${report.max_similarity.toFixed(4)}).`,
+      );
+      process.stdout.write(`${ghLines.join("\n")}\n`);
     } else {
       process.stdout.write(
         [
@@ -271,8 +290,10 @@ export function runCli(argv: readonly string[]): number {
         : (cfgRes.config?.token_economy.startup_tax_budget ?? 2500);
     const formatIdx = args.indexOf("--format");
     const rawFormat = formatIdx !== -1 && args[formatIdx + 1] ? args[formatIdx + 1]! : "table";
-    const format: "table" | "json" | "markdown" =
-      rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
+    const format: "table" | "json" | "markdown" | "github" =
+      rawFormat === "json" || rawFormat === "markdown" || rawFormat === "github"
+        ? rawFormat
+        : "table";
     const strict = args.includes("--strict");
 
     const report = analyzeRepoTokenEconomy(repoPath, {
@@ -483,8 +504,11 @@ export function runCli(argv: readonly string[]): number {
     const skillFilter = skillIdx !== -1 && args[skillIdx + 1] ? args[skillIdx + 1] : undefined;
     const formatIdx = args.indexOf("--format");
     const rawFormat = formatIdx !== -1 && args[formatIdx + 1] ? args[formatIdx + 1]! : "table";
-    const format: "table" | "json" | "markdown" | "html" =
-      rawFormat === "json" || rawFormat === "markdown" || rawFormat === "html"
+    const format: "table" | "json" | "markdown" | "html" | "github" =
+      rawFormat === "json" ||
+      rawFormat === "markdown" ||
+      rawFormat === "html" ||
+      rawFormat === "github"
         ? rawFormat
         : "table";
     const outIdx = args.indexOf("--out");
@@ -515,8 +539,10 @@ export function runCli(argv: readonly string[]): number {
     const catalogDir = resolveCatalogDir(args, repoPath, loadedConfigRes.config);
     const formatIdx = args.indexOf("--format");
     const rawFormat = formatIdx !== -1 && args[formatIdx + 1] ? args[formatIdx + 1]! : "table";
-    const format: "table" | "json" | "markdown" =
-      rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
+    const format: "table" | "json" | "markdown" | "github" =
+      rawFormat === "json" || rawFormat === "markdown" || rawFormat === "github"
+        ? rawFormat
+        : "table";
     const strict = args.includes("--strict");
 
     const report = diagnoseRepository(repoPath, { catalogDir });

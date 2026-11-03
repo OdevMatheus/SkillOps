@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-11-03
+
+### Added
+- **GitHub Actions Native Annotations (`--format github`) & Composite Action Summary (`Sprint 6 / Issue #105`):**
+  - Added `--format github` output mode to `audit`, `tokens`, `eval`, `doctor`, and `status` in [`src/cli.ts`](./src/cli.ts), [`src/auditor/token_economy.ts`](./src/auditor/token_economy.ts), [`src/eval/index.ts`](./src/eval/index.ts), and [`src/auditor/doctor.ts`](./src/auditor/doctor.ts), emitting native `::error`, `::warning`, and `::notice` workflow commands.
+  - Upgraded [`.github/actions/skillops-audit/action.yml`](./.github/actions/skillops-audit/action.yml) and [`.github/workflows/ai-ci.yml`](./.github/workflows/ai-ci.yml) with `tokens-check`, `step-summary`, and automatic Markdown reporting into `$GITHUB_STEP_SUMMARY`.
+- **Environment Diagnostics & Lockfile Drift Auditor (`npx skillops-cli@latest doctor` & `status` — `Sprint 6 / Issue #104`):**
+  - Added [`src/auditor/doctor.ts`](./src/auditor/doctor.ts) implementing `diagnoseRepository` and `formatDoctorReport` (`table`, `json`, `markdown`, `github`) to audit Node.js (`>= 20.0.0`), Python (`>= 3.12`), `.skillops.yml` schema validity, `.skillops-lock.json` SHA-256 artifact integrity (`healthy`, `drifted`, `missing`), and Startup Token Tax.
+  - Exposed the `diagnose_repo` tool on the native JSON-RPC 2.0 `stdio` MCP server in [`src/mcp/index.ts`](./src/mcp/index.ts).
+- **Multi-Runtime Lifecycle Uninstall & Clean Commands (`npx skillops-cli@latest remove` & `clean` — `Sprint 6 / Issue #103`):**
+  - Added `removeSkillOrSubagent`, `cleanSyncedArtifacts`, and `stripCodexAgentsBlock` in [`src/sync/adapters.ts`](./src/sync/adapters.ts) with SHA-256 local drift protection, `--dry-run`, and `--force` flags.
+- **Declarative `.skillops.yml` Auto-Loader & Validator (`Sprint 6 / Issue #102`):**
+  - Added `SkillOpsConfigSchema` and `loadSkillOpsConfig(repoPath)` in [`src/models.ts`](./src/models.ts) and wired automatic configuration loading across `list`, `audit`, `tokens`, `route`, `sync`, `add`, `remove`, `clean`, and `doctor` in [`src/cli.ts`](./src/cli.ts) with strict precedence (`CLI Flags > .skillops.yml > Default Invariants`).
+
+---
+
 ## [1.0.0] - 2026-10-30
 
 ### Added
