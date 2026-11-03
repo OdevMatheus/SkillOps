@@ -28,7 +28,13 @@ import {
   formatRoutedBundle,
   routeRepository,
 } from "./router/index.js";
-import { addSkillOrSubagent, formatSyncReport, syncRepository } from "./sync/index.js";
+import {
+  addSkillOrSubagent,
+  cleanSyncedArtifacts,
+  formatSyncReport,
+  removeSkillOrSubagent,
+  syncRepository,
+} from "./sync/index.js";
 
 const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -74,6 +80,8 @@ export function runCli(argv: readonly string[]): number {
         "  init      Scaffold .skillops.yml and detect repository agent harnesses",
         "  list      Browse bundled high-end Skills & Subagents with token budgets",
         "  add       Install a specific high-end Skill or Subagent into active runtimes",
+        "  remove    Surgically uninstall a synced Skill or Subagent from active runtimes",
+        "  clean     Remove all SkillOps-managed runtime artifacts tracked in .skillops-lock.json",
         "  tokens    Analyze repository Startup Token Tax and Progressive Disclosure savings",
         "  audit     Run L1/L2/L3 token budget linter, Subagent check & collision matrix",
         "  route     Fingerprint repository stack and compile optimal <=12 skill bundle",
@@ -395,6 +403,74 @@ export function runCli(argv: readonly string[]): number {
       process.stderr.write(`Error: ${msg}\n`);
       return ExitCode.ERROR;
     }
+  }
+
+  if (command === "remove") {
+    const itemName = args[1];
+    if (!itemName || itemName.startsWith("-")) {
+      process.stderr.write("Usage: npx skillops@latest remove <skill-or-subagent-name> [options]\n");
+      return ExitCode.ERROR;
+    }
+    const repoIdx = args.indexOf("--repo");
+    const repoPath =
+      repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd();
+    const cfgRes = loadSkillOpsConfig(repoPath);
+    if (cfgRes.error) {
+      process.stderr.write(`Invalid .skillops.yml at ${cfgRes.configPath}: ${cfgRes.error}\n`);
+      return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+    }
+    const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
+    const targetsIdx = args.indexOf("--targets");
+    const rawTargets =
+      targetsIdx !== -1 && args[targetsIdx + 1]
+        ? args[targetsIdx + 1]!
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : undefined;
+    const targets = rawTargets as RuntimeTarget[] | undefined;
+    const dryRun = args.includes("--dry-run");
+    const force = args.includes("--force");
+    const formatIdx = args.indexOf("--format");
+    const rawFormat = formatIdx !== -1 && args[formatIdx + 1] ? args[formatIdx + 1]! : "table";
+    const format: "table" | "json" | "markdown" =
+      rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
+
+    try {
+      const report = removeSkillOrSubagent(repoPath, catalogDir, itemName, {
+        targets,
+        dryRun,
+        force,
+      });
+      process.stdout.write(formatSyncReport(report, format));
+      return report.passed ? ExitCode.SUCCESS : ExitCode.ERROR;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`Error: ${msg}\n`);
+      return ExitCode.ERROR;
+    }
+  }
+
+  if (command === "clean") {
+    const repoIdx = args.indexOf("--repo");
+    const repoPath =
+      repoIdx !== -1 && args[repoIdx + 1] ? args[repoIdx + 1]! : process.cwd();
+    const cfgRes = loadSkillOpsConfig(repoPath);
+    if (cfgRes.error) {
+      process.stderr.write(`Invalid .skillops.yml at ${cfgRes.configPath}: ${cfgRes.error}\n`);
+      return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+    }
+    const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
+    const dryRun = args.includes("--dry-run");
+    const force = args.includes("--force");
+    const formatIdx = args.indexOf("--format");
+    const rawFormat = formatIdx !== -1 && args[formatIdx + 1] ? args[formatIdx + 1]! : "table";
+    const format: "table" | "json" | "markdown" =
+      rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
+
+    const report = cleanSyncedArtifacts(repoPath, catalogDir, { dryRun, force });
+    process.stdout.write(formatSyncReport(report, format));
+    return report.passed ? ExitCode.SUCCESS : ExitCode.ERROR;
   }
 
   if (command === "eval") {

@@ -50,6 +50,17 @@ export interface AddOptions {
   readonly force?: boolean;
 }
 
+export interface RemoveOptions {
+  readonly targets?: readonly RuntimeTarget[];
+  readonly dryRun?: boolean;
+  readonly force?: boolean;
+}
+
+export interface CleanOptions {
+  readonly dryRun?: boolean;
+  readonly force?: boolean;
+}
+
 interface PlannedFile {
   readonly target: RuntimeTarget;
   readonly itemName: string;
@@ -535,6 +546,247 @@ export function addSkillOrSubagent(
     dryRun,
     force,
     preserveUnlistedLockEntries: true,
+  });
+}
+
+function pruneEmptyParentDirs(filePath: string, stopAtRepoRoot: string): void {
+  const normalizedStop = path.resolve(stopAtRepoRoot);
+  let currentDir = path.dirname(path.resolve(filePath));
+  while (
+    currentDir.startsWith(normalizedStop) &&
+    currentDir !== normalizedStop &&
+    fs.existsSync(currentDir)
+  ) {
+    try {
+      const entries = fs.readdirSync(currentDir);
+      if (entries.length > 0) {
+        break;
+      }
+      fs.rmdirSync(currentDir);
+      currentDir = path.dirname(currentDir);
+    } catch {
+      break;
+    }
+  }
+}
+
+export function stripCodexAgentsBlock(existingContent: string): string {
+  const startIdx = existingContent.indexOf(CODEX_MARKER_START);
+  const endIdx = existingContent.indexOf(CODEX_MARKER_END);
+  if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
+    return existingContent;
+  }
+  const before = existingContent.slice(0, startIdx).trimEnd();
+  const after = existingContent.slice(endIdx + CODEX_MARKER_END.length).trimStart();
+  const combined = [before, after].filter(Boolean).join("\n\n").trim();
+  if (!combined || combined === "# AGENTS.md") {
+    return "";
+  }
+  return `${combined}\n`;
+}
+
+/**
+ * Surgically remove a single synced Skill or Subagent by name across target runtimes.
+ */
+export function removeSkillOrSubagent(
+  repoPath: string,
+  catalogDir: string,
+  itemName: string,
+  options: RemoveOptions = {},
+): SyncReport {
+  const resolvedRepo = path.resolve(repoPath);
+  const resolvedCatalog = path.resolve(catalogDir);
+  const targetFilter = options.targets?.length ? new Set(options.targets) : null;
+  const dryRun = options.dryRun ?? false;
+  const force = options.force ?? false;
+
+  const lockfilePath = path.join(resolvedRepo, ".skillops-lock.json");
+  const existingLock = loadExistingLockfile(lockfilePath);
+  if (!existingLock) {
+    throw new Error(
+      `No .skillops-lock.json found in '${resolvedRepo.replace(/\\/g, "/")}'. Run 'sync' or 'add' first.`,
+    );
+  }
+
+  const matchingEntries = Object.entries(existingLock.artifacts).filter(
+    ([, entry]) =>
+      entry.skill_name === itemName && (!targetFilter || targetFilter.has(entry.target)),
+  );
+
+  if (matchingEntries.length === 0) {
+    throw new Error(
+      `No synced artifacts found for '${itemName}' in .skillops-lock.json.`,
+    );
+  }
+
+  const newLockArtifacts: Record<string, SyncLockEntry> = { ...existingLock.artifacts };
+  const artifacts: SyncedArtifact[] = [];
+  const driftConflicts: string[] = [];
+
+  for (const [relPath, entry] of matchingEntries) {
+    const fullPath = path.join(resolvedRepo, relPath);
+    const fileExists = fs.existsSync(fullPath) && fs.statSync(fullPath).isFile();
+
+    if (fileExists) {
+      const currentDiskSha = computeSha256(fs.readFileSync(fullPath, "utf-8"));
+      if (currentDiskSha !== entry.sha256 && !force) {
+        driftConflicts.push(relPath);
+        artifacts.push({
+          target: entry.target,
+          skill_name: entry.skill_name,
+          relative_path: relPath,
+          sha256: currentDiskSha,
+          action: "conflict",
+        });
+        continue;
+      }
+
+      if (!dryRun) {
+        fs.unlinkSync(fullPath);
+        pruneEmptyParentDirs(fullPath, resolvedRepo);
+      }
+    }
+
+    artifacts.push({
+      target: entry.target,
+      skill_name: entry.skill_name,
+      relative_path: relPath,
+      sha256: entry.sha256,
+      action: dryRun ? "planned" : "removed",
+    });
+    delete newLockArtifacts[relPath];
+  }
+
+  const remainingForSkill = Object.values(newLockArtifacts).some(
+    (e) => e.skill_name === itemName,
+  );
+
+  if (!dryRun && driftConflicts.length === 0) {
+    const updatedSkills = remainingForSkill
+      ? existingLock.selected_skills
+      : existingLock.selected_skills.filter((s) => s !== itemName);
+    const updatedSubagents = remainingForSkill
+      ? existingLock.selected_subagents
+      : existingLock.selected_subagents.filter((sa) => sa !== itemName);
+
+    const lockData: SyncLockfile = SyncLockfileSchema.parse({
+      ...existingLock,
+      skillops_version: SKILLOPS_VERSION,
+      selected_skills: updatedSkills,
+      selected_subagents: updatedSubagents,
+      artifacts: newLockArtifacts,
+    });
+    fs.writeFileSync(lockfilePath, `${JSON.stringify(lockData, null, 2)}\n`, "utf-8");
+  }
+
+  const routedBundle = routeRepository(resolvedRepo, resolvedCatalog);
+  return SyncReportSchema.parse({
+    repo_path: resolvedRepo.replace(/\\/g, "/"),
+    catalog_path: resolvedCatalog.replace(/\\/g, "/"),
+    targets: targetFilter ? [...targetFilter] : existingLock.targets,
+    dry_run: dryRun,
+    force,
+    routed_bundle: routedBundle,
+    artifacts,
+    drift_conflicts: driftConflicts,
+    lockfile_path: lockfilePath.replace(/\\/g, "/"),
+    passed: driftConflicts.length === 0,
+  });
+}
+
+/**
+ * Clean all SkillOps-managed runtime artifacts tracked in `.skillops-lock.json`.
+ */
+export function cleanSyncedArtifacts(
+  repoPath: string,
+  catalogDir: string,
+  options: CleanOptions = {},
+): SyncReport {
+  const resolvedRepo = path.resolve(repoPath);
+  const resolvedCatalog = path.resolve(catalogDir);
+  const dryRun = options.dryRun ?? false;
+  const force = options.force ?? false;
+
+  const lockfilePath = path.join(resolvedRepo, ".skillops-lock.json");
+  const existingLock = loadExistingLockfile(lockfilePath);
+  const routedBundle = routeRepository(resolvedRepo, resolvedCatalog);
+
+  if (!existingLock) {
+    return SyncReportSchema.parse({
+      repo_path: resolvedRepo.replace(/\\/g, "/"),
+      catalog_path: resolvedCatalog.replace(/\\/g, "/"),
+      targets: [...ALL_RUNTIME_TARGETS],
+      dry_run: dryRun,
+      force,
+      routed_bundle: routedBundle,
+      artifacts: [],
+      drift_conflicts: [],
+      lockfile_path: lockfilePath.replace(/\\/g, "/"),
+      passed: true,
+    });
+  }
+
+  const artifacts: SyncedArtifact[] = [];
+  const driftConflicts: string[] = [];
+
+  for (const [relPath, entry] of Object.entries(existingLock.artifacts)) {
+    const fullPath = path.join(resolvedRepo, relPath);
+    const fileExists = fs.existsSync(fullPath) && fs.statSync(fullPath).isFile();
+
+    if (fileExists) {
+      const diskText = fs.readFileSync(fullPath, "utf-8");
+      const currentDiskSha = computeSha256(diskText);
+      if (currentDiskSha !== entry.sha256 && !force) {
+        driftConflicts.push(relPath);
+        artifacts.push({
+          target: entry.target,
+          skill_name: entry.skill_name,
+          relative_path: relPath,
+          sha256: currentDiskSha,
+          action: "conflict",
+        });
+        continue;
+      }
+
+      if (!dryRun) {
+        if (relPath === "AGENTS.md" && entry.skill_name === "codex-agents-index") {
+          const stripped = stripCodexAgentsBlock(diskText);
+          if (stripped) {
+            fs.writeFileSync(fullPath, stripped, "utf-8");
+          } else {
+            fs.unlinkSync(fullPath);
+          }
+        } else {
+          fs.unlinkSync(fullPath);
+          pruneEmptyParentDirs(fullPath, resolvedRepo);
+        }
+      }
+    }
+
+    artifacts.push({
+      target: entry.target,
+      skill_name: entry.skill_name,
+      relative_path: relPath,
+      sha256: entry.sha256,
+      action: dryRun ? "planned" : "removed",
+    });
+  }
+
+  if (!dryRun && driftConflicts.length === 0 && fs.existsSync(lockfilePath)) {
+    fs.unlinkSync(lockfilePath);
+  }
+
+  return SyncReportSchema.parse({
+    repo_path: resolvedRepo.replace(/\\/g, "/"),
+    catalog_path: resolvedCatalog.replace(/\\/g, "/"),
+    targets: existingLock.targets,
+    dry_run: dryRun,
+    force,
+    routed_bundle: routedBundle,
+    artifacts,
+    drift_conflicts: driftConflicts,
+    lockfile_path: lockfilePath.replace(/\\/g, "/"),
+    passed: driftConflicts.length === 0,
   });
 }
 
