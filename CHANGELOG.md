@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.1] - 2026-11-03
+
+### Added
+- **Open-Source Community Health, Academic Citation & Contributor DX Standards (`Sprint 8 / Issue #120`):**
+  - Added [`.github/SUPPORT.md`](./.github/SUPPORT.md), [`CITATION.cff`](./CITATION.cff) (enabling GitHub's native *Cite this repository* BibTeX/APA button), [`.editorconfig`](./.editorconfig), and [`.nvmrc`](./.nvmrc) (`22`).
+  - Upgraded [`CONTRIBUTING.md`](./CONTRIBUTING.md) for external open-source contributors with a **5-Minute Hybrid Executable Skill Authoring Cookbook**.
+- **GitHub CodeQL SAST Security Workflow & OpenSSF Security Policy (`Sprint 8 / Issue #121`):**
+  - Added [`.github/workflows/codeql.yml`](./.github/workflows/codeql.yml) performing automated static security analysis (`javascript-typescript` and `python`) on pushes to `master`, Pull Requests, and weekly schedules.
+  - Updated [`.github/SECURITY.md`](./.github/SECURITY.md) with the OpenSSF `Supported Versions` matrix and 48-hour disclosure SLA.
+
+---
+
 ## [1.2.0] - 2026-11-03
 
 ### Added

@@ -1,15 +1,17 @@
 # SkillOps (`npx skillops-cli@latest`)
 
-> **The Zero-API Node.js 20+ / TypeScript Engine & Benchmark-Verified Library for AI Coding Agent Skills & Context-Isolated Subagents (`v1.2.0`)**  
+> **The Zero-API Node.js 20+ / TypeScript Engine & Benchmark-Verified Library for AI Coding Agent Skills & Context-Isolated Subagents (`v1.2.1`)**  
 > *Stop installing unverified Markdown prompt essays that bloat your Startup Token Tax. Audit semantic collisions offline, quantify token economy savings across the Top 20 AI coding agents (`npx skillops-cli@latest tokens`), dynamically route context-aware skill + subagent bundles across all 20 AI harnesses (`npx skillops-cli@latest sync --targets all`), register the local MCP server automatically (`npx skillops-cli@latest mcp-setup`), and prove positive task lift (`with_skill` vs. `without_skill`) with 100% deterministic, zero-API AST & subprocess TDD evaluations.*
 
 [![CI Governance](https://img.shields.io/badge/governance-1%20Issue%20%3D%201%20PR-blue.svg)](./AGENTS.md)
+[![CodeQL SAST](https://img.shields.io/badge/CodeQL-TS%20%2B%20Python%20SAST-2ea44f.svg?logo=githubsecurity&logoColor=white)](./.github/workflows/codeql.yml)
 [![NPM Package](https://img.shields.io/badge/npx-skillops--cli%40latest-cb3837.svg?logo=npm&logoColor=white)](./package.json)
 [![Node.js 20+](https://img.shields.io/badge/node-20%2B%20%7C%20npx-339933.svg?logo=nodedotjs&logoColor=white)](./package.json)
 [![TypeScript Strict](https://img.shields.io/badge/TypeScript-5.8%20strict-3178C6.svg?logo=typescript&logoColor=white)](./tsconfig.json)
 [![Zero API](https://img.shields.io/badge/Zero%20External%20APIs-100%25%20Offline-2ea44f.svg)](./SKILL_CONTRACT.md)
 [![Top 20 AI Agents](https://img.shields.io/badge/AI%20Harnesses-Top%2020%20Universal-8A2BE2.svg)](./SKILL_CONTRACT.md)
 [![MCP Stdio](https://img.shields.io/badge/MCP-Stdio%20JSON--RPC-009688.svg)](https://modelcontextprotocol.io/)
+[![Citation CFF](https://img.shields.io/badge/Cite-CITATION.cff-0A66C2.svg)](./CITATION.cff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
 ---
