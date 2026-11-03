@@ -8,7 +8,11 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { type RepoProfile, RepoProfileSchema } from "../models.js";
+import {
+  type RepoProfile,
+  RepoProfileSchema,
+  detectInstalledHarnesses,
+} from "../models.js";
 
 const PACKAGE_NAME_PREFIX_REGEX = /^(@[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+|[a-zA-Z0-9._-]+)/;
 
@@ -250,6 +254,8 @@ export class RepoFingerprinter {
     };
     scanDir(this.repoPath, 0);
 
+    const detectedHarnesses = detectInstalledHarnesses(this.repoPath);
+
     return RepoProfileSchema.parse({
       repo_path: this.repoPath.replace(/\\/g, "/"),
       languages: [...languages].sort(),
@@ -259,6 +265,7 @@ export class RepoFingerprinter {
       ci_systems: [...ciSystems].sort(),
       detected_files: [...detectedFiles].sort(),
       signals: [...signals].sort(),
+      detected_harnesses: detectedHarnesses,
       python_312_plus: python312Plus,
     });
   }
