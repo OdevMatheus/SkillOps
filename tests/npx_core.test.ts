@@ -4,7 +4,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  ALL_RUNTIME_TARGETS,
+  CORE_RUNTIME_TARGETS,
   ExitCode,
+  RUNTIME_HARNESS_SPECS,
   SKILLOPS_VERSION,
   auditCatalog,
   auditCatalogTokenBudgets,
@@ -12,11 +15,14 @@ import {
   countWords,
   createSkillManifest,
   createSubagentManifest,
+  detectInstalledHarnesses,
   discoverSkillDirectories,
   discoverSubagentFiles,
   estimateTokenCount,
+  fingerprintRepository,
   parseSkillDirectory,
   parseSubagentFile,
+  resolveRuntimeTargets,
 } from "../src/index.js";
 import { runCli } from "../src/cli.js";
 
@@ -278,6 +284,71 @@ describe("SkillOps NPX Core Models & Subagent Contracts (Issue #59)", () => {
       expect(SKILLOPS_VERSION).toBe("1.1.0");
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("validates Top-20 AI Coding Agent registry, auto-detection matrix, and target resolution (Issue #111)", () => {
+    expect(ALL_RUNTIME_TARGETS).toHaveLength(20);
+    expect(CORE_RUNTIME_TARGETS).toEqual([
+      "claude",
+      "antigravity",
+      "cursor",
+      "codex",
+      "copilot",
+    ]);
+
+    for (const target of ALL_RUNTIME_TARGETS) {
+      const spec = RUNTIME_HARNESS_SPECS[target];
+      expect(spec).toBeDefined();
+      expect(spec.id).toBe(target);
+      expect(spec.displayName.length).toBeGreaterThan(2);
+      expect(spec.skillsDir.length).toBeGreaterThan(2);
+      expect(spec.subagentsDir.length).toBeGreaterThan(2);
+      expect(spec.detectionPaths.length).toBeGreaterThanOrEqual(1);
+    }
+
+    const tmpRepo = fs.mkdtempSync(path.join(os.tmpdir(), "skillops-harnesses-test-"));
+    try {
+      // Fresh repo has 0 detected harnesses, so "auto" falls back to CORE_RUNTIME_TARGETS
+      expect(detectInstalledHarnesses(tmpRepo)).toEqual([]);
+      expect(resolveRuntimeTargets("auto", tmpRepo)).toEqual([...CORE_RUNTIME_TARGETS]);
+      expect(resolveRuntimeTargets("all", tmpRepo)).toEqual([...ALL_RUNTIME_TARGETS]);
+      expect(resolveRuntimeTargets("core", tmpRepo)).toEqual([...CORE_RUNTIME_TARGETS]);
+      expect(resolveRuntimeTargets("claude,windsurf,roocode,kiro,junie", tmpRepo)).toEqual([
+        "claude",
+        "windsurf",
+        "roocode",
+        "kiro",
+        "junie",
+      ]);
+
+      // Plant markers for Windsurf, Roo Code, Aider, AWS Kiro, and JetBrains Junie
+      fs.writeFileSync(path.join(tmpRepo, ".windsurfrules"), "# Windsurf\n", "utf-8");
+      fs.mkdirSync(path.join(tmpRepo, ".roo"), { recursive: true });
+      fs.writeFileSync(path.join(tmpRepo, "CONVENTIONS.md"), "# Aider\n", "utf-8");
+      fs.mkdirSync(path.join(tmpRepo, ".kiro"), { recursive: true });
+      fs.mkdirSync(path.join(tmpRepo, ".junie"), { recursive: true });
+
+      const detected = detectInstalledHarnesses(tmpRepo);
+      expect(detected).toEqual(["windsurf", "roocode", "aider", "kiro", "junie"]);
+      expect(resolveRuntimeTargets("auto", tmpRepo)).toEqual([
+        "windsurf",
+        "roocode",
+        "aider",
+        "kiro",
+        "junie",
+      ]);
+
+      const profile = fingerprintRepository(tmpRepo);
+      expect(profile.detected_harnesses).toEqual([
+        "windsurf",
+        "roocode",
+        "aider",
+        "kiro",
+        "junie",
+      ]);
+    } finally {
+      fs.rmSync(tmpRepo, { recursive: true, force: true });
     }
   });
 });

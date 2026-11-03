@@ -89,8 +89,31 @@ export const RuntimeTargetSchema = z.enum([
   "cursor",
   "codex",
   "copilot",
+  "windsurf",
+  "cline",
+  "roocode",
+  "kilocode",
+  "zed",
+  "continue",
+  "aider",
+  "openhands",
+  "amp",
+  "goose",
+  "opencode",
+  "kiro",
+  "trae",
+  "amazonq",
+  "junie",
 ]);
 export type RuntimeTarget = z.infer<typeof RuntimeTargetSchema>;
+
+export const CORE_RUNTIME_TARGETS: readonly RuntimeTarget[] = [
+  "claude",
+  "antigravity",
+  "cursor",
+  "codex",
+  "copilot",
+];
 
 export const ALL_RUNTIME_TARGETS: readonly RuntimeTarget[] = [
   "claude",
@@ -98,7 +121,389 @@ export const ALL_RUNTIME_TARGETS: readonly RuntimeTarget[] = [
   "cursor",
   "codex",
   "copilot",
+  "windsurf",
+  "cline",
+  "roocode",
+  "kilocode",
+  "zed",
+  "continue",
+  "aider",
+  "openhands",
+  "amp",
+  "goose",
+  "opencode",
+  "kiro",
+  "trae",
+  "amazonq",
+  "junie",
 ];
+
+export type HarnessCategory = "cli-agent" | "ai-ide" | "ide-extension" | "autonomous-swe";
+export type HarnessSkillFormat =
+  | "progressive-skill-dir"
+  | "mdc-rule"
+  | "copilot-instructions"
+  | "markdown-rule"
+  | "openhands-microagent"
+  | "kiro-steering";
+
+export interface RuntimeHarnessSpec {
+  readonly id: RuntimeTarget;
+  readonly displayName: string;
+  readonly vendor: string;
+  readonly category: HarnessCategory;
+  readonly skillFormat: HarnessSkillFormat;
+  readonly skillsDir: string;
+  readonly subagentsDir: string;
+  readonly detectionPaths: readonly string[];
+  readonly alwaysOnFiles: readonly string[];
+  readonly mcpConfigPath: string | null;
+  readonly supportsMcp: boolean;
+}
+
+export const RUNTIME_HARNESS_SPECS: Readonly<Record<RuntimeTarget, RuntimeHarnessSpec>> = {
+  claude: {
+    id: "claude",
+    displayName: "Anthropic Claude Code",
+    vendor: "Anthropic",
+    category: "cli-agent",
+    skillFormat: "progressive-skill-dir",
+    skillsDir: ".claude/skills",
+    subagentsDir: ".claude/agents",
+    detectionPaths: [".claude", "CLAUDE.md", ".mcp.json"],
+    alwaysOnFiles: ["CLAUDE.md", ".claude/CLAUDE.md"],
+    mcpConfigPath: ".mcp.json",
+    supportsMcp: true,
+  },
+  antigravity: {
+    id: "antigravity",
+    displayName: "Google Antigravity / Gemini CLI",
+    vendor: "Google DeepMind",
+    category: "ai-ide",
+    skillFormat: "progressive-skill-dir",
+    skillsDir: ".agent/skills",
+    subagentsDir: ".agent/agents",
+    detectionPaths: [".agent", ".gemini", "GEMINI.md"],
+    alwaysOnFiles: ["GEMINI.md", ".gemini/GEMINI.md"],
+    mcpConfigPath: ".gemini/settings.json",
+    supportsMcp: true,
+  },
+  cursor: {
+    id: "cursor",
+    displayName: "Cursor AI IDE",
+    vendor: "Anysphere",
+    category: "ai-ide",
+    skillFormat: "mdc-rule",
+    skillsDir: ".cursor/rules",
+    subagentsDir: ".cursor/rules",
+    detectionPaths: [".cursor", ".cursorrules"],
+    alwaysOnFiles: [".cursorrules"],
+    mcpConfigPath: ".cursor/mcp.json",
+    supportsMcp: true,
+  },
+  codex: {
+    id: "codex",
+    displayName: "OpenAI Codex CLI",
+    vendor: "OpenAI",
+    category: "cli-agent",
+    skillFormat: "progressive-skill-dir",
+    skillsDir: ".codex/skills",
+    subagentsDir: ".codex/agents",
+    detectionPaths: [".codex", "AGENTS.md"],
+    alwaysOnFiles: ["AGENTS.md"],
+    mcpConfigPath: ".codex/config.toml",
+    supportsMcp: true,
+  },
+  copilot: {
+    id: "copilot",
+    displayName: "GitHub Copilot",
+    vendor: "GitHub / Microsoft",
+    category: "ide-extension",
+    skillFormat: "copilot-instructions",
+    skillsDir: ".github/instructions",
+    subagentsDir: ".github/agents",
+    detectionPaths: [
+      ".github/copilot-instructions.md",
+      ".github/instructions",
+      ".github/prompts",
+      ".github/agents",
+    ],
+    alwaysOnFiles: [".github/copilot-instructions.md"],
+    mcpConfigPath: ".vscode/mcp.json",
+    supportsMcp: true,
+  },
+  windsurf: {
+    id: "windsurf",
+    displayName: "Windsurf AI IDE",
+    vendor: "Codeium / Windsurf",
+    category: "ai-ide",
+    skillFormat: "markdown-rule",
+    skillsDir: ".windsurf/rules",
+    subagentsDir: ".windsurf/workflows",
+    detectionPaths: [".windsurf", ".windsurfrules"],
+    alwaysOnFiles: [".windsurfrules"],
+    mcpConfigPath: null,
+    supportsMcp: false,
+  },
+  cline: {
+    id: "cline",
+    displayName: "Cline Autonomous Coding Agent",
+    vendor: "Cline",
+    category: "ide-extension",
+    skillFormat: "markdown-rule",
+    skillsDir: ".clinerules",
+    subagentsDir: ".clinerules/workflows",
+    detectionPaths: [".clinerules", ".cline"],
+    alwaysOnFiles: [".clinerules"],
+    mcpConfigPath: null,
+    supportsMcp: false,
+  },
+  roocode: {
+    id: "roocode",
+    displayName: "Roo Code",
+    vendor: "Roo Veterinary",
+    category: "ide-extension",
+    skillFormat: "markdown-rule",
+    skillsDir: ".roo/rules",
+    subagentsDir: ".roo/rules-architect",
+    detectionPaths: [".roo", ".roorules", ".roomodes"],
+    alwaysOnFiles: [".roorules"],
+    mcpConfigPath: ".roo/mcp.json",
+    supportsMcp: true,
+  },
+  kilocode: {
+    id: "kilocode",
+    displayName: "Kilo Code",
+    vendor: "Kilo Org",
+    category: "ide-extension",
+    skillFormat: "markdown-rule",
+    skillsDir: ".kilocode/rules",
+    subagentsDir: ".kilocode/workflows",
+    detectionPaths: [".kilocode", ".kilocoderules", ".kilocodemodes"],
+    alwaysOnFiles: [".kilocoderules"],
+    mcpConfigPath: ".kilocode/mcp.json",
+    supportsMcp: true,
+  },
+  zed: {
+    id: "zed",
+    displayName: "Zed AI",
+    vendor: "Zed Industries",
+    category: "ai-ide",
+    skillFormat: "markdown-rule",
+    skillsDir: ".zed/rules",
+    subagentsDir: ".zed/rules",
+    detectionPaths: [".zed", ".rules"],
+    alwaysOnFiles: [".rules"],
+    mcpConfigPath: ".zed/settings.json",
+    supportsMcp: true,
+  },
+  continue: {
+    id: "continue",
+    displayName: "Continue.dev",
+    vendor: "Continue",
+    category: "ide-extension",
+    skillFormat: "markdown-rule",
+    skillsDir: ".continue/rules",
+    subagentsDir: ".continue/prompts",
+    detectionPaths: [".continue", ".continuerules"],
+    alwaysOnFiles: [".continuerules"],
+    mcpConfigPath: ".continue/mcpServers/skillops.yaml",
+    supportsMcp: true,
+  },
+  aider: {
+    id: "aider",
+    displayName: "Aider AI Pair Programmer",
+    vendor: "Aider",
+    category: "cli-agent",
+    skillFormat: "markdown-rule",
+    skillsDir: ".aider/conventions",
+    subagentsDir: ".aider/conventions",
+    detectionPaths: [".aider", ".aider.conf.yml", "CONVENTIONS.md"],
+    alwaysOnFiles: ["CONVENTIONS.md"],
+    mcpConfigPath: null,
+    supportsMcp: false,
+  },
+  openhands: {
+    id: "openhands",
+    displayName: "OpenHands (All Hands AI)",
+    vendor: "All Hands AI",
+    category: "autonomous-swe",
+    skillFormat: "openhands-microagent",
+    skillsDir: ".openhands/microagents",
+    subagentsDir: ".openhands/microagents",
+    detectionPaths: [".openhands"],
+    alwaysOnFiles: [".openhands/microagents/repo.md"],
+    mcpConfigPath: null,
+    supportsMcp: false,
+  },
+  amp: {
+    id: "amp",
+    displayName: "Sourcegraph Amp",
+    vendor: "Sourcegraph",
+    category: "cli-agent",
+    skillFormat: "progressive-skill-dir",
+    skillsDir: ".amp/skills",
+    subagentsDir: ".amp/agents",
+    detectionPaths: [".amp", "AGENT.md"],
+    alwaysOnFiles: ["AGENT.md"],
+    mcpConfigPath: ".amp/settings.json",
+    supportsMcp: true,
+  },
+  goose: {
+    id: "goose",
+    displayName: "Block Goose",
+    vendor: "Block",
+    category: "cli-agent",
+    skillFormat: "progressive-skill-dir",
+    skillsDir: ".goose/skills",
+    subagentsDir: ".goose/agents",
+    detectionPaths: [".goose", ".goosehints"],
+    alwaysOnFiles: [".goosehints"],
+    mcpConfigPath: null,
+    supportsMcp: false,
+  },
+  opencode: {
+    id: "opencode",
+    displayName: "OpenCode CLI",
+    vendor: "SST / OpenCode",
+    category: "cli-agent",
+    skillFormat: "progressive-skill-dir",
+    skillsDir: ".opencode/skills",
+    subagentsDir: ".opencode/agent",
+    detectionPaths: [".opencode", "opencode.json"],
+    alwaysOnFiles: [],
+    mcpConfigPath: "opencode.json",
+    supportsMcp: true,
+  },
+  kiro: {
+    id: "kiro",
+    displayName: "AWS Kiro IDE",
+    vendor: "Amazon Web Services",
+    category: "ai-ide",
+    skillFormat: "kiro-steering",
+    skillsDir: ".kiro/steering",
+    subagentsDir: ".kiro/agents",
+    detectionPaths: [".kiro"],
+    alwaysOnFiles: [
+      ".kiro/steering/product.md",
+      ".kiro/steering/tech.md",
+      ".kiro/steering/structure.md",
+    ],
+    mcpConfigPath: ".kiro/settings/mcp.json",
+    supportsMcp: true,
+  },
+  trae: {
+    id: "trae",
+    displayName: "Trae AI IDE",
+    vendor: "ByteDance / Trae",
+    category: "ai-ide",
+    skillFormat: "markdown-rule",
+    skillsDir: ".trae/rules",
+    subagentsDir: ".trae/agents",
+    detectionPaths: [".trae"],
+    alwaysOnFiles: [".trae/rules/project_rules.md"],
+    mcpConfigPath: null,
+    supportsMcp: false,
+  },
+  amazonq: {
+    id: "amazonq",
+    displayName: "Amazon Q Developer",
+    vendor: "Amazon Web Services",
+    category: "ide-extension",
+    skillFormat: "markdown-rule",
+    skillsDir: ".amazonq/rules",
+    subagentsDir: ".amazonq/cli-agents",
+    detectionPaths: [".amazonq"],
+    alwaysOnFiles: [],
+    mcpConfigPath: ".amazonq/mcp.json",
+    supportsMcp: true,
+  },
+  junie: {
+    id: "junie",
+    displayName: "JetBrains Junie / AI Assistant",
+    vendor: "JetBrains",
+    category: "ide-extension",
+    skillFormat: "markdown-rule",
+    skillsDir: ".junie/skills",
+    subagentsDir: ".junie/agents",
+    detectionPaths: [".junie", ".aiassistant"],
+    alwaysOnFiles: [".junie/guidelines.md"],
+    mcpConfigPath: null,
+    supportsMcp: false,
+  },
+};
+
+/**
+ * Deterministically detect which of the 20 AI coding agent harnesses have configuration
+ * directories or instruction files present in `repoPath`.
+ */
+export function detectInstalledHarnesses(repoPath: string): RuntimeTarget[] {
+  const normalizedRoot = repoPath.replace(/\\/g, "/").replace(/\/+$/, "");
+  const detected: RuntimeTarget[] = [];
+
+  for (const target of ALL_RUNTIME_TARGETS) {
+    const spec = RUNTIME_HARNESS_SPECS[target];
+    const hasMatch = spec.detectionPaths.some((relPath) =>
+      fs.existsSync(`${normalizedRoot}/${relPath}`),
+    );
+    if (hasMatch) {
+      detected.push(target);
+    }
+  }
+
+  return detected;
+}
+
+/**
+ * Resolve runtime target specifications (`"all"`, `"auto"`, `"core"`, or comma-separated target names)
+ * into a deduplicated, validated list of `RuntimeTarget` values.
+ */
+export function resolveRuntimeTargets(
+  rawSpec?: string | readonly string[],
+  repoPath?: string,
+  fallbackTargets: readonly RuntimeTarget[] = CORE_RUNTIME_TARGETS,
+): RuntimeTarget[] {
+  if (!rawSpec) {
+    return [...fallbackTargets];
+  }
+  const tokens = (Array.isArray(rawSpec) ? rawSpec : [rawSpec])
+    .flatMap((item) => String(item).split(","))
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (tokens.length === 0) {
+    return [...fallbackTargets];
+  }
+
+  const resolved: RuntimeTarget[] = [];
+  const pushUnique = (target: RuntimeTarget): void => {
+    if (!resolved.includes(target)) {
+      resolved.push(target);
+    }
+  };
+
+  for (const token of tokens) {
+    if (token === "all" || token === "*" || token === "top20") {
+      for (const t of ALL_RUNTIME_TARGETS) {
+        pushUnique(t);
+      }
+    } else if (token === "core" || token === "default") {
+      for (const t of CORE_RUNTIME_TARGETS) {
+        pushUnique(t);
+      }
+    } else if (token === "auto") {
+      const detected = repoPath ? detectInstalledHarnesses(repoPath) : [];
+      const autoList = detected.length > 0 ? detected : fallbackTargets;
+      for (const t of autoList) {
+        pushUnique(t);
+      }
+    } else {
+      pushUnique(RuntimeTargetSchema.parse(token));
+    }
+  }
+
+  return resolved;
+}
 
 // ---------------------------------------------------------------------------
 // 1. Skill Manifest Contract (INV-SKILL-01 .. INV-SKILL-03)
@@ -478,6 +883,7 @@ export const RepoProfileSchema = z
     ci_systems: z.array(z.string()).default([]),
     detected_files: z.array(z.string()).default([]),
     signals: z.array(z.string()).default([]),
+    detected_harnesses: z.array(RuntimeTargetSchema).default([]),
     python_312_plus: z.boolean().default(false),
   })
   .strict();
@@ -608,7 +1014,7 @@ export const SkillOpsConfigSchema = z
       languages: [],
       frameworks: [],
     }),
-    targets: z.array(RuntimeTargetSchema).min(1).default([...ALL_RUNTIME_TARGETS]),
+    targets: z.array(RuntimeTargetSchema).min(1).default([...CORE_RUNTIME_TARGETS]),
   })
   .strict();
 export type SkillOpsConfig = z.infer<typeof SkillOpsConfigSchema>;
