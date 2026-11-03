@@ -380,19 +380,25 @@ export function renderNextSteps(
 		return "";
 	}
 	const c = colorEnabled;
-	const maxCmdLen = hints.reduce(
-		(m, h) => Math.max(m, visibleLength(h.command)),
-		0,
+	const maxCmdLen = Math.min(
+		44,
+		hints.reduce((m, h) => Math.max(m, visibleLength(h.command)), 0),
 	);
 	const lines = [
 		style.dim("│", c),
 		`${style.dim("╰─", c)} ${style.bold(style.cyan("Next Steps:", c), c)}`,
-		...hints.map(
-			(h) =>
-				`   ${style.dim("$", c)} ${style.green(padVisible(h.command, maxCmdLen + 1, "left"), c)} ${style.dim(`— ${h.description}`, c)}`,
-		),
+		...hints.map((h) => {
+			const cmdPadded = padVisible(h.command, maxCmdLen, "left");
+			const prefixCols = 5 + visibleLength(cmdPadded) + 3;
+			const maxDescCols = Math.max(10, 76 - prefixCols);
+			const desc =
+				h.description.length > maxDescCols
+					? `${h.description.slice(0, maxDescCols - 1)}…`
+					: h.description;
+			return `   ${style.dim("$", c)} ${style.green(cmdPadded, c)} ${style.dim(`— ${desc}`, c)}`;
+		}),
 	];
-	return lines.join("\n");
+	return `${lines.join("\n")}\n`;
 }
 
 /**

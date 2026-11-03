@@ -30,7 +30,6 @@ import { syncRepository } from "../sync/index.js";
 import {
 	formatBadge,
 	renderAiUsageGuide,
-	renderBox,
 	renderHeaderBanner,
 	renderNextSteps,
 	renderStep,
@@ -186,85 +185,83 @@ export function formatCatalogItemInfo(
 	}
 
 	const c = colorEnabled;
+	const bar = style.dim("│", c);
 	const badge =
 		info.kind === "skill"
 			? formatBadge("skill", "HYBRID EXECUTABLE SKILL", c)
 			: formatBadge("subagent", "CONTEXT-ISOLATED SUBAGENT", c);
 
+	const shortDesc =
+		info.description.length > 68
+			? `${info.description.slice(0, 65)}...`
+			: info.description;
+
 	const cardLines: string[] = [
-		`${badge}  ${style.bold(style.cyan(info.name, c), c)}`,
-		"",
-		`${style.bold("Description:", c)}`,
-		`  ${info.description}`,
-		"",
+		`${style.bold(style.cyan(`◆ SkillOps Library Inspector — ${info.name}`, c), c)}`,
+		`${bar}  ${badge}`,
+		`${bar}  ${shortDesc}`,
+		bar,
 	];
 
 	if (info.kind === "skill") {
 		cardLines.push(
-			`${style.bold("Token Economy (INV-SKILL-01..03):", c)}`,
-			`  • L1 Routing Footprint : ${style.green(`${info.l1Tokens} tokens`, c)} (<= 160 budget)`,
-			`  • L2 Playbook Body     : ${info.l2Lines} lines (${info.l2Tokens} tokens, <= 250 lines)`,
-			`  • Progressive Savings  : ${style.bold(style.green(`${info.savingsPct}%`, c), c)} Startup Token Tax saved until triggered`,
-			`  • L3 Scripts (${info.scripts.length})      : ${info.scripts.length > 0 ? style.cyan(info.scripts.join(", "), c) : "none"}`,
-			`  • TDD Eval Cases       : ${info.evalCasesCount} deterministic benchmark cases`,
+			`${style.dim("├─", c)} ${style.bold(style.cyan("Token Economy (INV-SKILL-01..03)", c), c)}`,
+			`${bar}  • L1 Routing     : ${style.green(`${info.l1Tokens} tokens`, c)} (<= 160 budget)`,
+			`${bar}  • L2 Playbook    : ${info.l2Lines} lines (${info.l2Tokens}t, <= 250 lines)`,
+			`${bar}  • Token Savings  : ${style.bold(style.green(`${info.savingsPct}%`, c), c)} Startup Tax saved`,
+			`${bar}  • L3 Scripts (${info.scripts.length}) : ${info.scripts.length > 0 ? style.cyan(info.scripts.join(", "), c) : "none"}`,
+			`${bar}  • TDD Evals      : ${info.evalCasesCount} deterministic cases`,
 		);
 	} else {
 		cardLines.push(
-			`${style.bold("Context Isolation Contract (INV-SKILL-04):", c)}`,
-			`  • System Prompt Tokens : ${style.green(`${info.l1Tokens} tokens`, c)}`,
-			`  • Max Output Cap       : <= ${style.bold(`${info.maxOutputTokens} tokens`, c)}`,
-			`  • Isolation Mode       : ${style.cyan(info.isolation ?? "context-isolated", c)}`,
-			`  • Allowed Tools (${info.tools.length})    : ${info.tools.join(", ")}`,
+			`${style.dim("├─", c)} ${style.bold(style.cyan("Context Isolation Contract (INV-SKILL-04)", c), c)}`,
+			`${bar}  • System Prompt  : ${style.green(`${info.l1Tokens} tokens`, c)}`,
+			`${bar}  • Max Output Cap : <= ${style.bold(`${info.maxOutputTokens} tokens`, c)}`,
+			`${bar}  • Isolation Mode : ${style.cyan(info.isolation ?? "context-isolated", c)}`,
+			`${bar}  • Allowed Tools  : ${info.tools.join(", ")}`,
 		);
 	}
 
 	if (info.headings.length > 0) {
 		cardLines.push(
-			"",
-			`${style.bold("Workflow Playbook Sections:", c)}`,
-			...info.headings.slice(0, 6).map((h) => `  • ${h}`),
+			bar,
+			`${style.dim("├─", c)} ${style.bold(style.cyan("Playbook Sections", c), c)}`,
+			...info.headings.slice(0, 5).map((h) => `${bar}  • ${h}`),
 		);
 	}
 
 	cardLines.push(
-		"",
-		`${style.bold("How to Invoke in Your AI Agent:", c)}`,
-		`  • ${style.bold("Install into repo:", c)} ${style.green(`npx skillops-cli add ${info.name}`, c)}`,
+		bar,
+		`${style.dim("├─", c)} ${style.bold(style.cyan("How to Invoke in Your AI Agent", c), c)}`,
+		`${bar}  • ${style.bold("Install:", c)} ${style.green(`npx skillops-cli add ${info.name}`, c)}`,
 		info.kind === "skill"
-			? `  • ${style.bold("Cursor / Copilot / Claude:", c)} Reference ${style.cyan(`@${info.name}`, c)} or ${style.cyan(`/${info.name}`, c)} in chat`
-			: `  • ${style.bold("Delegate Subagent:", c)} Ask your main agent to delegate heavy exploration to ${style.magenta(`@${info.name}`, c)}`,
+			? `${bar}  • ${style.bold("IDE Chat:", c)} Reference ${style.cyan(`@${info.name}`, c)} or ${style.cyan(`/${info.name}`, c)}`
+			: `${bar}  • ${style.bold("Delegate:", c)} Ask main agent to run ${style.magenta(`@${info.name}`, c)}`,
 	);
-
-	const box = renderBox(cardLines, {
-		title: `📦 SkillOps Library Inspector — ${info.name}`,
-		borderColor: info.kind === "skill" ? style.cyan : style.magenta,
-		minWidth: 74,
-		colorEnabled: c,
-	});
 
 	const nextSteps = renderNextSteps(
 		[
 			{
 				command: `npx skillops-cli add ${info.name}`,
-				description: `Install '${info.name}' into your active AI coding agents`,
+				description: "Install into AI agents",
 			},
 			...(info.kind === "skill"
 				? [
 						{
 							command: `npx skillops-cli eval --skill ${info.name}`,
-							description: `Run deterministic TDD benchmark for '${info.name}'`,
+							description: "Run TDD benchmark",
 						},
 					]
 				: []),
 			{
 				command: "npx skillops-cli list",
-				description: "Browse all 10 Skills & 9 Subagents in the Library",
+				description: "Browse 10 Skills & 9 Subagents",
 			},
 		],
 		c,
 	);
 
-	return `${box}\n${nextSteps}`;
+	return `${cardLines.join("\n")}\n${nextSteps}`;
 }
 
 export interface CatalogSearchMatch {
@@ -322,8 +319,8 @@ export function searchCatalog(
 				score,
 				tokens: parsed.manifest.description_tokens,
 				summary:
-					parsed.manifest.description.length > 78
-						? `${parsed.manifest.description.slice(0, 75)}...`
+					parsed.manifest.description.length > 30
+						? `${parsed.manifest.description.slice(0, 27)}...`
 						: parsed.manifest.description,
 			});
 		}
@@ -355,8 +352,8 @@ export function searchCatalog(
 				score,
 				tokens: parsed.manifest.system_prompt_tokens,
 				summary:
-					parsed.manifest.description.length > 78
-						? `${parsed.manifest.description.slice(0, 75)}...`
+					parsed.manifest.description.length > 30
+						? `${parsed.manifest.description.slice(0, 27)}...`
 						: parsed.manifest.description,
 			});
 		}
@@ -399,19 +396,15 @@ export function formatCatalogSearchReport(
 	}
 
 	const c = colorEnabled;
-	const header = renderBox(
-		[
-			`${style.bold(style.cyan("🔍 SkillOps Library Search", c), c)} — Query: ${style.bold(`"${report.query || "*"}"`, c)} (${report.total_matches} matches)`,
-		],
-		{ minWidth: 74, colorEnabled: c },
-	);
+	const bar = style.dim("│", c);
+	const header = `${style.bold(style.cyan("◆ SkillOps Library Search", c), c)} ${style.dim("—", c)} Query: ${style.bold(`"${report.query || "*"}"`, c)} (${report.total_matches} matches)`;
 
 	if (report.matches.length === 0) {
-		return `${header}\n  ${formatBadge("warn", "No matching Skills or Subagents found.", c)}\n${renderNextSteps([{ command: "npx skillops-cli list", description: "View all 10 Skills & 9 Subagents in the Library" }], c)}`;
+		return `${header}\n${bar}  ${formatBadge("warn", "No matching Skills or Subagents found.", c)}\n${renderNextSteps([{ command: "npx skillops-cli list", description: "View all 10 Skills & 9 Subagents" }], c)}`;
 	}
 
 	const table = renderTable(
-		["Type", "Name", "Tokens", "When to Use / Summary"],
+		["Type", "Name", "Tokens", "Summary"],
 		report.matches.map((m) => [
 			m.kind === "skill"
 				? formatBadge("skill", "SKILL", c)
@@ -420,7 +413,7 @@ export function formatCatalogSearchReport(
 			`${m.tokens}t`,
 			m.summary,
 		]),
-		{ align: ["left", "left", "right", "left"], colorEnabled: c },
+		{ align: ["left", "left", "right", "left"], colorEnabled: c, indent: 3 },
 	);
 
 	const topItem = report.matches[0]?.name ?? "bug-reproducer-tdd";
@@ -428,17 +421,17 @@ export function formatCatalogSearchReport(
 		[
 			{
 				command: `npx skillops-cli info ${topItem}`,
-				description: `Inspect '${topItem}' in detail`,
+				description: "Inspect triggers & usage",
 			},
 			{
 				command: `npx skillops-cli add ${topItem}`,
-				description: `Install '${topItem}' into your project's AI agents`,
+				description: "Install into AI agents",
 			},
 		],
 		c,
 	);
 
-	return `${header}\n\n${table}\n${nextSteps}`;
+	return `${header}\n${bar}\n${table}\n${nextSteps}`;
 }
 
 export interface ScaffoldResult {
@@ -715,41 +708,33 @@ export function formatScaffoldReport(
 	}
 
 	const c = colorEnabled;
-	const box = renderBox(
-		[
-			`${formatBadge("pass", "CREATED", c)} Scaffolded new SkillOps Framework ${style.bold(result.kind.toUpperCase(), c)}: ${style.bold(style.cyan(result.name, c), c)}`,
-			"",
-			`${style.bold("Generated Files:", c)}`,
-			...result.created_files.map((f) => `  • ${style.green(f, c)}`),
-		],
-		{
-			title: "🛠️ SkillOps Framework Scaffolder",
-			borderColor: style.green,
-			minWidth: 74,
-			colorEnabled: c,
-		},
-	);
+	const bar = style.dim("│", c);
+	const treeHeader = [
+		`${style.bold(style.cyan("◆ SkillOps Framework Scaffolder", c), c)} ${style.dim("—", c)} ${formatBadge("pass", "CREATED", c)} ${style.bold(result.kind.toUpperCase(), c)} ${style.bold(style.cyan(result.name, c), c)}`,
+		bar,
+		`${style.dim("├─", c)} ${style.bold("Generated Files:", c)}`,
+		...result.created_files.map((f) => `${bar}  • ${style.green(f, c)}`),
+	].join("\n");
 
 	const nextSteps = renderNextSteps(
 		[
 			{
 				command: `npx skillops-cli info ${result.name}`,
-				description: `Inspect your new ${result.kind} metadata & token budget`,
+				description: `Inspect new ${result.kind} metadata & budget`,
 			},
 			{
 				command: "npx skillops-cli audit --require-layout",
-				description:
-					"Verify INV-SKILL-01..04 contract compliance & cosine collisions",
+				description: "Verify INV-SKILL-01..04 & collisions",
 			},
 			{
 				command: `npx skillops-cli add ${result.name}`,
-				description: `Transpile & install '${result.name}' into your AI coding agents`,
+				description: `Install '${result.name}' into AI agents`,
 			},
 		],
 		c,
 	);
 
-	return `${box}\n${nextSteps}`;
+	return `${treeHeader}\n${nextSteps}`;
 }
 
 export interface QuickstartOptions {
@@ -912,16 +897,17 @@ export function formatQuickstartReport(
 	}
 
 	const c = colorEnabled;
+	const bar = style.dim("│", c);
 	const stackLabel =
 		[...report.detected_languages, ...report.detected_frameworks].join(", ") ||
-		"general-purpose";
+		"general";
 	const targetsLabel =
-		report.active_targets.length > 5
-			? `${report.active_targets.slice(0, 5).join(", ")} (+${report.active_targets.length - 5} more)`
+		report.active_targets.length > 4
+			? `${report.active_targets.slice(0, 4).join(", ")} (+${report.active_targets.length - 4})`
 			: report.active_targets.join(", ");
 
 	const banner = renderHeaderBanner(
-		`1-Step Quickstart & AI Agent Library Setup ${report.dry_run ? "[DRY-RUN]" : "[READY]"}`,
+		`Quickstart Setup ${report.dry_run ? "[DRY-RUN]" : "[READY]"}`,
 		{ colorEnabled: c },
 	);
 
@@ -929,24 +915,24 @@ export function formatQuickstartReport(
 		renderStep(
 			1,
 			4,
-			"Detect Stack & AI Agents",
-			`Stack: ${style.cyan(stackLabel, c)} • Targets: ${style.bold(targetsLabel, c)}`,
+			"Detect Stack & Agents",
+			`${style.cyan(stackLabel, c)} · ${style.bold(targetsLabel, c)}`,
 			"done",
 			c,
 		),
 		renderStep(
 			2,
 			4,
-			"Route Optimal Library Bundle",
-			`${style.green(`${report.selected_skills.length} Skills`, c)} + ${style.magenta(`${report.selected_subagents.length} Subagents`, c)} selected`,
+			"Route Library Bundle",
+			`${style.green(`${report.selected_skills.length} Skills`, c)} + ${style.magenta(`${report.selected_subagents.length} Subagents`, c)}`,
 			"done",
 			c,
 		),
 		renderStep(
 			3,
 			4,
-			"Transpile & Sync Artifacts",
-			`${report.synced_files_count} files synced (${report.dry_run ? "dry-run" : ".skillops.yml + .skillops-lock.json"})`,
+			"Transpile & Sync",
+			`${report.synced_files_count} files (${report.dry_run ? "dry-run" : ".skillops.yml + lockfile"})`,
 			"done",
 			c,
 		),
@@ -954,13 +940,13 @@ export function formatQuickstartReport(
 			4,
 			4,
 			"Register MCP Server",
-			`${report.mcp_configured_count} MCP-compatible agent config(s) updated`,
+			`${report.mcp_configured_count} MCP agent config(s) wired`,
 			"done",
 			c,
 		),
 	].join("\n");
 
-	const tokenBar = `  ${renderTokenBar(
+	const tokenBar = `${bar}  ${renderTokenBar(
 		report.total_l1_tokens,
 		report.max_l1_budget,
 		{
@@ -969,21 +955,22 @@ export function formatQuickstartReport(
 		},
 	)}`;
 
-	const bundleBox = renderBox(
-		[
-			`${style.bold("Installed Hybrid Executable Skills:", c)}`,
-			`  ${report.selected_skills.map((s) => style.cyan(s, c)).join(", ")}`,
-			"",
-			`${style.bold("Installed Context-Isolated Subagents:", c)}`,
-			`  ${report.selected_subagents.map((a) => style.magenta(a, c)).join(", ")}`,
-		],
-		{
-			title: "📦 Active Skills & Subagents Bundle",
-			borderColor: style.cyan,
-			minWidth: 72,
-			colorEnabled: c,
-		},
-	);
+	const bundleTree = [
+		bar,
+		`${style.dim("├─", c)} ${style.bold(style.cyan(`Active Bundle (${report.selected_skills.length} Skills · ${report.selected_subagents.length} Subagents)`, c), c)}`,
+		`${bar}  • ${style.bold("Skills:", c)} ${report.selected_skills
+			.slice(0, 2)
+			.map((s) => style.cyan(s, c))
+			.join(
+				", ",
+			)}${report.selected_skills.length > 2 ? ` (+${report.selected_skills.length - 2} more)` : ""}`,
+		`${bar}  • ${style.bold("Subagents:", c)} ${report.selected_subagents
+			.slice(0, 2)
+			.map((a) => style.magenta(a, c))
+			.join(
+				", ",
+			)}${report.selected_subagents.length > 2 ? ` (+${report.selected_subagents.length - 2} more)` : ""}`,
+	].join("\n");
 
 	const usageGuide = renderAiUsageGuide(
 		report.active_targets,
@@ -996,21 +983,19 @@ export function formatQuickstartReport(
 		[
 			{
 				command: `npx skillops-cli info ${report.selected_skills[0] ?? "bug-reproducer-tdd"}`,
-				description:
-					"Inspect a Skill's triggers, L3 scripts & AI invocation syntax",
+				description: "Inspect Skill triggers & L3 scripts",
 			},
 			{
 				command: "npx skillops-cli list",
-				description: "Browse all 10 Skills & 9 Subagents in the Library",
+				description: "Browse all 10 Skills & 9 Subagents",
 			},
 			{
-				command: "npx skillops-cli create skill my-custom-skill",
-				description:
-					"Create your own custom Skill using the SkillOps Framework",
+				command: "npx skillops-cli create skill my-skill",
+				description: "Create a custom Skill",
 			},
 			{
 				command: "npx skillops-cli doctor",
-				description: "Verify lockfile integrity & Startup Token Tax savings",
+				description: "Verify lockfile & Startup Token Tax",
 			},
 		],
 		c,
@@ -1018,13 +1003,10 @@ export function formatQuickstartReport(
 
 	return [
 		banner,
-		"",
+		bar,
 		stepsBlock,
-		"",
 		tokenBar,
-		"",
-		bundleBox,
-		"",
+		bundleTree,
 		usageGuide,
 		nextSteps,
 	].join("\n");

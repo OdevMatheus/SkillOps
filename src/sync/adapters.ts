@@ -39,7 +39,7 @@ import {
 	SyncReportSchema,
 } from "../models.js";
 import { type RouteOptions, routeRepository } from "../router/index.js";
-import { renderBox, renderNextSteps, style } from "../ui/terminal.js";
+import { renderAiUsageGuide, renderNextSteps } from "../ui/terminal.js";
 
 export interface SyncOptions extends RouteOptions {
 	readonly targets?: readonly RuntimeTarget[];
@@ -1006,19 +1006,11 @@ export function formatSyncReport(
 
 	const usageBox =
 		activeArtifacts.length > 0
-			? renderBox(
-					[
-						`${style.bold("How to use your installed Skills & Subagents inside your AI:", c)}`,
-						`  • ${style.cyan("Claude Code / Antigravity:", c)} Ask naturally (auto-routed via SKILL.md) or delegate to a Subagent`,
-						`  • ${style.cyan("Cursor / Windsurf / Cline / Copilot:", c)} Reference ${style.green(`@${firstSkill}`, c)} in Chat or let rules auto-attach`,
-						`  • ${style.cyan("Deep-Inspect:", c)} Run ${style.green(`npx skillops-cli info ${firstSkill}`, c)} to view triggers & Level 3 scripts`,
-					],
-					{
-						title: "🚀 Using Your Skills & Subagents",
-						borderColor: style.cyan,
-						minWidth: 74,
-						colorEnabled: c,
-					},
+			? renderAiUsageGuide(
+					report.targets,
+					[firstSkill],
+					report.routed_bundle.recommended_subagents,
+					c,
 				)
 			: "";
 
@@ -1026,11 +1018,11 @@ export function formatSyncReport(
 		[
 			{
 				command: `npx skillops-cli info ${firstSkill}`,
-				description: "Inspect triggers, token budget & Level 3 scripts",
+				description: "Inspect triggers, token budget & L3 scripts",
 			},
 			{
 				command: "npx skillops-cli doctor",
-				description: "Verify lockfile SHA-256 integrity & Startup Token Tax",
+				description: "Verify lockfile SHA-256 & Startup Token Tax",
 			},
 		],
 		c,

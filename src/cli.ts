@@ -186,16 +186,16 @@ export function runCli(argv: readonly string[]): number {
 		if (targetCmd && !targetCmd.startsWith("-")) {
 			const spec = findCommandHelpSpec(targetCmd);
 			if (spec) {
-				process.stdout.write(renderCommandHelp(spec, SKILLOPS_VERSION));
+				process.stdout.write(`${renderCommandHelp(spec, SKILLOPS_VERSION)}\n`);
 				return ExitCode.SUCCESS;
 			}
 		}
-		process.stdout.write(renderGlobalHelp(SKILLOPS_VERSION));
+		process.stdout.write(`${renderGlobalHelp(SKILLOPS_VERSION)}\n`);
 		return ExitCode.SUCCESS;
 	}
 
 	if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
-		process.stdout.write(renderGlobalHelp(SKILLOPS_VERSION));
+		process.stdout.write(`${renderGlobalHelp(SKILLOPS_VERSION)}\n`);
 		return ExitCode.SUCCESS;
 	}
 
@@ -204,11 +204,11 @@ export function runCli(argv: readonly string[]): number {
 		if (firstCmd) {
 			const spec = findCommandHelpSpec(firstCmd);
 			if (spec) {
-				process.stdout.write(renderCommandHelp(spec, SKILLOPS_VERSION));
+				process.stdout.write(`${renderCommandHelp(spec, SKILLOPS_VERSION)}\n`);
 				return ExitCode.SUCCESS;
 			}
 		}
-		process.stdout.write(renderGlobalHelp(SKILLOPS_VERSION));
+		process.stdout.write(`${renderGlobalHelp(SKILLOPS_VERSION)}\n`);
 		return ExitCode.SUCCESS;
 	}
 
@@ -451,7 +451,7 @@ export function runCli(argv: readonly string[]): number {
 		}
 
 		const l1Bar = renderProgressBar(summary.totalL1Tokens, 1500, {
-			width: 18,
+			width: 10,
 			unit: "tokens",
 		});
 		const firstSkill = summary.skills[0]?.skillName ?? "security-sast-gate";
@@ -471,16 +471,15 @@ export function runCli(argv: readonly string[]): number {
 			renderNextSteps([
 				{
 					command: `npx skillops-cli info ${firstSkill}`,
-					description:
-						"Inspect triggers, L3 scripts & how to invoke in your AI",
+					description: "Inspect triggers & usage",
 				},
 				{
 					command: "npx skillops-cli search <keyword>",
-					description: "Search Skills & Subagents by domain or signal",
+					description: "Search Skills & Subagents",
 				},
 				{
 					command: "npx skillops-cli quickstart",
-					description: "Auto-detect project stack & install optimal bundle",
+					description: "Auto-detect & install",
 				},
 			]),
 		];

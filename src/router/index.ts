@@ -1,13 +1,12 @@
 export {
-  normalizePackageName,
-  RepoFingerprinter,
-  fingerprintRepository,
-} from "./fingerprinter.js";
-
-export {
-  type RouteOptions,
-  scoreSkillAgainstProfile,
-  compileSkillBundle,
-  routeRepository,
-  formatRoutedBundle,
+	compileSkillBundle,
+	formatRoutedBundle,
+	type RouteOptions,
+	routeRepository,
+	scoreSkillAgainstProfile,
 } from "./bundle_compiler.js";
+export {
+	fingerprintRepository,
+	normalizePackageName,
+	RepoFingerprinter,
+} from "./fingerprinter.js";

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.1] - 2026-11-03
+
+### Changed
+- **Clean Minimalist Terminal UX (`Sprint 10 / Issues #134 & #135`):**
+  - Replaced wide 2-line ASCII borders and colorful emojis across [`src/ui/terminal.ts`](./src/ui/terminal.ts) and [`src/ui/help.ts`](./src/ui/help.ts) with a compact, Clack/Vercel-inspired typographic tree layout (`◆`, `│`, `├─`, `╰─`, `✔`, `!`, `✖`, `•`) guaranteed to fit within `<= 78` columns and `<= 34` lines without scrolling or widening the terminal.
+  - Compacted `quickstart`, `info`, `search`, `create`, `list`, `sync`/`add`, `route`/`recommend`, and `tokens`/`budget` reports across [`src/framework/index.ts`](./src/framework/index.ts), [`src/sync/adapters.ts`](./src/sync/adapters.ts), [`src/router/bundle_compiler.ts`](./src/router/bundle_compiler.ts), [`src/auditor/token_economy.ts`](./src/auditor/token_economy.ts), and [`src/cli.ts`](./src/cli.ts) with zero emojis and `<= 78`-column tables.
+
+---
+
 ## [1.3.0] - 2026-11-03
 
 ### Added
