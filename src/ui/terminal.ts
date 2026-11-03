@@ -137,7 +137,7 @@ export function renderBox(
 	options?: BoxOptions,
 ): string {
 	const paddingX = options?.paddingX ?? 2;
-	const minWidth = options?.minWidth ?? 64;
+	const minWidth = options?.minWidth ?? 36;
 	const colorEnabled = options?.colorEnabled;
 	const borderFn = options?.borderColor ?? style.cyan;
 
@@ -171,21 +171,15 @@ export function renderBox(
 }
 
 /**
- * Render the official SkillOps Framework & Library top banner.
+ * Render the official SkillOps Framework & Library top header line (clean tree root).
  */
 export function renderHeaderBanner(
-	subtitle = "Framework & Library for High-End AI Coding Skills & Subagents",
+	subtitle = "Framework & Library for AI Skills & Subagents",
 	options?: { version?: string; colorEnabled?: boolean },
 ): string {
 	const ver = options?.version ?? SKILLOPS_VERSION;
 	const c = options?.colorEnabled;
-	const headline = `${style.bold(style.cyan(`⚡ SkillOps v${ver}`, c), c)} ${style.dim("—", c)} ${subtitle}`;
-	return renderBox([headline], {
-		borderColor: style.cyan,
-		paddingX: 2,
-		minWidth: 72,
-		colorEnabled: c,
-	});
+	return `${style.bold(style.cyan(`◆ SkillOps v${ver}`, c), c)} ${style.dim("—", c)} ${subtitle}`;
 }
 
 export interface TableOptions {
@@ -259,7 +253,7 @@ export function renderTokenBar(
 	max: number,
 	options?: TokenBarOptions,
 ): string {
-	const width = options?.width ?? 18;
+	const width = options?.width ?? 10;
 	const unit = options?.unit ?? "tokens";
 	const c = options?.colorEnabled;
 	const safeMax = max > 0 ? max : 1;
@@ -285,14 +279,14 @@ export function renderTokenBar(
 export const renderProgressBar = renderTokenBar;
 
 /**
- * Render a stylized section header with a bold cyan rule.
+ * Render a clean minimalist tree section header (`├─ Title`).
  */
 export function renderSectionHeader(
 	title: string,
 	colorEnabled?: boolean,
 ): string {
 	const c = colorEnabled;
-	return `\n  ${style.bold(style.cyan(title, c), c)}\n  ${style.dim("─".repeat(Math.max(24, visibleLength(title))), c)}`;
+	return `${style.dim("│", c)}\n${style.dim("├─", c)} ${style.bold(style.cyan(title, c), c)}`;
 }
 
 export type BadgeType =
@@ -346,7 +340,7 @@ export function formatBadge(
 }
 
 /**
- * Render a numbered onboarding step line (`  ✔ [1/4] Title — Detail`).
+ * Render a numbered onboarding step line (`│  ✔ [1/4] Title · Detail`).
  */
 export function renderStep(
 	step: number,
@@ -363,11 +357,11 @@ export function renderStep(
 				? style.yellow("⚠", colorEnabled)
 				: style.dim("○", colorEnabled);
 	const stepBadge = style.dim(`[${step}/${total}]`, colorEnabled);
-	const titleStyled = style.bold(padVisible(title, 28, "left"), colorEnabled);
+	const titleStyled = style.bold(padVisible(title, 20, "left"), colorEnabled);
 	const detailStyled = detail
-		? ` ${style.dim("•", colorEnabled)} ${detail}`
+		? ` ${style.dim("·", colorEnabled)} ${detail}`
 		: "";
-	return `  ${icon} ${stepBadge} ${titleStyled}${detailStyled}`;
+	return `${style.dim("│", colorEnabled)}  ${icon} ${stepBadge} ${titleStyled}${detailStyled}`;
 }
 
 export interface NextStepHint {
@@ -376,7 +370,7 @@ export interface NextStepHint {
 }
 
 /**
- * Render an actionable "Next steps" footer guiding the developer on what to run next.
+ * Render an actionable "Next Steps" tree footer guiding the developer on what to run next.
  */
 export function renderNextSteps(
 	hints: readonly NextStepHint[],
@@ -391,19 +385,18 @@ export function renderNextSteps(
 		0,
 	);
 	const lines = [
-		"",
-		`  ${style.bold(style.cyan("💡 Next Steps:", c), c)}`,
+		style.dim("│", c),
+		`${style.dim("╰─", c)} ${style.bold(style.cyan("Next Steps:", c), c)}`,
 		...hints.map(
 			(h) =>
-				`     ${style.green(padVisible(h.command, maxCmdLen + 2, "left"), c)} ${style.dim(`# ${h.description}`, c)}`,
+				`   ${style.dim("$", c)} ${style.green(padVisible(h.command, maxCmdLen + 1, "left"), c)} ${style.dim(`— ${h.description}`, c)}`,
 		),
-		"",
 	];
 	return lines.join("\n");
 }
 
 /**
- * Render a practical guide explaining how to invoke installed Skills & Subagents inside the user's AI coding agents.
+ * Render a compact, emoji-free tree guide explaining how to invoke installed Skills & Subagents.
  */
 export function renderAiUsageGuide(
 	targets: readonly string[],
@@ -414,30 +407,31 @@ export function renderAiUsageGuide(
 	const c = colorEnabled;
 	const sampleSkill = skills[0] ?? "systematic-debugging";
 	const sampleAgent = subagents[0] ?? "context-scout";
+	const bar = style.dim("│", c);
 	const lines: string[] = [
-		`${style.bold("How to use your installed Skills & Subagents inside your AI:", c)}`,
-		"",
+		bar,
+		`${style.dim("├─", c)} ${style.bold(style.cyan("Using Your Skills & Subagents", c), c)}`,
 	];
 
 	const targetSet = new Set(targets);
 	if (targetSet.has("claude") || targetSet.size === 0) {
 		lines.push(
-			`• ${style.bold("Claude Code:", c)} Ask naturally (auto-routed via .claude/skills/${sampleSkill}/SKILL.md) or delegate to @${sampleAgent}`,
+			`${bar}  • ${style.bold("Claude Code:", c)} Auto-routed (${sampleSkill}) or @${sampleAgent}`,
 		);
 	}
 	if (targetSet.has("cursor")) {
 		lines.push(
-			`• ${style.bold("Cursor IDE:", c)} Type ${style.cyan(`@${sampleSkill}`, c)} in Cursor Chat/Composer or let .cursor/rules/${sampleSkill}.mdc auto-attach`,
+			`${bar}  • ${style.bold("Cursor IDE:", c)} Type ${style.cyan(`@${sampleSkill}`, c)} in Chat (.cursor/rules/)`,
 		);
 	}
 	if (targetSet.has("antigravity")) {
 		lines.push(
-			`• ${style.bold("Antigravity / Gemini:", c)} Auto-activated from .agent/skills/${sampleSkill}/SKILL.md when your prompt matches its domain`,
+			`${bar}  • ${style.bold("Antigravity:", c)} Auto-activated (.agent/skills/${sampleSkill})`,
 		);
 	}
 	if (targetSet.has("copilot")) {
 		lines.push(
-			`• ${style.bold("GitHub Copilot:", c)} Use ${style.cyan(`/${sampleSkill}`, c)} prompt in Copilot Chat or reference .github/instructions/${sampleSkill}.instructions.md`,
+			`${bar}  • ${style.bold("Copilot:", c)} Use ${style.cyan(`/${sampleSkill}`, c)} in Chat (.github/instructions/)`,
 		);
 	}
 	if (
@@ -447,20 +441,14 @@ export function renderAiUsageGuide(
 		targetSet.has("kilocode")
 	) {
 		lines.push(
-			`• ${style.bold("Windsurf / Cline / Roo / Kilo:", c)} Rules in .windsurf/rules/, .clinerules/, .roo/rules/, .kilocode/rules/ activate automatically`,
+			`${bar}  • ${style.bold("Windsurf/Cline/Roo/Kilo:", c)} Workspace rules load automatically`,
 		);
 	}
 	lines.push(
-		`• ${style.bold("Inspect any Skill/Agent:", c)} Run ${style.green(`npx skillops-cli info ${sampleSkill}`, c)} to view triggers, L3 scripts & prompts`,
+		`${bar}  • ${style.bold("Inspect:", c)} ${style.green(`npx skillops-cli info ${sampleSkill}`, c)}`,
 	);
 
-	return renderBox(lines, {
-		title: "🚀 Using Your Skills & Subagents",
-		borderColor: style.green,
-		paddingX: 2,
-		minWidth: 72,
-		colorEnabled: c,
-	});
+	return lines.join("\n");
 }
 
 /**

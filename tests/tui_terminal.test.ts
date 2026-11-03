@@ -5,6 +5,7 @@ import {
 	padVisible,
 	renderAiUsageGuide,
 	renderBox,
+	renderGlobalHelp,
 	renderHeaderBanner,
 	renderNextSteps,
 	renderStep,
@@ -44,15 +45,14 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 		expect(plain).toBe("SkillOps");
 	});
 
-	it("renders rounded Unicode panels, header banners, and multi-column aligned tables", () => {
+	it("renders rounded Unicode panels, clean tree header banners, and multi-column aligned tables", () => {
 		const banner = renderHeaderBanner("Framework & Library", {
-			version: "1.3.0",
+			version: "1.3.1",
 			colorEnabled: false,
 		});
-		expect(banner).toContain("╭");
-		expect(banner).toContain("╰");
-		expect(banner).toContain("SkillOps v1.3.0");
+		expect(banner).toContain("◆ SkillOps v1.3.1");
 		expect(banner).toContain("Framework & Library");
+		expect(banner).not.toContain("⚡");
 
 		const box = renderBox(["Line 1", "Line 2"], {
 			title: "Panel Title",
@@ -104,8 +104,9 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 			],
 			false,
 		);
-		expect(nextSteps).toContain("💡 Next Steps:");
+		expect(nextSteps).toContain("╰─ Next Steps:");
 		expect(nextSteps).toContain("npx skillops-cli quickstart");
+		expect(nextSteps).not.toContain("💡");
 
 		const aiGuide = renderAiUsageGuide(
 			["claude", "cursor", "copilot"],
@@ -116,6 +117,18 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 		expect(aiGuide).toContain("Using Your Skills & Subagents");
 		expect(aiGuide).toContain("@systematic-debugging");
 		expect(aiGuide).toContain("/systematic-debugging");
+		expect(aiGuide).not.toContain("🚀");
+		for (const line of aiGuide.split("\n")) {
+			expect(visibleLength(line)).toBeLessThanOrEqual(78);
+		}
+
+		const helpOut = renderGlobalHelp("1.3.1", false);
+		expect(helpOut).not.toMatch(/[🚀📚🛠️⚙️🌐💡⚡]/u);
+		const helpLines = helpOut.split("\n");
+		expect(helpLines.length).toBeLessThanOrEqual(34);
+		for (const line of helpLines) {
+			expect(visibleLength(line)).toBeLessThanOrEqual(78);
+		}
 
 		const validCmds = [
 			"quickstart",

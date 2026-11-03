@@ -4,7 +4,7 @@
 
 import {
 	formatBadge,
-	renderBox,
+	padVisible,
 	renderHeaderBanner,
 	renderNextSteps,
 	renderSectionHeader,
@@ -35,23 +35,20 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "quickstart",
 		aliases: ["setup"],
 		pillar: "library",
-		summary:
-			"1-step onboarding: detect project stack, route optimal Skills & Subagents, sync to AI harnesses & wire MCP",
+		summary: "1-step onboarding: detect, route & sync",
 		usage: "npx skillops-cli quickstart [options]",
 		options: [
 			{
-				flags: "--project, --repo, -p <dir>",
-				description: "Target repository directory (default: current directory)",
+				flags: "-p, --project <dir>",
+				description: "Target repository directory (default: cwd)",
 			},
 			{
-				flags: "--harness, --targets, -t <list|auto|all>",
-				description:
-					"Target AI coding harnesses (e.g. claude,cursor,windsurf or auto/all)",
+				flags: "-t, --harness <list|auto|all>",
+				description: "Target AI coding harnesses (claude,cursor...)",
 			},
 			{
 				flags: "--top, --max-skills <n>",
-				description:
-					"Maximum number of Skills to activate in the bundle (default: 12)",
+				description: "Max Skills to activate in bundle (default: 12)",
 			},
 			{
 				flags: "--skip-mcp, --no-mcp",
@@ -59,28 +56,25 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 			},
 			{
 				flags: "--dry-run",
-				description: "Preview planned changes without writing files to disk",
+				description: "Preview planned changes without writing files",
 			},
 			{
 				flags: "--force",
-				description:
-					"Overwrite locally modified artifacts if drift is detected",
+				description: "Overwrite locally modified artifacts",
 			},
 			{
-				flags: "--format, -f <table|json|markdown>",
+				flags: "-f, --format <table|json|md>",
 				description: "Output report format (default: table)",
 			},
 		],
 		examples: [
 			{
 				command: "npx skillops-cli quickstart",
-				description:
-					"Auto-detect stack & harnesses, install optimal Skills/Subagents, and configure MCP",
+				description: "Auto-detect stack, sync Skills & wire MCP",
 			},
 			{
-				command: "npx skillops-cli quickstart --harness cursor,claude --top 6",
-				description:
-					"Quickstart specifically for Cursor and Claude Code with top 6 Skills",
+				command: "npx skillops-cli quickstart -t cursor,claude --top 6",
+				description: "Sync top 6 Skills to Cursor & Claude Code",
 			},
 		],
 	},
@@ -88,8 +82,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "list",
 		aliases: [],
 		pillar: "library",
-		summary:
-			"Browse all bundled Hybrid Executable Skills & Context-Isolated Subagents with token budgets",
+		summary: "Browse all 10 Skills & 9 Subagents",
 		usage: "npx skillops-cli list [options]",
 		options: [
 			{
@@ -97,20 +90,18 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 				description: "Custom catalog directory to list",
 			},
 			{
-				flags: "--format, -f <table|json|markdown>",
+				flags: "-f, --format <table|json|md>",
 				description: "Output format (default: table)",
 			},
 		],
 		examples: [
 			{
 				command: "npx skillops-cli list",
-				description:
-					"Display all 10 Skills and 9 Subagents with L1/L2 token footprints",
+				description: "Display all 10 Skills & 9 Subagents",
 			},
 			{
 				command: "npx skillops-cli info security-sast-gate",
-				description:
-					"Deep-inspect a specific Skill from the Library after listing",
+				description: "Inspect a specific Skill from the Library",
 			},
 		],
 	},
@@ -118,8 +109,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "search",
 		aliases: ["find"],
 		pillar: "library",
-		summary:
-			"Search the Library of Skills & Subagents by keyword, domain, framework, or routing signal",
+		summary: "Search catalog by keyword, stack or domain",
 		usage: "npx skillops-cli search <query> [options]",
 		options: [
 			{
@@ -127,20 +117,18 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 				description: "Custom catalog directory to search",
 			},
 			{
-				flags: "--format, -f <table|json|markdown>",
+				flags: "-f, --format <table|json|md>",
 				description: "Output format (default: table)",
 			},
 		],
 		examples: [
 			{
 				command: "npx skillops-cli search security",
-				description:
-					"Find Skills and Subagents matching security/SAST/OWASP signals",
+				description: "Find Skills/Subagents matching security/SAST",
 			},
 			{
 				command: "npx skillops-cli find postgres",
-				description:
-					"Find database & PostgreSQL optimization Skills in the Library",
+				description: "Find database & PostgreSQL optimization Skills",
 			},
 		],
 	},
@@ -148,72 +136,65 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "info",
 		aliases: ["show", "inspect"],
 		pillar: "library",
-		summary:
-			"Inspect a Skill or Subagent's L1 routing triggers, L2 token budget, L3 scripts & how to use it in your AI",
-		usage: "npx skillops-cli info <skill-or-subagent-name> [options]",
+		summary: "Inspect triggers, L2 budget & AI usage",
+		usage: "npx skillops-cli info <name> [options]",
 		options: [
 			{
 				flags: "--catalog <dir>",
 				description: "Custom catalog directory",
 			},
 			{
-				flags: "--format, -f <table|json|markdown>",
+				flags: "-f, --format <table|json|md>",
 				description: "Output format (default: table)",
 			},
 		],
 		examples: [
 			{
 				command: "npx skillops-cli info bug-reproducer-tdd",
-				description:
-					"Inspect routing triggers, L3 scripts & IDE invocation guide for bug-reproducer-tdd",
+				description: "Inspect triggers, L3 scripts & IDE invocation",
 			},
 			{
 				command: "npx skillops-cli show red-team-breaker",
-				description:
-					"Inspect the red-team-breaker Context-Isolated Subagent card",
+				description: "Inspect the red-team-breaker Subagent card",
 			},
 		],
 	},
 	{
 		name: "add",
-		aliases: ["install", "i"],
+		aliases: ["install"],
 		pillar: "library",
-		summary:
-			"Install one or more Skills or Subagents into your active AI coding harnesses",
+		summary: "Install Skills/Subagents into AI harnesses",
 		usage: "npx skillops-cli add <name...> [options]",
 		options: [
 			{
-				flags: "--project, --repo, -p <dir>",
+				flags: "-p, --project <dir>",
 				description: "Target repository directory",
 			},
 			{
-				flags: "--harness, --targets, -t <list|auto|all>",
-				description:
-					"Target AI coding harnesses (e.g. claude,cursor,windsurf or all)",
+				flags: "-t, --harness <list|auto|all>",
+				description: "Target AI harnesses (claude,cursor,all...)",
 			},
 			{
 				flags: "--dry-run",
-				description: "Preview planned file writes without modifying disk",
+				description: "Preview planned writes without modifying disk",
 			},
 			{
 				flags: "--force",
 				description: "Overwrite locally drifted files",
 			},
 			{
-				flags: "--format, -f <table|json|markdown>",
+				flags: "-f, --format <table|json|md>",
 				description: "Output format (default: table)",
 			},
 		],
 		examples: [
 			{
 				command: "npx skillops-cli install security-sast-gate",
-				description:
-					"Install the security-sast-gate Skill into configured/default harnesses",
+				description: "Install security-sast-gate into harnesses",
 			},
 			{
-				command:
-					"npx skillops-cli add mcp-architect context-scout --harness claude,cursor",
-				description: "Install both a Skill and a Subagent into Claude & Cursor",
+				command: "npx skillops-cli add mcp-architect -t claude,cursor",
+				description: "Install mcp-architect into Claude & Cursor",
 			},
 		],
 	},
@@ -221,28 +202,26 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "remove",
 		aliases: ["uninstall", "rm"],
 		pillar: "library",
-		summary:
-			"Surgically uninstall a synced Skill or Subagent from active AI harnesses",
+		summary: "Remove a Skill/Subagent from harnesses",
 		usage: "npx skillops-cli remove <name...> [options]",
 		options: [
 			{
-				flags: "--project, --repo, -p <dir>",
+				flags: "-p, --project <dir>",
 				description: "Target repository directory",
 			},
 			{
-				flags: "--harness, --targets, -t <list>",
+				flags: "-t, --harness <list>",
 				description: "Restrict removal to specific harnesses",
 			},
 			{
 				flags: "--force",
-				description: "Remove even if local SHA-256 drift is detected",
+				description: "Remove even if SHA-256 drift is detected",
 			},
 		],
 		examples: [
 			{
 				command: "npx skillops-cli uninstall mcp-architect",
-				description:
-					"Remove all transpiled runtime files for mcp-architect and update .skillops-lock.json",
+				description: "Remove runtime files & update lockfile",
 			},
 		],
 	},
@@ -250,18 +229,16 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "route",
 		aliases: ["recommend"],
 		pillar: "library",
-		summary:
-			"Fingerprint repository stack and recommend the optimal collision-free <=12 Skill bundle",
+		summary: "Recommend optimal <=12 Skill bundle",
 		usage: "npx skillops-cli recommend [options]",
 		options: [
 			{
-				flags: "--project, --repo, -p <dir>",
+				flags: "-p, --project <dir>",
 				description: "Repository directory to fingerprint",
 			},
 			{
 				flags: "--task <prompt>",
-				description:
-					"Optional natural-language task prompt to boost task-specific Skills",
+				description: "Task prompt to boost task-specific Skills",
 			},
 			{
 				flags: "--top, --max-skills <n>",
@@ -269,24 +246,21 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 			},
 			{
 				flags: "--max-l1-tokens <n>",
-				description: "Maximum total L1 routing token budget (default: 1500)",
+				description: "Maximum L1 routing token budget (default: 1500)",
 			},
 			{
-				flags: "--format, -f <table|json|markdown>",
+				flags: "-f, --format <table|json|md>",
 				description: "Output format (default: table)",
 			},
 		],
 		examples: [
 			{
 				command: "npx skillops-cli recommend",
-				description:
-					"Recommend the best Skills & Subagents for the current repository stack",
+				description: "Recommend best Skills for current repo stack",
 			},
 			{
-				command:
-					'npx skillops-cli route --task "optimize slow postgres queries in FastAPI" --top 4',
-				description:
-					"Route top 4 Skills tailored to a specific engineering task",
+				command: 'npx skillops-cli route --task "slow postgres" --top 4',
+				description: "Route top 4 Skills for a specific task",
 			},
 		],
 	},
@@ -294,15 +268,12 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "create",
 		aliases: ["new"],
 		pillar: "framework",
-		summary:
-			"Scaffold a custom Skill (SKILL.md + L3 script + evals.json) or Subagent (SUBAGENT.md) using the SkillOps Framework",
-		usage:
-			"npx skillops-cli create <skill|subagent> <kebab-case-name> [options]",
+		summary: "Scaffold custom Skill or Subagent template",
+		usage: "npx skillops-cli create <skill|subagent> <name> [options]",
 		options: [
 			{
-				flags: "--description, -d <text>",
-				description:
-					"Custom trigger description (automatically normalized to INV-SKILL-01..04 contracts)",
+				flags: "-d, --description <text>",
+				description: "Custom trigger description (INV-SKILL-01..04)",
 			},
 			{
 				flags: "--catalog <dir>",
@@ -313,20 +284,18 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 				description: "Overwrite existing Skill or Subagent template",
 			},
 			{
-				flags: "--format, -f <table|json|markdown>",
+				flags: "-f, --format <table|json|md>",
 				description: "Output format (default: table)",
 			},
 		],
 		examples: [
 			{
 				command: "npx skillops-cli create skill graphql-schema-guard",
-				description:
-					"Scaffold a new INV-SKILL-01..03 compliant Skill with Level 3 script & eval suite",
+				description: "Scaffold a new Skill with L3 script & evals",
 			},
 			{
 				command: "npx skillops-cli create subagent migration-reviewer",
-				description:
-					"Scaffold a new INV-SKILL-04 compliant Context-Isolated Subagent",
+				description: "Scaffold a new Context-Isolated Subagent",
 			},
 		],
 	},
@@ -334,8 +303,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "audit",
 		aliases: [],
 		pillar: "framework",
-		summary:
-			"Run L1/L2/L3 token budget linter, Subagent contract verifier & TF-IDF cosine collision matrix",
+		summary: "Verify L1/L2 budgets & TF-IDF collisions",
 		usage: "npx skillops-cli audit [options]",
 		options: [
 			{
@@ -344,24 +312,21 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 			},
 			{
 				flags: "--require-layout",
-				description:
-					"Enforce full directory layout including evals/evals.json and executable L3 scripts",
+				description: "Enforce evals/evals.json and L3 scripts",
 			},
 			{
 				flags: "--strict",
-				description:
-					"Fail with non-zero exit code on HIGH_RISK collisions as well as BLOCKING collisions",
+				description: "Fail on HIGH_RISK as well as BLOCKING collisions",
 			},
 			{
-				flags: "--format, -f <table|json|github>",
+				flags: "-f, --format <table|json|gh>",
 				description: "Output format (default: table)",
 			},
 		],
 		examples: [
 			{
 				command: "npx skillops-cli audit --require-layout --strict",
-				description:
-					"Certify that all Skills & Subagents pass token budgets and zero-collision invariants",
+				description: "Certify token budgets & zero collisions",
 			},
 		],
 	},
@@ -369,8 +334,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "eval",
 		aliases: [],
 		pillar: "framework",
-		summary:
-			"Execute zero-API deterministic TDD benchmarks (with_skill vs without_skill) and export dashboards",
+		summary: "Run deterministic A/B TDD benchmarks",
 		usage: "npx skillops-cli eval [options]",
 		options: [
 			{
@@ -383,28 +347,25 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 			},
 			{
 				flags: "--out <file>",
-				description:
-					"Write formatted benchmark report (e.g. HTML/Markdown) to disk",
+				description: "Write benchmark report (HTML/Markdown) to disk",
 			},
 			{
 				flags: "--strict",
-				description:
-					"Exit with code 4 if any Skill fails CERTIFIED_IMPROVEMENT",
+				description: "Exit 4 if any Skill fails CERTIFIED_IMPROVEMENT",
 			},
 			{
-				flags: "--format, -f <table|json|markdown|html|github>",
+				flags: "-f, --format <table|json|html>",
 				description: "Output format (default: table)",
 			},
 		],
 		examples: [
 			{
 				command: "npx skillops-cli eval --strict",
-				description:
-					"Run deterministic A/B evals across all Skills in the catalog",
+				description: "Run deterministic A/B evals across catalog",
 			},
 			{
-				command: "npx skillops-cli eval --format html --out benchmark.html",
-				description: "Export a standalone HTML benchmark dashboard",
+				command: "npx skillops-cli eval -f html --out benchmark.html",
+				description: "Export standalone HTML benchmark dashboard",
 			},
 		],
 	},
@@ -412,24 +373,22 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "init",
 		aliases: [],
 		pillar: "runtime",
-		summary:
-			"Scaffold declarative .skillops.yml and detect repository AI coding harnesses",
+		summary: "Create .skillops.yml and detect harnesses",
 		usage: "npx skillops-cli init [options]",
 		options: [
 			{
-				flags: "--project, --repo, -p <dir>",
+				flags: "-p, --project <dir>",
 				description: "Target repository directory",
 			},
 			{
-				flags: "--harness, --targets, -t <list|auto|all>",
-				description: "Initial target harnesses to record in .skillops.yml",
+				flags: "-t, --harness <list|auto|all>",
+				description: "Initial target harnesses for .skillops.yml",
 			},
 		],
 		examples: [
 			{
 				command: "npx skillops-cli init",
-				description:
-					"Create .skillops.yml with auto-detected stack and harnesses",
+				description: "Create .skillops.yml with detected harnesses",
 			},
 		],
 	},
@@ -437,18 +396,16 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "sync",
 		aliases: [],
 		pillar: "runtime",
-		summary:
-			"Transpile routed Skills & Subagents across up to 20 AI coding agents with SHA-256 lockfile protection",
+		summary: "Transpile bundle across 20 AI agents",
 		usage: "npx skillops-cli sync [options]",
 		options: [
 			{
-				flags: "--project, --repo, -p <dir>",
+				flags: "-p, --project <dir>",
 				description: "Target repository directory",
 			},
 			{
-				flags: "--harness, --targets, -t <list|auto|all>",
-				description:
-					"Target AI coding harnesses (default: .skillops.yml targets or core 5)",
+				flags: "-t, --harness <list|auto|all>",
+				description: "Target AI harnesses (default: .skillops.yml)",
 			},
 			{
 				flags: "--top, --max-skills <n>",
@@ -456,7 +413,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 			},
 			{
 				flags: "--dry-run",
-				description: "Preview planned artifacts without writing files",
+				description: "Preview planned artifacts without writing",
 			},
 			{
 				flags: "--force",
@@ -466,12 +423,11 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		examples: [
 			{
 				command: "npx skillops-cli sync --auto",
-				description:
-					"Sync optimal Skills & Subagents into all AI harnesses detected in the repo",
+				description: "Sync bundle into all detected AI harnesses",
 			},
 			{
 				command: "npx skillops-cli sync --harness all",
-				description: "Transpile across all 20 supported AI coding agents",
+				description: "Transpile across all 20 supported AI agents",
 			},
 		],
 	},
@@ -479,12 +435,11 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "clean",
 		aliases: [],
 		pillar: "runtime",
-		summary:
-			"Remove all SkillOps-managed runtime artifacts tracked in .skillops-lock.json",
+		summary: "Remove all tracked runtime artifacts",
 		usage: "npx skillops-cli clean [options]",
 		options: [
 			{
-				flags: "--project, --repo, -p <dir>",
+				flags: "-p, --project <dir>",
 				description: "Target repository directory",
 			},
 			{
@@ -499,8 +454,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		examples: [
 			{
 				command: "npx skillops-cli clean",
-				description:
-					"Cleanly remove all synced artifacts and .skillops-lock.json",
+				description: "Remove all synced artifacts & lockfile",
 			},
 		],
 	},
@@ -508,12 +462,11 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "tokens",
 		aliases: ["budget"],
 		pillar: "runtime",
-		summary:
-			"Analyze repository Startup Token Tax, Progressive Disclosure savings & context bloat hotspots",
+		summary: "Analyze Startup Token Tax & context bloat",
 		usage: "npx skillops-cli budget [options]",
 		options: [
 			{
-				flags: "--project, --repo, -p <dir>",
+				flags: "-p, --project <dir>",
 				description: "Repository directory to inspect",
 			},
 			{
@@ -522,19 +475,17 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 			},
 			{
 				flags: "--strict",
-				description:
-					"Fail with exit code 3 if Startup Token Tax exceeds budget",
+				description: "Exit 3 if Startup Token Tax exceeds budget",
 			},
 			{
-				flags: "--format, -f <table|json|markdown|github>",
+				flags: "-f, --format <table|json|md>",
 				description: "Output format (default: table)",
 			},
 		],
 		examples: [
 			{
 				command: "npx skillops-cli budget",
-				description:
-					"Inspect repository Startup Token Tax and Progressive Disclosure savings",
+				description: "Inspect repository Startup Token Tax & savings",
 			},
 		],
 	},
@@ -542,12 +493,11 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "doctor",
 		aliases: ["status"],
 		pillar: "runtime",
-		summary:
-			"Diagnose Node/Python environment, .skillops.yml validity, lockfile SHA-256 drift & Startup Token Tax",
+		summary: "Diagnose environment, drift & token budget",
 		usage: "npx skillops-cli doctor [options]",
 		options: [
 			{
-				flags: "--project, --repo, -p <dir>",
+				flags: "-p, --project <dir>",
 				description: "Repository directory to diagnose",
 			},
 			{
@@ -555,7 +505,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 				description: "Fail on warnings as well as errors",
 			},
 			{
-				flags: "--format, -f <table|json|markdown|github>",
+				flags: "-f, --format <table|json|md>",
 				description: "Output format (default: table)",
 			},
 		],
@@ -570,24 +520,22 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "harnesses",
 		aliases: [],
 		pillar: "runtime",
-		summary:
-			"List all 20 supported AI coding agents, target paths, MCP support & repository detection status",
+		summary: "List 20 supported AI agents & repo status",
 		usage: "npx skillops-cli harnesses [options]",
 		options: [
 			{
-				flags: "--project, --repo, -p <dir>",
+				flags: "-p, --project <dir>",
 				description: "Repository directory to scan for AI harnesses",
 			},
 			{
-				flags: "--format, -f <table|json|markdown>",
+				flags: "-f, --format <table|json|md>",
 				description: "Output format (default: table)",
 			},
 		],
 		examples: [
 			{
 				command: "npx skillops-cli harnesses",
-				description:
-					"View all 20 supported AI coding IDEs/CLI agents and which ones are active in your repo",
+				description: "View all 20 supported AI IDEs/CLI agents",
 			},
 		],
 	},
@@ -595,16 +543,15 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "mcp-setup",
 		aliases: [],
 		pillar: "runtime",
-		summary:
-			"Register SkillOps MCP server across all 13 MCP-compatible AI coding IDEs & agents",
+		summary: "Wire MCP server across 13 AI IDEs & agents",
 		usage: "npx skillops-cli mcp-setup [options]",
 		options: [
 			{
-				flags: "--project, --repo, -p <dir>",
+				flags: "-p, --project <dir>",
 				description: "Target repository directory",
 			},
 			{
-				flags: "--harness, --targets, -t <list|auto|all>",
+				flags: "-t, --harness <list|auto|all>",
 				description: "Target harnesses to configure MCP for",
 			},
 			{
@@ -615,8 +562,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		examples: [
 			{
 				command: "npx skillops-cli mcp-setup --auto",
-				description:
-					"Automatically wire SkillOps MCP server into detected IDEs (.mcp.json, .cursor/mcp.json, etc.)",
+				description: "Wire SkillOps MCP into detected IDEs",
 			},
 		],
 	},
@@ -624,19 +570,18 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "mcp",
 		aliases: [],
 		pillar: "runtime",
-		summary: "Start native JSON-RPC 2.0 stdio Model Context Protocol server",
+		summary: "Start stdio JSON-RPC 2.0 MCP server",
 		usage: "npx skillops-cli mcp [options]",
 		options: [
 			{
-				flags: "--project, --repo, -p <dir>",
+				flags: "-p, --project <dir>",
 				description: "Repository root served over MCP",
 			},
 		],
 		examples: [
 			{
 				command: "npx skillops-cli mcp",
-				description:
-					"Start stdio MCP server (invoked automatically by AI IDEs)",
+				description: "Start stdio MCP server for AI IDEs",
 			},
 		],
 	},
@@ -655,99 +600,61 @@ export function findCommandHelpSpec(
 }
 
 /**
- * Render the 3-Pillar Framework & Library global help screen (`npx skillops-cli --help`).
+ * Render the compact, emoji-free 3-Pillar Framework & Library global help tree (`npx skillops-cli --help`).
  */
 export function renderGlobalHelp(
 	version: string,
 	colorEnabled?: boolean,
 ): string {
 	const c = colorEnabled;
+	const bar = style.dim("│", c);
 	const banner = renderHeaderBanner(
-		"The Zero-API Framework & Library for High-End AI Coding Skills & Context-Isolated Subagents",
+		"Framework & Library for AI Skills & Subagents",
 		{
 			version,
 			colorEnabled: c,
 		},
 	);
 
-	const quickstartBox = renderBox(
-		[
-			`${style.bold(style.green("npx skillops-cli quickstart", c), c)}    ${style.dim("# 1-step setup: detect stack, install Skills/Subagents & wire MCP", c)}`,
-			`${style.bold(style.cyan("npx skillops-cli info <name>", c), c)}   ${style.dim("# Inspect any Skill/Subagent & see how to invoke it in your AI", c)}`,
-			`${style.bold(style.magenta("npx skillops-cli create skill <name>", c), c)} ${style.dim("# Scaffold your own custom Skill using the SkillOps Framework", c)}`,
-		],
-		{
-			title: "🚀 10-Second Quickstart (Library + Framework)",
-			borderColor: style.cyan,
-			minWidth: 88,
-			colorEnabled: c,
-		},
-	);
-
 	const formatCmdSection = (pillar: "library" | "framework" | "runtime") => {
 		const specs = COMMAND_HELP_SPECS.filter((s) => s.pillar === pillar);
-		return renderTable(
-			["Command", "Aliases", "Description"],
-			specs.map((s) => [
-				style.bold(style.cyan(s.name, c), c),
-				s.aliases.length > 0
-					? style.dim(s.aliases.join(", "), c)
-					: style.dim("—", c),
-				s.summary,
-			]),
-			{ colorEnabled: c, indent: 2 },
-		);
+		return specs
+			.map((s) => {
+				const aliasPart =
+					s.aliases.length > 0
+						? style.dim(` (${s.aliases.join(", ")})`, c)
+						: "";
+				const cmdCol = padVisible(
+					`${style.bold(style.cyan(s.name, c), c)}${aliasPart}`,
+					23,
+					"left",
+				);
+				return `${bar}  ${cmdCol}${s.summary}`;
+			})
+			.join("\n");
 	};
 
-	const globalFlagsTable = renderTable(
-		["Global Flag", "Description"],
-		[
-			[
-				style.cyan("--project, --repo, -p <dir>", c),
-				"Target project/repository directory (default: current working directory)",
-			],
-			[
-				style.cyan("--harness, --targets, -t <list|auto|all>", c),
-				"Target AI coding harnesses (e.g. claude,cursor,windsurf,copilot or auto/all)",
-			],
-			[
-				style.cyan("--format, -f <table|json|markdown|github>", c),
-				"Output format for reports and CI pipelines (default: table)",
-			],
-			[
-				style.cyan("--help, -h / --version, -V", c),
-				"Show global or per-command help (`npx skillops-cli <cmd> --help`) / CLI version",
-			],
-		],
-		{ colorEnabled: c, indent: 2 },
-	);
-
 	return [
-		`SkillOps v${version} — The Zero-API NPX Engine for High-End AI Skills & Subagents`,
-		"Usage: npx skillops-cli <command> [options]",
-		"",
 		banner,
-		quickstartBox,
-		renderSectionHeader(
-			"📚 1. Library of High-End Skills & Subagents (Explore, Search & Install)",
-			c,
-		),
+		`${bar}  Usage: npx skillops-cli <command> [options]`,
+		renderSectionHeader("Quickstart (Library + Framework)", c),
+		`${bar}  ${style.dim("$", c)} ${style.bold(style.green("npx skillops-cli quickstart", c), c)}          ${style.dim("— Detect stack, sync Skills & MCP", c)}`,
+		`${bar}  ${style.dim("$", c)} ${style.bold(style.cyan("npx skillops-cli info <name>", c), c)}         ${style.dim("— Inspect Skill/Subagent & usage", c)}`,
+		`${bar}  ${style.dim("$", c)} ${style.bold(style.magenta("npx skillops-cli create skill <name>", c), c)} ${style.dim("— Scaffold a custom Skill", c)}`,
+		renderSectionHeader("1. Library of High-End Skills & Subagents", c),
 		formatCmdSection("library"),
 		renderSectionHeader(
-			"🛠️ 2. Framework for Building Custom Skills & Subagents (Scaffold, Audit & Certify)",
+			"2. Framework for Building Custom Skills & Subagents",
 			c,
 		),
 		formatCmdSection("framework"),
 		renderSectionHeader(
-			"⚙️ 3. Universal Runtime Sync, Token Economy & Diagnostics (Top 20 AI Harnesses)",
+			"3. Universal Runtime Sync, Token Economy & Diagnostics",
 			c,
 		),
 		formatCmdSection("runtime"),
-		renderSectionHeader("🌐 Global Options", c),
-		globalFlagsTable,
-		"",
-		`  ${style.dim("💡 Tip: Run", c)} ${style.bold(style.cyan("npx skillops-cli <command> --help", c), c)} ${style.dim("for detailed flags and copy-paste examples.", c)}`,
-		"",
+		bar,
+		`${style.dim("╰─", c)} ${style.bold("Global Flags:", c)} ${style.cyan("-p <dir>", c)} · ${style.cyan("-t <harnesses>", c)} · ${style.cyan("-f <table|json|md>", c)} · ${style.cyan("-h <cmd>", c)}`,
 	].join("\n");
 }
 
@@ -760,6 +667,7 @@ export function renderCommandHelp(
 	colorEnabled?: boolean,
 ): string {
 	const c = colorEnabled;
+	const bar = style.dim("│", c);
 	const pillarBadge =
 		spec.pillar === "library"
 			? formatBadge("info", "LIBRARY", c)
@@ -772,21 +680,11 @@ export function renderCommandHelp(
 			? ` (aliases: ${spec.aliases.map((a) => style.cyan(a, c)).join(", ")})`
 			: "";
 
-	const headerBox = renderBox(
-		[
-			`${pillarBadge} ${style.bold(style.cyan(`skillops ${spec.name}`, c), c)}${aliasText}`,
-			"",
-			spec.summary,
-			"",
-			`${style.bold("Usage:", c)} ${style.green(spec.usage, c)}`,
-		],
-		{
-			title: `SkillOps v${version} — Command Reference`,
-			borderColor: style.cyan,
-			minWidth: 78,
-			colorEnabled: c,
-		},
-	);
+	const headerLines = [
+		`${style.bold(style.cyan(`◆ SkillOps v${version}`, c), c)} ${style.dim("—", c)} ${style.bold(`skillops ${spec.name}`, c)}${aliasText} ${pillarBadge}`,
+		`${bar}  ${spec.summary}`,
+		`${bar}  ${style.bold("Usage:", c)} ${style.green(spec.usage, c)}`,
+	].join("\n");
 
 	const optionsSection =
 		spec.options.length > 0
@@ -795,14 +693,14 @@ export function renderCommandHelp(
 					renderTable(
 						["Flag", "Description"],
 						spec.options.map((o) => [style.cyan(o.flags, c), o.description]),
-						{ colorEnabled: c, indent: 2 },
+						{ colorEnabled: c, indent: 3 },
 					),
 				].join("\n")
 			: "";
 
 	const examplesSection = renderNextSteps(spec.examples, c);
 
-	return [headerBox, optionsSection, examplesSection]
+	return [headerLines, optionsSection, examplesSection]
 		.filter(Boolean)
 		.join("\n");
 }
