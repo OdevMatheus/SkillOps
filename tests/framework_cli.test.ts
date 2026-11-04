@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { auditCatalog } from "../src/auditor/index.js";
-import { runCli } from "../src/cli.js";
+import { buildInteractiveCatalogOptions, runCli } from "../src/cli.js";
 import {
 	formatCatalogItemInfo,
 	formatCatalogSearchReport,
@@ -383,5 +383,57 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 		expect(errChunks.join("")).toContain(
 			"Unknown command 'instal'. Did you mean 'install'?",
 		);
+	});
+
+	it("builds interactive catalog options and supports 'list [query]' and 'add --all' (Issue #140)", () => {
+		const options = buildInteractiveCatalogOptions(CATALOG_DIR);
+		expect(options.length).toBeGreaterThanOrEqual(19);
+		expect(options.filter((o) => o.kind === "skill").length).toBe(10);
+		expect(options.filter((o) => o.kind === "agent").length).toBe(9);
+
+		const outChunks: string[] = [];
+		vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+			outChunks.push(String(chunk));
+			return true;
+		});
+
+		const listFilterCode = runCli([
+			"node",
+			"skillops",
+			"list",
+			"security",
+			"-f",
+			"json",
+		]);
+		expect(listFilterCode).toBe(ExitCode.SUCCESS);
+		const listFilterJson = JSON.parse(outChunks.join("")) as {
+			query: string;
+			total_matches: number;
+		};
+		expect(listFilterJson.query).toBe("security");
+		expect(listFilterJson.total_matches).toBeGreaterThanOrEqual(2);
+		outChunks.length = 0;
+
+		const tmpRepo = makeTempDir("skillops-add-all-");
+		const addAllCode = runCli([
+			"node",
+			"skillops",
+			"add",
+			"--all",
+			"-p",
+			tmpRepo,
+			"--target",
+			"cursor",
+			"--dry-run",
+			"-f",
+			"json",
+		]);
+		expect(addAllCode).toBe(ExitCode.SUCCESS);
+		const addAllJson = JSON.parse(outChunks.join("")) as {
+			passed: boolean;
+			artifacts: unknown[];
+		};
+		expect(addAllJson.passed).toBe(true);
+		expect(addAllJson.artifacts.length).toBeGreaterThanOrEqual(19);
 	});
 });

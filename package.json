@@ -1,86 +1,86 @@
 {
-  "name": "skillops-cli",
-  "version": "1.3.1",
-  "description": "SkillOps — The Zero-API Framework & Benchmark-Verified Library for High-End AI Coding Skills & Context-Isolated Subagents with Universal Top-20 AI Agent Transpilation & Token Economy Auditing.",
-  "type": "module",
-  "license": "MIT",
-  "author": "OdevMatheus <matheusvita007@gmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/OdevMatheus/SkillOps.git"
-  },
-  "homepage": "https://github.com/OdevMatheus/SkillOps#readme",
-  "bugs": {
-    "url": "https://github.com/OdevMatheus/SkillOps/issues"
-  },
-  "bin": {
-    "skillops-cli": "./dist/cli.js",
-    "skillops": "./dist/cli.js"
-  },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
-  "files": [
-    "dist",
-    "catalog",
-    ".github/agents",
-    "docs/BENCHMARKS.md",
-    "SKILL_CONTRACT.md",
-    "README.md",
-    "LICENSE"
-  ],
-  "engines": {
-    "node": ">=20.0.0"
-  },
-  "scripts": {
-    "build": "tsup",
-    "prepublishOnly": "npm run build && npm test",
-    "lint": "tsc --noEmit",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "skillops": "node dist/cli.js"
-  },
-  "dependencies": {
-    "yaml": "^2.7.0",
-    "zod": "^3.24.2"
-  },
-  "devDependencies": {
-    "@types/node": "^22.13.0",
-    "tsup": "^8.4.0",
-    "typescript": "^5.8.2",
-    "vitest": "^3.0.7"
-  },
-  "keywords": [
-    "ai-agents",
-    "agent-skills",
-    "subagents",
-    "token-economy",
-    "claude-code",
-    "cursor",
-    "antigravity",
-    "codex",
-    "github-copilot",
-    "windsurf",
-    "cline",
-    "roocode",
-    "kilocode",
-    "zed",
-    "continue",
-    "aider",
-    "openhands",
-    "amp",
-    "goose",
-    "opencode",
-    "kiro",
-    "trae",
-    "amazon-q",
-    "junie",
-    "mcp",
-    "context-engineering"
-  ]
+	"name": "skillops-cli",
+	"version": "1.3.2",
+	"description": "SkillOps — The Zero-API Framework & Benchmark-Verified Library for High-End AI Coding Skills & Context-Isolated Subagents with Universal Top-20 AI Agent Transpilation & Token Economy Auditing.",
+	"type": "module",
+	"license": "MIT",
+	"author": "OdevMatheus <matheusvita007@gmail.com>",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/OdevMatheus/SkillOps.git"
+	},
+	"homepage": "https://github.com/OdevMatheus/SkillOps#readme",
+	"bugs": {
+		"url": "https://github.com/OdevMatheus/SkillOps/issues"
+	},
+	"bin": {
+		"skillops-cli": "./dist/cli.js",
+		"skillops": "./dist/cli.js"
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist",
+		"catalog",
+		".github/agents",
+		"docs/BENCHMARKS.md",
+		"SKILL_CONTRACT.md",
+		"README.md",
+		"LICENSE"
+	],
+	"engines": {
+		"node": ">=20.0.0"
+	},
+	"scripts": {
+		"build": "tsup",
+		"prepublishOnly": "npm run build && npm test",
+		"lint": "tsc --noEmit",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"skillops": "node dist/cli.js"
+	},
+	"dependencies": {
+		"yaml": "^2.7.0",
+		"zod": "^3.24.2"
+	},
+	"devDependencies": {
+		"@types/node": "^22.13.0",
+		"tsup": "^8.4.0",
+		"typescript": "^5.8.2",
+		"vitest": "^3.0.7"
+	},
+	"keywords": [
+		"ai-agents",
+		"agent-skills",
+		"subagents",
+		"token-economy",
+		"claude-code",
+		"cursor",
+		"antigravity",
+		"codex",
+		"github-copilot",
+		"windsurf",
+		"cline",
+		"roocode",
+		"kilocode",
+		"zed",
+		"continue",
+		"aider",
+		"openhands",
+		"amp",
+		"goose",
+		"opencode",
+		"kiro",
+		"trae",
+		"amazon-q",
+		"junie",
+		"mcp",
+		"context-engineering"
+	]
 }

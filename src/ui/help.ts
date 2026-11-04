@@ -652,7 +652,7 @@ export function renderGlobalHelp(
 		renderSectionHeader("Commands", c),
 		cmdRows,
 		renderSectionHeader("Options", c),
-		`${bar}  ${padVisible(style.cyan("-t, --target <ide>", c), 22, "left")}AI IDE (cursor, claude, copilot, antigravity, windsurf)`,
+		`${bar}  ${padVisible(style.cyan("-t, --target <ide>", c), 22, "left")}AI IDE (cursor, claude, copilot, windsurf, auto)`,
 		`${bar}  ${padVisible(style.cyan("-p, --project <dir>", c), 22, "left")}Project folder (default: current directory)`,
 		`${bar}  ${padVisible(style.cyan("--all", c), 22, "left")}Import all 10 Skills & 9 Agents`,
 		renderSectionHeader("Examples", c),

@@ -7,9 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.2] - 2026-11-04
+
+### Added
+
+- **Interactive Space+Enter Multi-Select Importer (`Sprint 11 / Issues #139 & #140`):**
+  - Added [`src/ui/prompt.ts`](./src/ui/prompt.ts) (`createMultiSelectState`, `applyMultiSelectKey`, `renderMultiSelectFrame`, `runMultiSelectPrompt`) launching an interactive terminal selector (`↑`/`↓` to navigate, `Space` to select/deselect multiple Skills & Agents, `a` to toggle all, `Enter` to confirm) **only when `skillops add` is invoked without positional arguments** in an interactive TTY.
+  - Added `--all` flag support on `skillops add --all` and optional `[query]` filtering on `skillops list [query]` (`skillops list security`).
+
+### Changed
+
+- **Simplified 5-Command Global Help (`Sprint 11 / Issue #139`):**
+  - Streamlined `skillops` / `skillops --help` in [`src/ui/help.ts`](./src/ui/help.ts) to focus on the 5 essential commands (`add [name...]`, `list [query]`, `info <name>`, `remove <name>`, `init`) in `<= 22` lines and `<= 78` columns.
+
+---
+
 ## [1.3.1] - 2026-11-03
 
 ### Changed
+
 - **Clean Minimalist Terminal UX (`Sprint 10 / Issues #134 & #135`):**
   - Replaced wide 2-line ASCII borders and colorful emojis across [`src/ui/terminal.ts`](./src/ui/terminal.ts) and [`src/ui/help.ts`](./src/ui/help.ts) with a compact, Clack/Vercel-inspired typographic tree layout (`◆`, `│`, `├─`, `╰─`, `✔`, `!`, `✖`, `•`) guaranteed to fit within `<= 78` columns and `<= 34` lines without scrolling or widening the terminal.
   - Compacted `quickstart`, `info`, `search`, `create`, `list`, `sync`/`add`, `route`/`recommend`, and `tokens`/`budget` reports across [`src/framework/index.ts`](./src/framework/index.ts), [`src/sync/adapters.ts`](./src/sync/adapters.ts), [`src/router/bundle_compiler.ts`](./src/router/bundle_compiler.ts), [`src/auditor/token_economy.ts`](./src/auditor/token_economy.ts), and [`src/cli.ts`](./src/cli.ts) with zero emojis and `<= 78`-column tables.
@@ -19,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.3.0] - 2026-11-03
 
 ### Added
+
 - **Zero-Dependency ANSI TUI Aesthetic Engine (`Sprint 9 / Issue #125`):**
   - Added [`src/ui/terminal.ts`](./src/ui/terminal.ts) providing zero-dependency ANSI color/style helpers (respecting `NO_COLOR`, `FORCE_COLOR`, and TTY detection), Unicode rounded box panels (`renderBox`), official SkillOps Framework & Library header banners (`renderHeaderBanner`), ANSI-aware aligned tables (`renderTable`), visual token budget progress bars (`renderTokenBar` / `renderProgressBar`), semantic status/type badges (`formatBadge`), guided next-step footers (`renderNextSteps`), and how-to-use-in-your-AI cards (`renderHowToUseInAi`).
 - **Library Explorer, 1-Step Quickstart & Framework Scaffolder (`Sprint 9 / Issue #126`):**
@@ -37,8 +54,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.2.1] - 2026-11-03
 
 ### Added
+
 - **Open-Source Community Health, Academic Citation & Contributor DX Standards (`Sprint 8 / Issue #120`):**
-  - Added [`.github/SUPPORT.md`](./.github/SUPPORT.md), [`CITATION.cff`](./CITATION.cff) (enabling GitHub's native *Cite this repository* BibTeX/APA button), [`.editorconfig`](./.editorconfig), and [`.nvmrc`](./.nvmrc) (`22`).
+  - Added [`.github/SUPPORT.md`](./.github/SUPPORT.md), [`CITATION.cff`](./CITATION.cff) (enabling GitHub's native _Cite this repository_ BibTeX/APA button), [`.editorconfig`](./.editorconfig), and [`.nvmrc`](./.nvmrc) (`22`).
   - Upgraded [`CONTRIBUTING.md`](./CONTRIBUTING.md) for external open-source contributors with a **5-Minute Hybrid Executable Skill Authoring Cookbook**.
 - **GitHub CodeQL SAST Security Workflow & OpenSSF Security Policy (`Sprint 8 / Issue #121`):**
   - Added [`.github/workflows/codeql.yml`](./.github/workflows/codeql.yml) performing automated static security analysis (`javascript-typescript` and `python`) on pushes to `master`, Pull Requests, and weekly schedules.
@@ -49,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.2.0] - 2026-11-03
 
 ### Added
+
 - **Universal MCP Server Registration (`npx skillops-cli@latest mcp-setup`) & `v1.2.0` Release (`Sprint 7 / Issue #114`):**
   - Added `setupMcpForHarnesses` and `formatMcpSetupReport` (`table`, `json`, `markdown`) in [`src/mcp/index.ts`](./src/mcp/index.ts) and wired `npx skillops-cli@latest mcp-setup` (`--targets all|auto|core|<list>`, `--dry-run`) in [`src/cli.ts`](./src/cli.ts) to idempotently register the `skillops` stdio MCP server across all 13 MCP-capable IDEs and CLI agents (`.mcp.json`, `.gemini/settings.json`, `.cursor/mcp.json`, `.codex/config.toml`, `.vscode/mcp.json`, `.roo/mcp.json`, `.kilocode/mcp.json`, `.zed/settings.json`, `.continue/mcpServers/skillops.yaml`, `.amp/settings.json`, `opencode.json`, `.kiro/settings/mcp.json`, `.amazonq/mcp.json`).
   - Added the `list_supported_harnesses` tool to the JSON-RPC 2.0 `stdio` MCP server in [`src/mcp/index.ts`](./src/mcp/index.ts) and bumped `SKILLOPS_VERSION` / `package.json` to `1.2.0`.
@@ -66,6 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2026-11-03
 
 ### Added
+
 - **GitHub Actions Native Annotations (`--format github`) & Composite Action Summary (`Sprint 6 / Issue #105`):**
   - Added `--format github` output mode to `audit`, `tokens`, `eval`, `doctor`, and `status` in [`src/cli.ts`](./src/cli.ts), [`src/auditor/token_economy.ts`](./src/auditor/token_economy.ts), [`src/eval/index.ts`](./src/eval/index.ts), and [`src/auditor/doctor.ts`](./src/auditor/doctor.ts), emitting native `::error`, `::warning`, and `::notice` workflow commands.
   - Upgraded [`.github/actions/skillops-audit/action.yml`](./.github/actions/skillops-audit/action.yml) and [`.github/workflows/ai-ci.yml`](./.github/workflows/ai-ci.yml) with `tokens-check`, `step-summary`, and automatic Markdown reporting into `$GITHUB_STEP_SUMMARY`.
@@ -82,6 +102,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2026-10-30
 
 ### Added
+
 - **Official NPM Package Configuration (`skillops-cli`) & Automated NPM Publish Workflow (`Sprint 5 / Issue #67`):**
   - Configured [`package.json`](./package.json) as `skillops-cli` (`v1.0.0`) exposing both `skillops-cli` and `skillops` binaries (`npx skillops-cli@latest <command>`), and added [`.github/workflows/npm-publish.yml`](./.github/workflows/npm-publish.yml) with NPM Provenance (`--provenance`).
   - Published [`docs/BENCHMARKS.md`](./docs/BENCHMARKS.md) documenting the `v1.0.0` Token Economy & Deterministic TDD Benchmark Showcase (`95.53%` Startup Token Tax reduction, `10/10 CERTIFIED_IMPROVEMENT` skills, `+39.1%` mean pass-rate lift, `-51.05%` mean task token reduction, `max pairwise cosine = 0.0661 < 0.58`).
@@ -93,15 +114,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added [`catalog/subagents/context-scout/SUBAGENT.md`](./catalog/subagents/context-scout/SUBAGENT.md), [`catalog/subagents/token-budget-governor/SUBAGENT.md`](./catalog/subagents/token-budget-governor/SUBAGENT.md), [`catalog/subagents/blast-radius-auditor/SUBAGENT.md`](./catalog/subagents/blast-radius-auditor/SUBAGENT.md), [`catalog/subagents/red-team-breaker/SUBAGENT.md`](./catalog/subagents/red-team-breaker/SUBAGENT.md), and [`catalog/subagents/tdd-reproducer-agent/SUBAGENT.md`](./catalog/subagents/tdd-reproducer-agent/SUBAGENT.md) enforcing `INV-SKILL-04` (`max_output_tokens <= 400`, explicit least-privilege tools, and isolated exploration contracts).
 
 ### Changed
+
 - **NPX DevOps, Governance & Token Economy Alignment (`Sprint 4 / v0.5.0`):**
   - Aligned [`.github/CODEOWNERS`](./.github/CODEOWNERS), [`.github/dependabot.yml`](./.github/dependabot.yml), [`.github/release-drafter.yml`](./.github/release-drafter.yml), [`.github/SECURITY.md`](./.github/SECURITY.md), [`.github/labeler.yml`](./.github/labeler.yml), [`.github/workflows/pr-governance.yml`](./.github/workflows/pr-governance.yml), [`.github/workflows/ai-ci.yml`](./.github/workflows/ai-ci.yml), [`.github/PULL_REQUEST_TEMPLATE.md`](./.github/PULL_REQUEST_TEMPLATE.md), [`.github/ISSUE_TEMPLATE/`](./.github/ISSUE_TEMPLATE/), [`.github/copilot-instructions.md`](./.github/copilot-instructions.md), [`.github/agents/*.agent.md`](./.github/agents/), [`.gitattributes`](./.gitattributes), [`.gitignore`](./.gitignore), and [`.skillops.yml`](./.skillops.yml) with the Node.js 20+ / TypeScript `npx skillops@latest` architecture.
   - Optimized [`AGENTS.md`](./AGENTS.md) (`<= 600 tokens`) and subagent frontmatters (`max_output_tokens <= 400`) so `npx skillops@latest tokens --strict` passes with **0 hotspots**.
   - Updated [`SKILL_CONTRACT.md`](./SKILL_CONTRACT.md), [`CONTRIBUTING.md`](./CONTRIBUTING.md), [`README.md`](./README.md), [`docs/architecture/README.md`](./docs/architecture/README.md), and [`docs/architecture/adr/`](./docs/architecture/adr/) (`ADR-0001` through `ADR-0004`) to reflect the `npx skillops@latest` engine.
 
 ### Removed
+
 - Removed obsolete pre-NPX roadmap (`docs/SKILLOPS_IMPROVEMENT_ROADMAP.md`) and renamed `ADR-0004` to [`docs/architecture/adr/0004-zero-api-tdd-evaluation-and-stdio-mcp.md`](./docs/architecture/adr/0004-zero-api-tdd-evaluation-and-stdio-mcp.md).
 
 ### Fixed
+
 - **Cross-Platform Windows/Linux CLI Direct Invocation (`src/cli.ts`):**
   - Fixed `isDirectCliInvocation()` in [`src/cli.ts`](./src/cli.ts) using `pathToFileURL` and `fs.realpathSync` so `node dist/cli.js` and `npx skillops` execute reliably across Windows, macOS, and Linux.
 
@@ -110,6 +134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.0] - 2026-10-30
 
 ### Added
+
 - **Complete `npx skillops@latest` CLI, Deterministic TDD Eval Runner & Stdio MCP Server (`Sprint 4 / Issue #62`):**
   - Added [`src/eval/index.ts`](./src/eval/index.ts) implementing `evaluateSkillDirectory`, `evaluateCatalog`, and `formatEvalSummary` (`table`, `json`, `markdown`, `html`) enforcing `INV-SKILL-05` (`with_skill` vs `without_skill` pass-rate lift and token reduction).
   - Added [`src/mcp/index.ts`](./src/mcp/index.ts) and [`src/mcp/server.ts`](./src/mcp/server.ts) implementing a native JSON-RPC 2.0 `stdio` Model Context Protocol server exposing `audit_catalog`, `analyze_repo_tokens`, `route_repo_skills`, `run_skill_script`, `get_skill_benchmark`, and `list_catalog_items` with zero stdout pollution.

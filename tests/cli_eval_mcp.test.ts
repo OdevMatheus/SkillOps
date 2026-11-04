@@ -552,7 +552,7 @@ describe("SkillOps NPX Complete CLI, Deterministic Eval Runner & Stdio MCP Serve
 	});
 
 	it("idempotently configures MCP server across all 13 MCP-capable harnesses via 'skillops mcp-setup' and exposes list_supported_harnesses MCP tool (Issue #114)", () => {
-		expect(SKILLOPS_VERSION).toBe("1.3.1");
+		expect(SKILLOPS_VERSION).toBe("1.3.2");
 		const tmpRepo = fs.mkdtempSync(
 			path.join(os.tmpdir(), "skillops-mcp-setup-"),
 		);
