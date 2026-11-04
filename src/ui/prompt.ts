@@ -358,7 +358,7 @@ export function renderMultiSelectFrame(
 	const skillTabTitle = options.tabLabels?.skill ?? "Skills";
 	const agentTabTitle = options.tabLabels?.agent ?? "Agents";
 	const submitVerb = options.submitActionLabel ?? "import";
-	const isSinglePage = totalAgents === 0;
+	const isSinglePage = totalAgents === 0 || totalSkills === 0;
 
 	const header = `${style.bold(style.cyan(`◆ ${title}`, c), c)}`;
 	const tabHint = isSinglePage ? "" : " · ←/→ tab";
@@ -405,9 +405,11 @@ export function renderMultiSelectFrame(
 			? `   ${style.yellow(`/ Filter: ${rawQuerySlice}${state.searchMode ? "█" : ""}`, c)}`
 			: `   ${style.dim("(/ search)", c)}`;
 
+	const singleTabLabel = totalSkills > 0 ? skillTabLabel : agentTabLabel;
+
 	lines.push(
 		isSinglePage
-			? `${style.dim("├─", c)} ${skillTabLabel}${searchSuffix}`
+			? `${style.dim("├─", c)} ${singleTabLabel}${searchSuffix}`
 			: `${style.dim("├─", c)} ${skillTabLabel}   ${agentTabLabel}${searchSuffix}`,
 		bar,
 	);

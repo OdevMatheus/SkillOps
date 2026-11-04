@@ -45,6 +45,7 @@ import {
 	SKILLOPS_VERSION,
 	type SkillOpsConfig,
 	SkillOpsConfigSchema,
+	SyncLockfileSchema,
 	loadSkillOpsConfig,
 	resolveRuntimeTargets,
 } from "./models.js";
@@ -269,6 +270,82 @@ export function buildInteractiveCatalogOptions(
 	}
 
 	return options;
+}
+
+export function buildInteractiveInstalledOptions(
+	repoPath: string,
+	catalogDir: string,
+	targetFilter?: readonly RuntimeTarget[],
+): MultiSelectOption[] {
+	const lockfilePath = path.join(path.resolve(repoPath), ".skillops-lock.json");
+	if (!fs.existsSync(lockfilePath)) {
+		return [];
+	}
+
+	let parsedLock: ReturnType<typeof SyncLockfileSchema.safeParse>;
+	try {
+		const raw = JSON.parse(fs.readFileSync(lockfilePath, "utf-8")) as unknown;
+		parsedLock = SyncLockfileSchema.safeParse(raw);
+	} catch {
+		return [];
+	}
+	if (!parsedLock.success) {
+		return [];
+	}
+
+	const lock = parsedLock.data;
+	const targetSet =
+		targetFilter && targetFilter.length > 0 ? new Set(targetFilter) : null;
+	const targetsByItem = new Map<string, Set<RuntimeTarget>>();
+
+	for (const entry of Object.values(lock.artifacts)) {
+		if (entry.skill_name === "codex-agents-index") {
+			continue;
+		}
+		if (targetSet && !targetSet.has(entry.target)) {
+			continue;
+		}
+		let itemTargets = targetsByItem.get(entry.skill_name);
+		if (!itemTargets) {
+			itemTargets = new Set<RuntimeTarget>();
+			targetsByItem.set(entry.skill_name, itemTargets);
+		}
+		itemTargets.add(entry.target);
+	}
+
+	if (targetsByItem.size === 0) {
+		return [];
+	}
+
+	const catalogOptions = buildInteractiveCatalogOptions(catalogDir);
+	const catalogMap = new Map(catalogOptions.map((o) => [o.value, o]));
+	const subagentSet = new Set(lock.selected_subagents);
+
+	const skills: MultiSelectOption[] = [];
+	const agents: MultiSelectOption[] = [];
+
+	for (const [itemName, itemTargets] of targetsByItem.entries()) {
+		const catalogOpt = catalogMap.get(itemName);
+		const isAgent = catalogOpt
+			? catalogOpt.kind === "agent"
+			: subagentSet.has(itemName);
+		const targetsLabel = [...itemTargets].join(", ");
+		const baseHint = catalogOpt?.hint ?? "Installed in project";
+		const option: MultiSelectOption = {
+			value: itemName,
+			label: itemName,
+			kind: isAgent ? "agent" : "skill",
+			tab: isAgent ? "agent" : "skill",
+			hint: `[${targetsLabel}] · ${baseHint}`,
+		};
+		if (isAgent) {
+			agents.push(option);
+		} else {
+			skills.push(option);
+		}
+	}
+
+	return [...skills, ...agents];
 }
 
 export function runCli(argv: readonly string[]): number {
@@ -581,16 +658,16 @@ export function runCli(argv: readonly string[]): number {
 			),
 			renderNextSteps([
 				{
+					command: "npx skillops-cli add",
+					description: "Interactive import into your AI IDE",
+				},
+				{
 					command: `npx skillops-cli info ${firstSkill}`,
 					description: "Inspect triggers & usage",
 				},
 				{
 					command: "npx skillops-cli search <keyword>",
 					description: "Search Skills & Subagents",
-				},
-				{
-					command: "npx skillops-cli quickstart",
-					description: "Auto-detect & install",
 				},
 			]),
 		];
@@ -873,12 +950,7 @@ export function runCli(argv: readonly string[]): number {
 
 	if (command === "remove" || command === "uninstall" || command === "rm") {
 		const positionals = getPositionalArgs(args);
-		if (positionals.length === 0) {
-			process.stderr.write(
-				"Usage: npx skillops-cli remove <skill-or-subagent-name> [options]\n",
-			);
-			return ExitCode.ERROR;
-		}
+		const removeAll = args.includes("--all");
 		const repoPath =
 			getFlagValue(args, "--repo", "--project", "-p") ?? process.cwd();
 		const cfgRes = loadSkillOpsConfig(repoPath);
@@ -900,19 +972,54 @@ export function runCli(argv: readonly string[]): number {
 			const targets = rawTargetsArg
 				? resolveRuntimeTargets(rawTargetsArg, repoPath)
 				: undefined;
-			let allPassed = true;
-			for (const itemName of positionals) {
-				const report = removeSkillOrSubagent(repoPath, catalogDir, itemName, {
-					targets,
+
+			if (removeAll && positionals.length === 0 && !targets) {
+				const report = cleanSyncedArtifacts(repoPath, catalogDir, {
 					dryRun,
 					force,
 				});
 				process.stdout.write(formatSyncReport(report, format));
-				if (!report.passed) {
-					allPassed = false;
-				}
+				return report.passed ? ExitCode.SUCCESS : ExitCode.ERROR;
 			}
-			return allPassed ? ExitCode.SUCCESS : ExitCode.ERROR;
+
+			const itemsToRemove =
+				removeAll && positionals.length === 0
+					? buildInteractiveInstalledOptions(repoPath, catalogDir, targets).map(
+							(o) => o.value,
+						)
+					: positionals;
+
+			if (itemsToRemove.length === 0) {
+				process.stderr.write(
+					"Usage: npx skillops-cli remove <skill-or-subagent-name> [options]\n",
+				);
+				return ExitCode.ERROR;
+			}
+
+			const reports = itemsToRemove.map((itemName) =>
+				removeSkillOrSubagent(repoPath, catalogDir, itemName, {
+					targets,
+					dryRun,
+					force,
+				}),
+			);
+			const firstReport = reports[0];
+			if (!firstReport) {
+				return ExitCode.ERROR;
+			}
+			const finalReport =
+				reports.length === 1
+					? firstReport
+					: {
+							...firstReport,
+							artifacts: reports.flatMap((r) => r.artifacts),
+							drift_conflicts: [
+								...new Set(reports.flatMap((r) => r.drift_conflicts)),
+							],
+							passed: reports.every((r) => r.passed),
+						};
+			process.stdout.write(formatSyncReport(finalReport, format));
+			return finalReport.passed ? ExitCode.SUCCESS : ExitCode.ERROR;
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
 			process.stderr.write(`Error: ${msg}\n`);
@@ -1161,6 +1268,68 @@ export async function runCliInteractive(
 		}
 
 		return runCli([...argv, ...extraArgs]);
+	}
+
+	if (
+		(command === "remove" || command === "uninstall" || command === "rm") &&
+		!args.includes("--help") &&
+		!args.includes("-h") &&
+		!args.includes("--all") &&
+		process.stdin.isTTY &&
+		process.stdout.isTTY
+	) {
+		const positionals = getPositionalArgs(args);
+		if (positionals.length === 0) {
+			const repoPath =
+				getFlagValue(args, "--repo", "--project", "-p") ?? process.cwd();
+			const cfgRes = loadSkillOpsConfig(repoPath);
+			if (cfgRes.error) {
+				process.stderr.write(
+					`Invalid .skillops.yml at ${cfgRes.configPath}: ${cfgRes.error}\n`,
+				);
+				return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+			}
+			const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
+			const explicitTargetsArg = resolveTargetsArg(args);
+			let targets: RuntimeTarget[] | undefined;
+			if (explicitTargetsArg) {
+				try {
+					targets = resolveRuntimeTargets(explicitTargetsArg, repoPath);
+				} catch (err) {
+					const msg = err instanceof Error ? err.message : String(err);
+					process.stderr.write(`Invalid --targets: ${msg}\n`);
+					return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+				}
+			}
+
+			const installedOptions = buildInteractiveInstalledOptions(
+				repoPath,
+				catalogDir,
+				targets,
+			);
+			if (installedOptions.length === 0) {
+				process.stdout.write(
+					"No imported Skills or Agents found in this project.\n",
+				);
+				return ExitCode.SUCCESS;
+			}
+
+			const selected = await runMultiSelectPrompt(
+				"SkillOps — Select Installed Skills & Agents to Remove",
+				installedOptions,
+				{
+					submitActionLabel: "remove",
+					targetHint: targets ? targets.join(", ") : undefined,
+				},
+			);
+
+			if (!selected || selected.length === 0) {
+				process.stdout.write("No Skills or Agents selected for removal.\n");
+				return ExitCode.SUCCESS;
+			}
+
+			return runCli([...argv, ...selected]);
+		}
 	}
 
 	return runCli(argv);
