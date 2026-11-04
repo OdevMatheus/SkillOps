@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+	applyMultiSelectKey,
+	createMultiSelectState,
 	formatBadge,
 	isColorEnabled,
 	padVisible,
@@ -7,6 +9,7 @@ import {
 	renderBox,
 	renderGlobalHelp,
 	renderHeaderBanner,
+	renderMultiSelectFrame,
 	renderNextSteps,
 	renderStep,
 	renderTable,
@@ -122,13 +125,64 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 			expect(visibleLength(line)).toBeLessThanOrEqual(78);
 		}
 
-		const helpOut = renderGlobalHelp("1.3.1", false);
+		const helpOut = renderGlobalHelp("1.3.2", false);
 		expect(helpOut).not.toMatch(/(?:🚀|📚|🛠️|⚙️|🌐|💡|⚡|📦|🔍)/u);
+		expect(helpOut).toContain("add [name...]");
+		expect(helpOut).toContain("list [query]");
+		expect(helpOut).toContain("info <name>");
+		expect(helpOut).toContain("remove <name>");
+		expect(helpOut).toContain("init");
 		const helpLines = helpOut.split("\n");
-		expect(helpLines.length).toBeLessThanOrEqual(34);
+		expect(helpLines.length).toBeLessThanOrEqual(24);
 		for (const line of helpLines) {
 			expect(visibleLength(line)).toBeLessThanOrEqual(78);
 		}
+
+		// Multi-select interactive state machine & frame rendering
+		let msState = createMultiSelectState([
+			{
+				value: "bug-reproducer-tdd",
+				label: "bug-reproducer-tdd",
+				kind: "skill",
+				hint: "Reproduce bugs with failing tests first",
+			},
+			{
+				value: "red-team-breaker",
+				label: "red-team-breaker",
+				kind: "agent",
+				hint: "Stress-test auth, inputs & trust boundaries",
+			},
+		]);
+		expect(msState.cursor).toBe(0);
+		expect(msState.selected.size).toBe(0);
+
+		// Press Space to select first item, Down arrow to move to second, Space to select second, Enter to submit
+		msState = applyMultiSelectKey(msState, " ");
+		expect(msState.selected.has("bug-reproducer-tdd")).toBe(true);
+		msState = applyMultiSelectKey(msState, "\x1b[B");
+		expect(msState.cursor).toBe(1);
+		msState = applyMultiSelectKey(msState, " ");
+		expect(msState.selected.size).toBe(2);
+
+		const frame = renderMultiSelectFrame(
+			"SkillOps — Import Skills & Agents",
+			msState,
+			{ targetHint: "cursor, claude", colorEnabled: false },
+		);
+		expect(frame).toContain("2 selected");
+		expect(frame).toContain("◼ skill bug-reproducer-tdd");
+		expect(frame).toContain("❯ ◼ agent red-team-breaker");
+		for (const line of frame.split("\n")) {
+			expect(visibleLength(line)).toBeLessThanOrEqual(78);
+		}
+
+		// Toggle all off and on with 'a', then submit with Enter
+		msState = applyMultiSelectKey(msState, "a");
+		expect(msState.selected.size).toBe(0);
+		msState = applyMultiSelectKey(msState, "a");
+		expect(msState.selected.size).toBe(2);
+		msState = applyMultiSelectKey(msState, "\r");
+		expect(msState.status).toBe("submitted");
 
 		const validCmds = [
 			"quickstart",

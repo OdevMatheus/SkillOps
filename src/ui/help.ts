@@ -600,7 +600,7 @@ export function findCommandHelpSpec(
 }
 
 /**
- * Render the compact, emoji-free 3-Pillar Framework & Library global help tree (`npx skillops-cli --help`).
+ * Render the compact, emoji-free global help tree (`npx skillops-cli --help`) focused on the 5 core commands.
  */
 export function renderGlobalHelp(
 	version: string,
@@ -609,52 +609,58 @@ export function renderGlobalHelp(
 	const c = colorEnabled;
 	const bar = style.dim("│", c);
 	const banner = renderHeaderBanner(
-		"Framework & Library for AI Skills & Subagents",
+		"Skills & Agents Library for AI Coding IDEs",
 		{
 			version,
 			colorEnabled: c,
 		},
 	);
 
-	const formatCmdSection = (pillar: "library" | "framework" | "runtime") => {
-		const specs = COMMAND_HELP_SPECS.filter((s) => s.pillar === pillar);
-		return specs
-			.map((s) => {
-				const aliasPart =
-					s.aliases.length > 0
-						? style.dim(` (${s.aliases.join(", ")})`, c)
-						: "";
-				const cmdCol = padVisible(
-					`${style.bold(style.cyan(s.name, c), c)}${aliasPart}`,
-					23,
-					"left",
-				);
-				return `${bar}  ${cmdCol}${s.summary}`;
-			})
-			.join("\n");
-	};
+	const coreCmds: readonly { readonly cmd: string; readonly desc: string }[] = [
+		{
+			cmd: "add [name...]",
+			desc: "Import Skills or Agents (interactive if no name given)",
+		},
+		{
+			cmd: "list [query]",
+			desc: "List or filter available Skills & Agents in catalog",
+		},
+		{
+			cmd: "info <name>",
+			desc: "View details and how to use a Skill or Agent",
+		},
+		{
+			cmd: "remove <name>",
+			desc: "Remove an imported Skill or Agent from your project",
+		},
+		{
+			cmd: "init",
+			desc: "Auto-detect stack & IDE and import recommended bundle",
+		},
+	];
+
+	const cmdRows = coreCmds
+		.map(
+			(item) =>
+				`${bar}  ${padVisible(style.bold(style.cyan(item.cmd, c), c), 18, "left")}${item.desc}`,
+		)
+		.join("\n");
 
 	return [
 		banner,
-		`${bar}  Usage: npx skillops-cli <command> [options]`,
-		renderSectionHeader("Quickstart (Library + Framework)", c),
-		`${bar}  ${style.dim("$", c)} ${style.bold(style.green("npx skillops-cli quickstart", c), c)}          ${style.dim("— Detect stack, sync Skills & MCP", c)}`,
-		`${bar}  ${style.dim("$", c)} ${style.bold(style.cyan("npx skillops-cli info <name>", c), c)}         ${style.dim("— Inspect Skill/Subagent & usage", c)}`,
-		`${bar}  ${style.dim("$", c)} ${style.bold(style.magenta("npx skillops-cli create skill <name>", c), c)} ${style.dim("— Scaffold a custom Skill", c)}`,
-		renderSectionHeader("1. Library of High-End Skills & Subagents", c),
-		formatCmdSection("library"),
-		renderSectionHeader(
-			"2. Framework for Building Custom Skills & Subagents",
-			c,
-		),
-		formatCmdSection("framework"),
-		renderSectionHeader(
-			"3. Universal Runtime Sync, Token Economy & Diagnostics",
-			c,
-		),
-		formatCmdSection("runtime"),
+		`${bar}  Usage: skillops <command> [options]`,
+		renderSectionHeader("Commands", c),
+		cmdRows,
+		renderSectionHeader("Options", c),
+		`${bar}  ${padVisible(style.cyan("-t, --target <ide>", c), 22, "left")}AI IDE (cursor, claude, copilot, antigravity, windsurf)`,
+		`${bar}  ${padVisible(style.cyan("-p, --project <dir>", c), 22, "left")}Project folder (default: current directory)`,
+		`${bar}  ${padVisible(style.cyan("--all", c), 22, "left")}Import all 10 Skills & 9 Agents`,
+		renderSectionHeader("Examples", c),
+		`${bar}  ${style.dim("$", c)} ${style.green("skillops add", c)}                                  ${style.dim("— Interactive selector", c)}`,
+		`${bar}  ${style.dim("$", c)} ${style.green("skillops add bug-reproducer-tdd red-team-breaker", c)} ${style.dim("— Direct import", c)}`,
+		`${bar}  ${style.dim("$", c)} ${style.green("skillops list", c)}                                 ${style.dim("— Browse catalog", c)}`,
 		bar,
-		`${style.dim("╰─", c)} ${style.bold("Global Flags:", c)} ${style.cyan("-p <dir>", c)} · ${style.cyan("-t <harnesses>", c)} · ${style.cyan("-f <table|json|md>", c)} · ${style.cyan("-h <cmd>", c)}`,
+		`${style.dim("╰─", c)} ${style.dim("Run", c)} ${style.cyan("skillops <cmd> -h", c)} ${style.dim("for command options.", c)}`,
 	].join("\n");
 }
 
