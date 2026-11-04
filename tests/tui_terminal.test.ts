@@ -138,7 +138,7 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 			expect(visibleLength(line)).toBeLessThanOrEqual(78);
 		}
 
-		// Multi-select interactive state machine & frame rendering
+		// Multi-select interactive state machine & frame rendering (Tabbed + Live Search)
 		let msState = createMultiSelectState([
 			{
 				value: "bug-reproducer-tdd",
@@ -147,21 +147,30 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 				hint: "Reproduce bugs with failing tests first",
 			},
 			{
+				value: "security-sast-gate",
+				label: "security-sast-gate",
+				kind: "skill",
+				hint: "OWASP AST & taint vulnerability gate",
+			},
+			{
 				value: "red-team-breaker",
 				label: "red-team-breaker",
 				kind: "agent",
 				hint: "Stress-test auth, inputs & trust boundaries",
 			},
 		]);
+		expect(msState.activeTab).toBe("skill");
 		expect(msState.cursor).toBe(0);
 		expect(msState.selected.size).toBe(0);
 
-		// Press Space to select first item, Down arrow to move to second, Space to select second, Enter to submit
+		// Press Space to select first skill, Right arrow (\x1b[C) to switch to Agents tab, Space to select agent
 		msState = applyMultiSelectKey(msState, " ");
 		expect(msState.selected.has("bug-reproducer-tdd")).toBe(true);
-		msState = applyMultiSelectKey(msState, "\x1b[B");
-		expect(msState.cursor).toBe(1);
+		msState = applyMultiSelectKey(msState, "\x1b[C");
+		expect(msState.activeTab).toBe("agent");
+		expect(msState.cursor).toBe(0);
 		msState = applyMultiSelectKey(msState, " ");
+		expect(msState.selected.has("red-team-breaker")).toBe(true);
 		expect(msState.selected.size).toBe(2);
 
 		const frame = renderMultiSelectFrame(
@@ -169,18 +178,42 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 			msState,
 			{ targetHint: "cursor, claude", colorEnabled: false },
 		);
-		expect(frame).toContain("2 selected");
-		expect(frame).toContain("◼ skill bug-reproducer-tdd");
-		expect(frame).toContain("❯ ◼ agent red-team-breaker");
+		expect(frame).toContain("2 selected (1 Skills, 1 Agents)");
+		expect(frame).toContain("[ ◆ Agents (1) ]");
+		expect(frame).toContain("❯ ◉ red-team-breaker");
 		for (const line of frame.split("\n")) {
 			expect(visibleLength(line)).toBeLessThanOrEqual(78);
 		}
 
-		// Toggle all off and on with 'a', then submit with Enter
+		// Live '/' search: press '/', type 'sast', verify auto-switch to 'skill' tab and filtered frame
+		msState = applyMultiSelectKey(msState, "/");
+		expect(msState.searchMode).toBe(true);
+		for (const ch of "sast") {
+			msState = applyMultiSelectKey(msState, ch);
+		}
+		expect(msState.searchQuery).toBe("sast");
+		expect(msState.activeTab).toBe("skill");
+		const searchFrame = renderMultiSelectFrame(
+			"SkillOps — Import Skills & Agents",
+			msState,
+			{ colorEnabled: false },
+		);
+		expect(searchFrame).toContain("/ Filter: sast█");
+		expect(searchFrame).toContain("[ ◆ Skills (1/2) ]");
+		for (const line of searchFrame.split("\n")) {
+			expect(visibleLength(line)).toBeLessThanOrEqual(78);
+		}
+
+		// Press Escape once to clear search filter without cancelling prompt
+		msState = applyMultiSelectKey(msState, "\x1b");
+		expect(msState.searchMode).toBe(false);
+		expect(msState.searchQuery).toBe("");
+		expect(msState.status).toBe("active");
+
+		// Toggle all in current tab ('skill') with 'a', then submit with Enter
 		msState = applyMultiSelectKey(msState, "a");
-		expect(msState.selected.size).toBe(0);
-		msState = applyMultiSelectKey(msState, "a");
-		expect(msState.selected.size).toBe(2);
+		expect(msState.selected.has("security-sast-gate")).toBe(true);
+		expect(msState.selected.size).toBe(3);
 		msState = applyMultiSelectKey(msState, "\r");
 		expect(msState.status).toBe("submitted");
 

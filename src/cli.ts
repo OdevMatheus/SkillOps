@@ -1063,7 +1063,7 @@ export async function runCliInteractive(
 			"SkillOps — Select Skills & Agents to Import",
 			options,
 			{
-				targetHint: `${targets.join(", ")} -> ${repoPath.replace(/\\/g, "/")}`,
+				targetHint: targets.join(", "),
 			},
 		);
 

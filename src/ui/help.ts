@@ -622,6 +622,10 @@ export function renderGlobalHelp(
 			desc: "Import Skills or Agents (interactive if no name given)",
 		},
 		{
+			cmd: "search <query>",
+			desc: "Search Skills & Agents by keyword, stack, or domain",
+		},
+		{
 			cmd: "list [query]",
 			desc: "List or filter available Skills & Agents in catalog",
 		},
