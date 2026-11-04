@@ -1,7 +1,7 @@
 <!-- readme-gen:start:hero -->
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:6366f1,50:a855f7,100:06b6d4&height=200&section=header&text=SkillOps&fontSize=58&fontColor=ffffff&animation=fadeIn&fontAlignY=36&desc=The+open-source+package+manager+for+AI+coding+Skills+%26+Subagents.&descAlignY=58&descSize=16" width="100%" alt="SkillOps" />
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:6366f1,50:a855f7,100:06b6d4&height=200&section=header&text=SkillOps&fontSize=58&fontColor=ffffff&animation=fadeIn&fontAlignY=36&desc=The+open-source+package+manager+for+AI+coding+Skills+and+Subagents&descAlignY=58&descSize=16" width="100%" alt="SkillOps" />
 
 </div>
 
