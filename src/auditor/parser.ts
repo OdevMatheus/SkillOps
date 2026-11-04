@@ -184,7 +184,6 @@ export function discoverSubagentFiles(repoOrCatalogRoot: string): string[] {
 		path.join(repoOrCatalogRoot, "subagents"),
 		path.join(repoOrCatalogRoot, "catalog", "subagents"),
 		path.join(repoOrCatalogRoot, ".github", "agents"),
-		path.join(path.dirname(repoOrCatalogRoot), ".github", "agents"),
 	];
 
 	for (const dir of candidates) {

@@ -315,7 +315,7 @@ export function formatRoutedBundle(
 		].join("\n");
 	}
 
-	const topSkill = bundle.selected_skills[0]?.name ?? "security-sast-gate";
+	const topSkill = bundle.selected_skills[0]?.name ?? "mcp-architect";
 	const l1Bar = renderProgressBar(
 		bundle.total_l1_tokens,
 		bundle.max_l1_tokens,

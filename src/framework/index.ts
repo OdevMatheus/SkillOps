@@ -416,7 +416,7 @@ export function formatCatalogSearchReport(
 		{ align: ["left", "left", "right", "left"], colorEnabled: c, indent: 3 },
 	);
 
-	const topItem = report.matches[0]?.name ?? "bug-reproducer-tdd";
+	const topItem = report.matches[0]?.name ?? "mcp-architect";
 	const nextSteps = renderNextSteps(
 		[
 			{
@@ -982,12 +982,12 @@ export function formatQuickstartReport(
 	const nextSteps = renderNextSteps(
 		[
 			{
-				command: `npx skillops-cli info ${report.selected_skills[0] ?? "bug-reproducer-tdd"}`,
+				command: `npx skillops-cli info ${report.selected_skills[0] ?? "mcp-architect"}`,
 				description: "Inspect Skill triggers & L3 scripts",
 			},
 			{
 				command: "npx skillops-cli list",
-				description: "Browse all 10 Skills & 9 Subagents",
+				description: "Browse all Skills & Subagents in catalog",
 			},
 			{
 				command: "npx skillops-cli create skill my-skill",

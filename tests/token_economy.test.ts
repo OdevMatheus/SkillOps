@@ -21,8 +21,8 @@ describe("SkillOps NPX Token Economy & Startup Context Tax Analyzer (Issue #60)"
 			startupTaxBudget: 4000,
 		});
 
-		expect(report.zero_token_l3_scripts_count).toBeGreaterThanOrEqual(4);
-		expect(report.context_isolated_subagents_count).toBeGreaterThanOrEqual(4);
+		expect(report.zero_token_l3_scripts_count).toBeGreaterThanOrEqual(1);
+		expect(report.context_isolated_subagents_count).toBeGreaterThanOrEqual(1);
 		expect(report.progressive_disclosure_l1_tokens).toBeGreaterThan(0);
 		expect(report.monolithic_equivalent_tokens).toBeGreaterThan(
 			report.progressive_disclosure_l1_tokens * 4,
@@ -32,7 +32,7 @@ describe("SkillOps NPX Token Economy & Startup Context Tax Analyzer (Issue #60)"
 				report.progressive_disclosure_l1_tokens,
 		);
 		expect(report.token_savings_pct).toBeGreaterThanOrEqual(75);
-		expect(report.inspected_files.length).toBeGreaterThanOrEqual(10);
+		expect(report.inspected_files.length).toBeGreaterThanOrEqual(4);
 	});
 
 	it("detects Always-On Startup Token Tax hotspots in a bloated repository", () => {

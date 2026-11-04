@@ -97,10 +97,10 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		examples: [
 			{
 				command: "npx skillops-cli list",
-				description: "Display all 10 Skills & 9 Subagents",
+				description: "Display all Skills & Subagents in the Library",
 			},
 			{
-				command: "npx skillops-cli info security-sast-gate",
+				command: "npx skillops-cli info mcp-architect",
 				description: "Inspect a specific Skill from the Library",
 			},
 		],
@@ -123,12 +123,12 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		],
 		examples: [
 			{
-				command: "npx skillops-cli search security",
-				description: "Find Skills/Subagents matching security/SAST",
+				command: "npx skillops-cli search mcp",
+				description: "Find Skills/Subagents matching MCP/JSON-RPC",
 			},
 			{
-				command: "npx skillops-cli find postgres",
-				description: "Find database & PostgreSQL optimization Skills",
+				command: "npx skillops-cli find context",
+				description: "Find context-isolated exploration Subagents",
 			},
 		],
 	},
@@ -150,12 +150,12 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		],
 		examples: [
 			{
-				command: "npx skillops-cli info bug-reproducer-tdd",
+				command: "npx skillops-cli info mcp-architect",
 				description: "Inspect triggers, L3 scripts & IDE invocation",
 			},
 			{
-				command: "npx skillops-cli show red-team-breaker",
-				description: "Inspect the red-team-breaker Subagent card",
+				command: "npx skillops-cli show context-scout",
+				description: "Inspect the context-scout Subagent card",
 			},
 		],
 	},
@@ -189,8 +189,8 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		],
 		examples: [
 			{
-				command: "npx skillops-cli install security-sast-gate",
-				description: "Install security-sast-gate into harnesses",
+				command: "npx skillops-cli install mcp-architect",
+				description: "Install mcp-architect into harnesses",
 			},
 			{
 				command: "npx skillops-cli add mcp-architect -t claude,cursor",

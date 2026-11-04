@@ -40,36 +40,34 @@ afterEach(() => {
 
 describe("SkillOps Library Explorer (info & search)", () => {
 	it("inspects a Hybrid Executable Skill and a Context-Isolated Subagent", () => {
-		const skillInfo = inspectCatalogItem(CATALOG_DIR, "bug-reproducer-tdd");
+		const skillInfo = inspectCatalogItem(CATALOG_DIR, "mcp-architect");
 		expect(skillInfo.kind).toBe("skill");
-		expect(skillInfo.name).toBe("bug-reproducer-tdd");
+		expect(skillInfo.name).toBe("mcp-architect");
 		expect(skillInfo.l1Tokens).toBeGreaterThan(0);
 		expect(skillInfo.l1Tokens).toBeLessThanOrEqual(160);
 		expect(skillInfo.scripts.length).toBeGreaterThan(0);
 
 		const tableOut = formatCatalogItemInfo(skillInfo, "table", false);
-		expect(tableOut).toContain(
-			"SkillOps Library Inspector — bug-reproducer-tdd",
-		);
+		expect(tableOut).toContain("SkillOps Library Inspector — mcp-architect");
 		expect(tableOut).toContain("HYBRID EXECUTABLE SKILL");
-		expect(tableOut).toContain("npx skillops-cli add bug-reproducer-tdd");
+		expect(tableOut).toContain("npx skillops-cli add mcp-architect");
 		expect(tableOut).not.toMatch(/(?:🚀|📚|🛠️|⚙️|🌐|💡|⚡|📦|🔍)/u);
 		for (const line of tableOut.split("\n")) {
 			expect(visibleLength(line)).toBeLessThanOrEqual(78);
 		}
 
 		const mdOut = formatCatalogItemInfo(skillInfo, "markdown", false);
-		expect(mdOut).toContain("## Skill: `bug-reproducer-tdd`");
+		expect(mdOut).toContain("## Skill: `mcp-architect`");
 
-		const subInfo = inspectCatalogItem(CATALOG_DIR, "red-team-breaker");
+		const subInfo = inspectCatalogItem(CATALOG_DIR, "context-scout");
 		expect(subInfo.kind).toBe("subagent");
-		expect(subInfo.name).toBe("red-team-breaker");
+		expect(subInfo.name).toBe("context-scout");
 		expect(subInfo.maxOutputTokens).toBeLessThanOrEqual(400);
 		expect(subInfo.tools.length).toBeGreaterThan(0);
 
 		const subTable = formatCatalogItemInfo(subInfo, "table", false);
 		expect(subTable).toContain("CONTEXT-ISOLATED SUBAGENT");
-		expect(subTable).toContain("@red-team-breaker");
+		expect(subTable).toContain("@context-scout");
 	});
 
 	it("throws a clear error when inspecting an unknown item", () => {
@@ -79,22 +77,21 @@ describe("SkillOps Library Explorer (info & search)", () => {
 	});
 
 	it("searches the Library by keyword across Skills and Subagents", () => {
-		const secSearch = searchCatalog(CATALOG_DIR, "security");
-		expect(secSearch.total_matches).toBeGreaterThanOrEqual(2);
-		const names = secSearch.matches.map((m) => m.name);
-		expect(names).toContain("security-sast-gate");
-		expect(names).toContain("red-team-breaker");
+		const mcpSearch = searchCatalog(CATALOG_DIR, "mcp");
+		expect(mcpSearch.total_matches).toBeGreaterThanOrEqual(1);
+		const names = mcpSearch.matches.map((m) => m.name);
+		expect(names).toContain("mcp-architect");
 
-		const tableOut = formatCatalogSearchReport(secSearch, "table", false);
+		const tableOut = formatCatalogSearchReport(mcpSearch, "table", false);
 		expect(tableOut).toContain("SkillOps Library Search");
-		expect(tableOut).toContain("security-sast-gate");
+		expect(tableOut).toContain("mcp-architect");
 		expect(tableOut).not.toMatch(/(?:🚀|📚|🛠️|⚙️|🌐|💡|⚡|📦|🔍)/u);
 		for (const line of tableOut.split("\n")) {
 			expect(visibleLength(line)).toBeLessThanOrEqual(78);
 		}
 
-		const mdOut = formatCatalogSearchReport(secSearch, "markdown", false);
-		expect(mdOut).toContain("| SKILL | `security-sast-gate` |");
+		const mdOut = formatCatalogSearchReport(mcpSearch, "markdown", false);
+		expect(mdOut).toContain("| SKILL | `mcp-architect` |");
 
 		const noMatch = searchCatalog(CATALOG_DIR, "zzzznotfound999");
 		expect(noMatch.total_matches).toBe(0);
@@ -228,7 +225,7 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 			active_targets: string[];
 		};
 		expect(setupJson.active_targets).toEqual(["cursor"]);
-		expect(setupJson.selected_skills.length).toBe(3);
+		expect(setupJson.selected_skills.length).toBe(1);
 		outChunks.length = 0;
 
 		// 2. info / inspect
@@ -236,29 +233,22 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 			"node",
 			"skillops",
 			"inspect",
-			"bug-reproducer-tdd",
+			"mcp-architect",
 			"-f",
 			"json",
 		]);
 		expect(infoCode).toBe(ExitCode.SUCCESS);
 		const infoJson = JSON.parse(outChunks.join("")) as { name: string };
-		expect(infoJson.name).toBe("bug-reproducer-tdd");
+		expect(infoJson.name).toBe("mcp-architect");
 		outChunks.length = 0;
 
 		// 3. search / find
-		const findCode = runCli([
-			"node",
-			"skillops",
-			"find",
-			"security",
-			"-f",
-			"json",
-		]);
+		const findCode = runCli(["node", "skillops", "find", "mcp", "-f", "json"]);
 		expect(findCode).toBe(ExitCode.SUCCESS);
 		const findJson = JSON.parse(outChunks.join("")) as {
 			total_matches: number;
 		};
-		expect(findJson.total_matches).toBeGreaterThanOrEqual(2);
+		expect(findJson.total_matches).toBeGreaterThanOrEqual(1);
 		outChunks.length = 0;
 
 		// 4. recommend (alias for route) & budget (alias for tokens)
@@ -277,7 +267,7 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 		const recJson = JSON.parse(outChunks.join("")) as {
 			selected_skills: unknown[];
 		};
-		expect(recJson.selected_skills.length).toBe(2);
+		expect(recJson.selected_skills.length).toBe(1);
 		outChunks.length = 0;
 
 		const budgetCode = runCli([
@@ -301,8 +291,8 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 			"node",
 			"skillops",
 			"install",
-			"bug-reproducer-tdd",
-			"red-team-breaker",
+			"mcp-architect",
+			"context-scout",
 			"-p",
 			tmpRepo,
 			"-t",
@@ -315,7 +305,7 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 			"node",
 			"skillops",
 			"uninstall",
-			"red-team-breaker",
+			"context-scout",
 			"-p",
 			tmpRepo,
 		]);
@@ -403,9 +393,9 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 		expect(targetOptions[6]?.value).toBe("gemini");
 
 		const options = buildInteractiveCatalogOptions(CATALOG_DIR);
-		expect(options.length).toBeGreaterThanOrEqual(19);
-		expect(options.filter((o) => o.kind === "skill").length).toBe(10);
-		expect(options.filter((o) => o.kind === "agent").length).toBe(9);
+		expect(options.length).toBe(2);
+		expect(options.filter((o) => o.kind === "skill").length).toBe(1);
+		expect(options.filter((o) => o.kind === "agent").length).toBe(1);
 
 		const outChunks: string[] = [];
 		vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
@@ -417,7 +407,7 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 			"node",
 			"skillops",
 			"list",
-			"security",
+			"mcp",
 			"-f",
 			"json",
 		]);
@@ -426,8 +416,8 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 			query: string;
 			total_matches: number;
 		};
-		expect(listFilterJson.query).toBe("security");
-		expect(listFilterJson.total_matches).toBeGreaterThanOrEqual(2);
+		expect(listFilterJson.query).toBe("mcp");
+		expect(listFilterJson.total_matches).toBeGreaterThanOrEqual(1);
 		outChunks.length = 0;
 
 		const tmpRepo = makeTempDir("skillops-add-all-");
@@ -450,7 +440,7 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 			artifacts: unknown[];
 		};
 		expect(addAllJson.passed).toBe(true);
-		expect(addAllJson.artifacts.length).toBeGreaterThanOrEqual(19);
+		expect(addAllJson.artifacts.length).toBeGreaterThanOrEqual(2);
 		outChunks.length = 0;
 
 		// Real add + buildInteractiveInstalledOptions + remove --all
@@ -460,8 +450,8 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 				"node",
 				"skillops",
 				"add",
-				"bug-reproducer-tdd",
-				"red-team-breaker",
+				"mcp-architect",
+				"context-scout",
 				"-p",
 				tmpInstallRepo,
 				"-t",
@@ -477,10 +467,10 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 			CATALOG_DIR,
 		);
 		expect(installedOpts.length).toBe(2);
-		expect(installedOpts[0]?.value).toBe("bug-reproducer-tdd");
+		expect(installedOpts[0]?.value).toBe("mcp-architect");
 		expect(installedOpts[0]?.kind).toBe("skill");
 		expect(installedOpts[0]?.hint).toContain("[cursor, gemini]");
-		expect(installedOpts[1]?.value).toBe("red-team-breaker");
+		expect(installedOpts[1]?.value).toBe("context-scout");
 		expect(installedOpts[1]?.kind).toBe("agent");
 		expect(installedOpts[1]?.hint).toContain("[cursor, gemini]");
 

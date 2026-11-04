@@ -19,13 +19,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Validate Subagents Frontmatter (.github/agents/*.agent.md)
+      - name: Validate Subagents Frontmatter (catalog/subagents/**/SUBAGENT.md)
         run: |
-          for agent_file in .github/agents/*.agent.md; do
-            if [ ! -f "$agent_file" ]; then
-              echo "::error::No subagent definitions found in .github/agents/"
-              exit 1
-            fi
+          FOUND_SUBAGENTS=0
+          while IFS= read -r -d '' agent_file; do
+            FOUND_SUBAGENTS=1
             head -n 1 "$agent_file" | grep -q "^---$" || {
               echo "::error::Missing YAML frontmatter start in $agent_file"
               exit 1
@@ -38,8 +36,12 @@ jobs:
               echo "::error::Missing 'description:' field in $agent_file"
               exit 1
             }
-          done
-          echo "OK — All .github/agents/*.agent.md definitions passed frontmatter audit."
+          done < <(find catalog/subagents -name "SUBAGENT.md" -print0)
+          if [ "$FOUND_SUBAGENTS" -eq 0 ]; then
+            echo "::error::No subagent definitions found in catalog/subagents/"
+            exit 1
+          fi
+          echo "OK — All catalog/subagents/**/SUBAGENT.md definitions passed frontmatter audit."
 
       - name: Validate Catalog Skill Line Budgets (INV-SKILL-01 <= 250 lines)
         run: |
