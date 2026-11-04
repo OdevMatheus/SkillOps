@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { auditCatalog } from "../src/auditor/index.js";
 import {
 	buildInteractiveCatalogOptions,
+	buildInteractiveInstalledOptions,
 	buildInteractiveTargetOptions,
 	runCli,
 } from "../src/cli.js";
@@ -357,10 +358,11 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 		const globalHelp = outChunks.join("");
 		expect(globalHelp).toContain("Skills & Agents Library for AI Coding IDEs");
 		expect(globalHelp).toContain("add [name...]");
+		expect(globalHelp).toContain("remove [name...]");
 		expect(globalHelp).toContain("list [query]");
+		expect(globalHelp).toContain("search <query>");
 		expect(globalHelp).toContain("info <name>");
-		expect(globalHelp).toContain("remove <name>");
-		expect(globalHelp).toContain("init");
+		expect(globalHelp).not.toContain("\n│  init ");
 		outChunks.length = 0;
 
 		// Per-command --help via flag and via 'help <cmd>'
@@ -449,5 +451,54 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 		};
 		expect(addAllJson.passed).toBe(true);
 		expect(addAllJson.artifacts.length).toBeGreaterThanOrEqual(19);
+		outChunks.length = 0;
+
+		// Real add + buildInteractiveInstalledOptions + remove --all
+		const tmpInstallRepo = makeTempDir("skillops-installed-opts-");
+		expect(
+			runCli([
+				"node",
+				"skillops",
+				"add",
+				"bug-reproducer-tdd",
+				"red-team-breaker",
+				"-p",
+				tmpInstallRepo,
+				"-t",
+				"cursor,gemini",
+				"-f",
+				"json",
+			]),
+		).toBe(ExitCode.SUCCESS);
+		outChunks.length = 0;
+
+		const installedOpts = buildInteractiveInstalledOptions(
+			tmpInstallRepo,
+			CATALOG_DIR,
+		);
+		expect(installedOpts.length).toBe(2);
+		expect(installedOpts[0]?.value).toBe("bug-reproducer-tdd");
+		expect(installedOpts[0]?.kind).toBe("skill");
+		expect(installedOpts[0]?.hint).toContain("[cursor, gemini]");
+		expect(installedOpts[1]?.value).toBe("red-team-breaker");
+		expect(installedOpts[1]?.kind).toBe("agent");
+		expect(installedOpts[1]?.hint).toContain("[cursor, gemini]");
+
+		// Remove all via 'remove --all'
+		expect(
+			runCli([
+				"node",
+				"skillops",
+				"remove",
+				"--all",
+				"-p",
+				tmpInstallRepo,
+				"-f",
+				"json",
+			]),
+		).toBe(ExitCode.SUCCESS);
+		expect(
+			buildInteractiveInstalledOptions(tmpInstallRepo, CATALOG_DIR).length,
+		).toBe(0);
 	});
 });

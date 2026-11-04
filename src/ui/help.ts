@@ -202,8 +202,8 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "remove",
 		aliases: ["uninstall", "rm"],
 		pillar: "library",
-		summary: "Remove a Skill/Subagent from harnesses",
-		usage: "npx skillops-cli remove <name...> [options]",
+		summary: "Remove imported Skills/Subagents from harnesses",
+		usage: "npx skillops-cli remove [name...] [options]",
 		options: [
 			{
 				flags: "-p, --project <dir>",
@@ -214,11 +214,19 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 				description: "Restrict removal to specific harnesses",
 			},
 			{
+				flags: "--all",
+				description: "Remove all imported Skills & Agents from project",
+			},
+			{
 				flags: "--force",
 				description: "Remove even if SHA-256 drift is detected",
 			},
 		],
 		examples: [
+			{
+				command: "npx skillops-cli remove",
+				description: "Interactive selector of installed Skills & Agents",
+			},
 			{
 				command: "npx skillops-cli uninstall mcp-architect",
 				description: "Remove runtime files & update lockfile",
@@ -622,24 +630,20 @@ export function renderGlobalHelp(
 			desc: "Import Skills or Agents (interactive if no name given)",
 		},
 		{
-			cmd: "search <query>",
-			desc: "Search Skills & Agents by keyword, stack, or domain",
+			cmd: "remove [name...]",
+			desc: "Remove Skills or Agents (interactive if no name given)",
 		},
 		{
 			cmd: "list [query]",
 			desc: "List or filter available Skills & Agents in catalog",
 		},
 		{
+			cmd: "search <query>",
+			desc: "Search Skills & Agents by keyword, stack, or domain",
+		},
+		{
 			cmd: "info <name>",
 			desc: "View details and how to use a Skill or Agent",
-		},
-		{
-			cmd: "remove <name>",
-			desc: "Remove an imported Skill or Agent from your project",
-		},
-		{
-			cmd: "init",
-			desc: "Auto-detect stack & IDE and import recommended bundle",
 		},
 	];
 
@@ -656,12 +660,12 @@ export function renderGlobalHelp(
 		renderSectionHeader("Commands", c),
 		cmdRows,
 		renderSectionHeader("Options", c),
-		`${bar}  ${padVisible(style.cyan("-t, --target <ide>", c), 22, "left")}AI IDE (cursor, claude, copilot, windsurf, auto)`,
+		`${bar}  ${padVisible(style.cyan("-t, --target <ide>", c), 22, "left")}AI IDE (cursor, claude, copilot, antigravity...)`,
 		`${bar}  ${padVisible(style.cyan("-p, --project <dir>", c), 22, "left")}Project folder (default: current directory)`,
-		`${bar}  ${padVisible(style.cyan("--all", c), 22, "left")}Import all 10 Skills & 9 Agents`,
+		`${bar}  ${padVisible(style.cyan("--all", c), 22, "left")}Import or remove all Skills & Agents`,
 		renderSectionHeader("Examples", c),
-		`${bar}  ${style.dim("$", c)} ${style.green("skillops add", c)}                                  ${style.dim("— Interactive selector", c)}`,
-		`${bar}  ${style.dim("$", c)} ${style.green("skillops add bug-reproducer-tdd red-team-breaker", c)} ${style.dim("— Direct import", c)}`,
+		`${bar}  ${style.dim("$", c)} ${style.green("skillops add", c)}                                  ${style.dim("— Interactive import", c)}`,
+		`${bar}  ${style.dim("$", c)} ${style.green("skillops remove", c)}                               ${style.dim("— Interactive removal", c)}`,
 		`${bar}  ${style.dim("$", c)} ${style.green("skillops list", c)}                                 ${style.dim("— Browse catalog", c)}`,
 		bar,
 		`${style.dim("╰─", c)} ${style.dim("Run", c)} ${style.cyan("skillops <cmd> -h", c)} ${style.dim("for command options.", c)}`,

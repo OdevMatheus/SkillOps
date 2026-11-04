@@ -125,13 +125,14 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 			expect(visibleLength(line)).toBeLessThanOrEqual(78);
 		}
 
-		const helpOut = renderGlobalHelp("1.3.2", false);
+		const helpOut = renderGlobalHelp("1.3.6", false);
 		expect(helpOut).not.toMatch(/(?:🚀|📚|🛠️|⚙️|🌐|💡|⚡|📦|🔍)/u);
 		expect(helpOut).toContain("add [name...]");
+		expect(helpOut).toContain("remove [name...]");
 		expect(helpOut).toContain("list [query]");
+		expect(helpOut).toContain("search <query>");
 		expect(helpOut).toContain("info <name>");
-		expect(helpOut).toContain("remove <name>");
-		expect(helpOut).toContain("init");
+		expect(helpOut).not.toContain("\n│  init ");
 		const helpLines = helpOut.split("\n");
 		expect(helpLines.length).toBeLessThanOrEqual(24);
 		for (const line of helpLines) {
