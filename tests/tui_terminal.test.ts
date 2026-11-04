@@ -217,6 +217,55 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 		msState = applyMultiSelectKey(msState, "\r");
 		expect(msState.status).toBe("submitted");
 
+		// Step 1 AI IDE selector mode: selectCursorOnEmptySubmit selects highlighted item on Enter
+		let ideState = createMultiSelectState([
+			{
+				value: "cursor",
+				label: "cursor",
+				kind: "ide",
+				tab: "skill",
+				hint: "Cursor AI IDE (.cursor/rules)",
+			},
+			{
+				value: "antigravity",
+				label: "antigravity",
+				kind: "ide",
+				tab: "skill",
+				hint: "Google Antigravity / Gemini CLI (.agent/skills)",
+			},
+			{
+				value: "continue",
+				label: "continue",
+				kind: "ide",
+				tab: "agent",
+				hint: "Continue.dev (.continue/rules)",
+			},
+		]);
+		// Move down to 'antigravity' and press Enter without pressing Space
+		ideState = applyMultiSelectKey(ideState, "\x1b[B");
+		expect(ideState.cursor).toBe(1);
+		const ideFrame = renderMultiSelectFrame(
+			"SkillOps — Step 1/2: Select Your AI IDE / Agent",
+			ideState,
+			{
+				tabLabels: { skill: "Popular AIs", agent: "More AIs" },
+				submitActionLabel: "continue",
+				selectCursorOnEmptySubmit: true,
+				colorEnabled: false,
+			},
+		);
+		expect(ideFrame).toContain("[ ◆ Popular AIs (2) ]");
+		expect(ideFrame).toContain("○ More AIs (1)");
+		expect(ideFrame).toContain("Target: antigravity — Enter to continue");
+		for (const line of ideFrame.split("\n")) {
+			expect(visibleLength(line)).toBeLessThanOrEqual(78);
+		}
+		ideState = applyMultiSelectKey(ideState, "\r", {
+			selectCursorOnEmptySubmit: true,
+		});
+		expect(ideState.status).toBe("submitted");
+		expect([...ideState.selected]).toEqual(["antigravity"]);
+
 		const validCmds = [
 			"quickstart",
 			"install",

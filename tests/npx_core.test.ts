@@ -308,7 +308,7 @@ describe("SkillOps NPX Core Models & Subagent Contracts (Issue #59)", () => {
 				]),
 			).toBe(ExitCode.SUCCESS);
 			expect(runCli(["node", "cli.js", "--version"])).toBe(0);
-			expect(SKILLOPS_VERSION).toBe("1.3.3");
+			expect(SKILLOPS_VERSION).toBe("1.3.4");
 		} finally {
 			fs.rmSync(tmpDir, { recursive: true, force: true });
 		}

@@ -37,9 +37,11 @@ import {
 	startMcpStdioServer,
 } from "./mcp/index.js";
 import {
+	ALL_RUNTIME_TARGETS,
 	CORE_RUNTIME_TARGETS,
 	ExitCode,
 	loadSkillOpsConfig,
+	RUNTIME_HARNESS_SPECS,
 	type RuntimeTarget,
 	resolveRuntimeTargets,
 	SKILLOPS_VERSION,
@@ -174,6 +176,38 @@ function resolveCatalogDir(
 		return cwdCatalog;
 	}
 	return path.join(PACKAGE_ROOT, "catalog");
+}
+
+const POPULAR_AI_ORDER: readonly RuntimeTarget[] = [
+	"cursor",
+	"claude",
+	"antigravity",
+	"copilot",
+	"windsurf",
+	"codex",
+	"cline",
+	"roocode",
+	"kilocode",
+	"zed",
+];
+
+export function buildInteractiveTargetOptions(): MultiSelectOption[] {
+	const popularSet = new Set<RuntimeTarget>(POPULAR_AI_ORDER);
+	const orderedTargets: RuntimeTarget[] = [
+		...POPULAR_AI_ORDER,
+		...ALL_RUNTIME_TARGETS.filter((t) => !popularSet.has(t)),
+	];
+
+	return orderedTargets.map((targetId, index) => {
+		const spec = RUNTIME_HARNESS_SPECS[targetId];
+		return {
+			value: spec.id,
+			label: spec.id,
+			kind: "ide",
+			tab: index < 10 ? "skill" : "agent",
+			hint: `${spec.displayName} (${spec.skillsDir})`,
+		};
+	});
 }
 
 export function buildInteractiveCatalogOptions(
@@ -1031,8 +1065,6 @@ export async function runCliInteractive(
 		command === "add" &&
 		!args.includes("--help") &&
 		!args.includes("-h") &&
-		!args.includes("--all") &&
-		getPositionalArgs(args).length === 0 &&
 		process.stdin.isTTY &&
 		process.stdout.isTTY
 	) {
@@ -1046,33 +1078,71 @@ export async function runCliInteractive(
 			return ExitCode.BUDGET_OR_CONTRACT_ERROR;
 		}
 		const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
-		const targetsArg = resolveTargetsArg(args);
+		const explicitTargetsArg = resolveTargetsArg(args);
+		const positionals = getPositionalArgs(args);
+		const needsCatalogPrompt =
+			!args.includes("--all") && positionals.length === 0;
+
+		let resolvedTargetsArg = explicitTargetsArg;
+
+		// Step 1: Explicitly select AI IDE / Agent when -t / --target is not passed
+		if (!resolvedTargetsArg) {
+			const targetOptions = buildInteractiveTargetOptions();
+			const step1Title = needsCatalogPrompt
+				? "SkillOps — Step 1/2: Select Your AI IDE / Agent"
+				: "SkillOps — Select Your AI IDE / Agent";
+			const selectedTargets = await runMultiSelectPrompt(
+				step1Title,
+				targetOptions,
+				{
+					tabLabels: {
+						skill: "Popular AIs",
+						agent: "More AIs",
+					},
+					submitActionLabel: "continue",
+					selectCursorOnEmptySubmit: true,
+				},
+			);
+
+			if (!selectedTargets || selectedTargets.length === 0) {
+				process.stdout.write("No AI IDE selected.\n");
+				return ExitCode.SUCCESS;
+			}
+			resolvedTargetsArg = selectedTargets.join(",");
+		}
+
 		let targets: RuntimeTarget[];
 		try {
-			targets = targetsArg
-				? resolveRuntimeTargets(targetsArg, repoPath)
-				: (cfgRes.config?.targets ?? [...CORE_RUNTIME_TARGETS]);
+			targets = resolveRuntimeTargets(resolvedTargetsArg, repoPath);
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
 			process.stderr.write(`Invalid --targets: ${msg}\n`);
 			return ExitCode.BUDGET_OR_CONTRACT_ERROR;
 		}
 
-		const options = buildInteractiveCatalogOptions(catalogDir);
-		const selected = await runMultiSelectPrompt(
-			"SkillOps — Select Skills & Agents to Import",
-			options,
-			{
-				targetHint: targets.join(", "),
-			},
-		);
-
-		if (!selected || selected.length === 0) {
-			process.stdout.write("No Skills or Agents selected.\n");
-			return ExitCode.SUCCESS;
+		const extraArgs: string[] = [];
+		if (!explicitTargetsArg) {
+			extraArgs.push("-t", targets.join(","));
 		}
 
-		return runCli([...argv, ...selected]);
+		// Step 2: Select Skills & Agents when no names or --all were passed
+		if (needsCatalogPrompt) {
+			const options = buildInteractiveCatalogOptions(catalogDir);
+			const step2Title = !explicitTargetsArg
+				? "SkillOps — Step 2/2: Select Skills & Agents to Import"
+				: "SkillOps — Select Skills & Agents to Import";
+			const selected = await runMultiSelectPrompt(step2Title, options, {
+				targetHint: targets.join(", "),
+			});
+
+			if (!selected || selected.length === 0) {
+				process.stdout.write("No Skills or Agents selected.\n");
+				return ExitCode.SUCCESS;
+			}
+			extraArgs.push(...selected);
+		}
+
+		return runCli([...argv, ...extraArgs]);
 	}
 
 	return runCli(argv);

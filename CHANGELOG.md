@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.4] - 2026-11-04
+
+### Added
+- **Interactive AI IDE / Agent Selector in `skillops add` (`Sprint 13 / Issues #146 & #147`):**
+  - Added `buildInteractiveTargetOptions()` in [`src/cli.ts`](./src/cli.ts) and enhanced [`src/ui/prompt.ts`](./src/ui/prompt.ts) (`selectCursorOnEmptySubmit`, custom `tabLabels`, `submitActionLabel`) so `skillops add` prompts the user to explicitly select their AI IDE / Agent (**Step 1/2: Select Your AI IDE / Agent** across `Popular AIs (10)` and `More AIs (10)` tabs with `/` search) before selecting Skills & Agents (**Step 2/2**) whenever `-t` / `--target` is not passed, preventing unwanted multi-IDE folder creation.
+
+---
+
 ## [1.3.3] - 2026-11-04
 
 ### Added

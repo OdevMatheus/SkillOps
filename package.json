@@ -1,6 +1,6 @@
 {
 	"name": "skillops-cli",
-	"version": "1.3.3",
+	"version": "1.3.4",
 	"description": "SkillOps — The Zero-API Framework & Benchmark-Verified Library for High-End AI Coding Skills & Context-Isolated Subagents with Universal Top-20 AI Agent Transpilation & Token Economy Auditing.",
 	"type": "module",
 	"license": "MIT",
