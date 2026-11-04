@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.3] - 2026-11-04
+
+### Added
+- **Horizontal Skills / Agents Tabs (`←` / `→`) & Live `/` Search in `skillops add` (`Sprint 12 / Issues #143 & #144`):**
+  - Updated [`src/ui/prompt.ts`](./src/ui/prompt.ts) so `skillops add` separates **Skills (10)** and **Agents (9)** into two horizontal pages switched with **`←` / `→`** (or `Tab`), fitting each page entirely on screen with zero vertical scrolling while keeping selections (`Space`) shared across both tabs.
+  - Added real-time **`/`** search filtering inside `skillops add` (type any keyword to filter both tabs live, auto-switching tabs when matches are in the other tab, `Backspace` to edit, `Esc` to clear filter) and surfaced `search <query>` in `skillops --help`.
+
+---
+
 ## [1.3.2] - 2026-11-04
 
 ### Added
