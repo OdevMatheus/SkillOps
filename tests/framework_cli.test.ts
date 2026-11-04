@@ -3,7 +3,11 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { auditCatalog } from "../src/auditor/index.js";
-import { buildInteractiveCatalogOptions, runCli } from "../src/cli.js";
+import {
+	buildInteractiveCatalogOptions,
+	buildInteractiveTargetOptions,
+	runCli,
+} from "../src/cli.js";
 import {
 	formatCatalogItemInfo,
 	formatCatalogSearchReport,
@@ -386,6 +390,12 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 	});
 
 	it("builds interactive catalog options and supports 'list [query]' and 'add --all' (Issue #140)", () => {
+		const targetOptions = buildInteractiveTargetOptions();
+		expect(targetOptions.length).toBe(20);
+		expect(targetOptions.filter((o) => o.tab === "skill").length).toBe(10);
+		expect(targetOptions.filter((o) => o.tab === "agent").length).toBe(10);
+		expect(targetOptions[0]?.value).toBe("cursor");
+
 		const options = buildInteractiveCatalogOptions(CATALOG_DIR);
 		expect(options.length).toBeGreaterThanOrEqual(19);
 		expect(options.filter((o) => o.kind === "skill").length).toBe(10);

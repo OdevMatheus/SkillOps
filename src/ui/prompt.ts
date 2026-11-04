@@ -16,6 +16,7 @@ export interface MultiSelectOption {
 	readonly value: string;
 	readonly label: string;
 	readonly kind?: "skill" | "agent" | "ide";
+	readonly tab?: MultiSelectTab;
 	readonly hint?: string;
 	readonly initialSelected?: boolean;
 }
@@ -30,9 +31,19 @@ export interface MultiSelectState {
 	readonly status: "active" | "submitted" | "cancelled";
 }
 
+export interface ApplyMultiSelectKeyOptions {
+	readonly selectCursorOnEmptySubmit?: boolean;
+}
+
 export interface RenderMultiSelectOptions {
 	readonly subtitle?: string;
 	readonly targetHint?: string;
+	readonly tabLabels?: {
+		readonly skill: string;
+		readonly agent: string;
+	};
+	readonly submitActionLabel?: string;
+	readonly selectCursorOnEmptySubmit?: boolean;
 	readonly maxVisible?: number;
 	readonly colorEnabled?: boolean;
 }
@@ -41,6 +52,9 @@ function optionMatchesTab(
 	opt: MultiSelectOption,
 	tab: MultiSelectTab,
 ): boolean {
+	if (opt.tab) {
+		return opt.tab === tab;
+	}
 	if (opt.kind === "agent") {
 		return tab === "agent";
 	}
@@ -102,6 +116,7 @@ export function createMultiSelectState(
 export function applyMultiSelectKey(
 	state: MultiSelectState,
 	key: string,
+	options: ApplyMultiSelectKeyOptions = {},
 ): MultiSelectState {
 	if (state.status !== "active" || state.options.length === 0) {
 		return state;
@@ -133,8 +148,17 @@ export function applyMultiSelectKey(
 
 	// Submit: Enter (\r or \n)
 	if (key === "\r" || key === "\n") {
+		let finalSelected = state.selected;
+		if (options.selectCursorOnEmptySubmit && state.selected.size === 0) {
+			const visibleOnSubmit = getFilteredTabOptions(state, state.activeTab);
+			const currentOpt = visibleOnSubmit[state.cursor];
+			if (currentOpt) {
+				finalSelected = new Set([currentOpt.value]);
+			}
+		}
 		return {
 			...state,
+			selected: finalSelected,
 			searchMode: false,
 			status: "submitted",
 		};
@@ -325,10 +349,14 @@ export function renderMultiSelectFrame(
 	const visible = state.activeTab === "skill" ? filteredSkills : filteredAgents;
 	const total = visible.length;
 
+	const skillTabTitle = options.tabLabels?.skill ?? "Skills";
+	const agentTabTitle = options.tabLabels?.agent ?? "Agents";
+	const submitVerb = options.submitActionLabel ?? "import";
+
 	const header = `${style.bold(style.cyan(`◆ ${title}`, c), c)}`;
 	const instructions = state.searchMode
-		? `${bar}  ${style.dim("↑/↓ move · ←/→ switch tab · Space select · Esc clear search · Enter import", c)}`
-		: `${bar}  ${style.dim("↑/↓ move · ←/→ switch tab · Space select · / search · a all · Enter import", c)}`;
+		? `${bar}  ${style.dim(`↑/↓ move · ←/→ tab · Space select · Esc clear · Enter ${submitVerb}`, c)}`
+		: `${bar}  ${style.dim(`↑/↓ move · ←/→ tab · Space select · / search · a all · Enter ${submitVerb}`, c)}`;
 
 	const lines: string[] = [header];
 	if (options.subtitle) {
@@ -347,12 +375,12 @@ export function renderMultiSelectFrame(
 
 	const skillTabLabel =
 		state.activeTab === "skill"
-			? style.bold(style.cyan(`[ ◆ Skills (${skillCountStr}) ]`, c), c)
-			: style.dim(`○ Skills (${skillCountStr})`, c);
+			? style.bold(style.cyan(`[ ◆ ${skillTabTitle} (${skillCountStr}) ]`, c), c)
+			: style.dim(`○ ${skillTabTitle} (${skillCountStr})`, c);
 	const agentTabLabel =
 		state.activeTab === "agent"
-			? style.bold(style.magenta(`[ ◆ Agents (${agentCountStr}) ]`, c), c)
-			: style.dim(`○ Agents (${agentCountStr})`, c);
+			? style.bold(style.magenta(`[ ◆ ${agentTabTitle} (${agentCountStr}) ]`, c), c)
+			: style.dim(`○ ${agentTabTitle} (${agentCountStr})`, c);
 
 	const rawQuerySlice =
 		state.searchQuery.length > 14
@@ -369,7 +397,7 @@ export function renderMultiSelectFrame(
 	);
 
 	if (total === 0) {
-		const tabName = state.activeTab === "skill" ? "Skills" : "Agents";
+		const tabName = state.activeTab === "skill" ? skillTabTitle : agentTabTitle;
 		lines.push(
 			`${bar}  ${style.dim(`No ${tabName} match "${state.searchQuery}". Press Esc to clear filter.`, c)}`,
 		);
@@ -437,14 +465,21 @@ export function renderMultiSelectFrame(
 		(o) => optionMatchesTab(o, "agent") && state.selected.has(o.value),
 	).length;
 
-	const summaryText = `${state.selected.size} selected (${selectedSkillsCount} Skills, ${selectedAgentsCount} Agents)`;
+	const currentOptLabel = visible[state.cursor]?.label ?? "";
+	const summaryText = options.tabLabels
+		? state.selected.size > 0
+			? `${state.selected.size} selected`
+			: options.selectCursorOnEmptySubmit && currentOptLabel
+				? `Target: ${currentOptLabel}`
+				: "0 selected"
+		: `${state.selected.size} selected (${selectedSkillsCount} ${skillTabTitle}, ${selectedAgentsCount} ${agentTabTitle})`;
 	const rawTarget = options.targetHint ?? "";
 	const shortTarget =
 		rawTarget.length > 18 ? `${rawTarget.slice(0, 17)}…` : rawTarget;
 	const targetSuffix = shortTarget ? ` · IDE: ${shortTarget}` : "";
 
 	lines.push(
-		`${style.dim("╰─", c)} ${style.bold(summaryText, c)}${style.dim(`${targetSuffix} — Enter to import`, c)}`,
+		`${style.dim("╰─", c)} ${style.bold(summaryText, c)}${style.dim(`${targetSuffix} — Enter to ${submitVerb}`, c)}`,
 	);
 
 	return lines.join("\n");
@@ -497,7 +532,9 @@ export async function runMultiSelectPrompt(
 
 		const onData = (chunk: string | Buffer) => {
 			const key = typeof chunk === "string" ? chunk : chunk.toString("utf-8");
-			state = applyMultiSelectKey(state, key);
+			state = applyMultiSelectKey(state, key, {
+				selectCursorOnEmptySubmit: renderOpts.selectCursorOnEmptySubmit,
+			});
 
 			if (state.status === "cancelled") {
 				if (renderedLineCount > 0) {
