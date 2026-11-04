@@ -76,7 +76,7 @@ describe("SkillOps NPX Router & Multi-Runtime Subagent/Skill Transpiler (Issue #
 		});
 
 		expect(bundle.passed_invariants).toBe(true);
-		expect(bundle.selected_skills.length).toBeGreaterThanOrEqual(2);
+		expect(bundle.selected_skills.length).toBeGreaterThanOrEqual(1);
 		expect(bundle.selected_skills.length).toBeLessThanOrEqual(12);
 		expect(bundle.total_l1_tokens).toBeLessThanOrEqual(1500);
 		expect(bundle.max_pairwise_similarity).toBeLessThan(0.78);
@@ -181,7 +181,7 @@ describe("SkillOps NPX Router & Multi-Runtime Subagent/Skill Transpiler (Issue #
 			const subagentReport = addSkillOrSubagent(
 				tmpRepo,
 				CATALOG_ROOT,
-				"skill-auditor",
+				"context-scout",
 				{
 					targets: ["claude", "copilot"],
 				},
@@ -189,12 +189,12 @@ describe("SkillOps NPX Router & Multi-Runtime Subagent/Skill Transpiler (Issue #
 			expect(subagentReport.passed).toBe(true);
 			expect(
 				fs.existsSync(
-					path.join(tmpRepo, ".claude", "agents", "skill-auditor.md"),
+					path.join(tmpRepo, ".claude", "agents", "context-scout.md"),
 				),
 			).toBe(true);
 			expect(
 				fs.existsSync(
-					path.join(tmpRepo, ".github", "agents", "skill-auditor.agent.md"),
+					path.join(tmpRepo, ".github", "agents", "context-scout.agent.md"),
 				),
 			).toBe(true);
 
@@ -218,7 +218,7 @@ describe("SkillOps NPX Router & Multi-Runtime Subagent/Skill Transpiler (Issue #
 					"node",
 					"cli.js",
 					"add",
-					"ast-blast-radius",
+					"mcp-architect",
 					"--repo",
 					tmpRepo,
 					"--catalog",

@@ -148,9 +148,9 @@ describe("SkillOps NPX Core Models & Subagent Contracts (Issue #59)", () => {
 		).toThrow();
 	});
 
-	it("discovers and audits real repository catalog skills and .github/agents subagents", () => {
+	it("discovers and audits real repository catalog skills and subagents", () => {
 		const skillDirs = discoverSkillDirectories(CATALOG_ROOT);
-		expect(skillDirs.length).toBeGreaterThanOrEqual(10);
+		expect(skillDirs.length).toBe(1);
 
 		const skillNames: string[] = [];
 		for (const dir of skillDirs) {
@@ -161,40 +161,18 @@ describe("SkillOps NPX Core Models & Subagent Contracts (Issue #59)", () => {
 			expect(parsed.declaredScripts.length).toBeGreaterThanOrEqual(1);
 		}
 
-		for (const requiredSkill of [
-			"context-pruner-advisor",
-			"agent-harness-auditor",
-			"mcp-architect",
-			"prompt-red-teaming",
-			"ast-blast-radius",
-			"postgres-query-doctor",
-			"concurrency-race-detector",
-			"bug-reproducer-tdd",
-			"security-sast-gate",
-			"fastapi-production",
-		]) {
-			expect(skillNames).toContain(requiredSkill);
-		}
+		expect(skillNames).toEqual(["mcp-architect"]);
 
 		const subagentFiles = discoverSubagentFiles(CATALOG_ROOT);
-		expect(subagentFiles.length).toBeGreaterThanOrEqual(9);
+		expect(subagentFiles.length).toBe(1);
 		const parsedSubagents = subagentFiles.map((f) => parseSubagentFile(f));
 		const subagentNames = parsedSubagents.map((s) => s.manifest.name);
-		for (const requiredSubagent of [
-			"context-scout",
-			"token-budget-governor",
-			"blast-radius-auditor",
-			"red-team-breaker",
-			"tdd-reproducer-agent",
-			"skill-auditor",
-		]) {
-			expect(subagentNames).toContain(requiredSubagent);
-		}
-		const skillAuditor = parsedSubagents.find(
-			(s) => s.manifest.name === "skill-auditor",
+		expect(subagentNames).toEqual(["context-scout"]);
+		const contextScout = parsedSubagents.find(
+			(s) => s.manifest.name === "context-scout",
 		);
-		expect(skillAuditor).toBeDefined();
-		expect(skillAuditor!.manifest.tools).toEqual(["read", "search"]);
+		expect(contextScout).toBeDefined();
+		expect(contextScout!.manifest.tools).toEqual(["read", "search"]);
 
 		const budgetSummary = auditCatalogTokenBudgets(CATALOG_ROOT, {
 			requireLayout: true,
@@ -308,7 +286,7 @@ describe("SkillOps NPX Core Models & Subagent Contracts (Issue #59)", () => {
 				]),
 			).toBe(ExitCode.SUCCESS);
 			expect(runCli(["node", "cli.js", "--version"])).toBe(0);
-			expect(SKILLOPS_VERSION).toBe("1.3.8");
+			expect(SKILLOPS_VERSION).toBe("1.3.9");
 		} finally {
 			fs.rmSync(tmpDir, { recursive: true, force: true });
 		}

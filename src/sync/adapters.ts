@@ -1056,7 +1056,7 @@ export function formatSyncReport(
 		activeArtifacts.find((a) => a.skill_name !== "codex-agents-index")
 			?.skill_name ??
 		report.routed_bundle.selected_skills[0]?.name ??
-		"security-sast-gate";
+		"mcp-architect";
 
 	const usageBox =
 		activeArtifacts.length > 0

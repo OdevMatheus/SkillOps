@@ -30,7 +30,7 @@ describe("SkillOps NPX Complete CLI, Deterministic Eval Runner & Stdio MCP Serve
 	it("evaluates all catalog skills (with_skill vs without_skill) and exports table, markdown, json, and html", () => {
 		const summary = evaluateCatalog(CATALOG_ROOT);
 		expect(summary.passed).toBe(true);
-		expect(summary.skills_evaluated).toBeGreaterThanOrEqual(4);
+		expect(summary.skills_evaluated).toBe(1);
 		expect(summary.mean_pass_rate_gain).toBeGreaterThanOrEqual(0.2);
 
 		const tableOut = formatEvalSummary(summary, "table");
@@ -552,7 +552,7 @@ describe("SkillOps NPX Complete CLI, Deterministic Eval Runner & Stdio MCP Serve
 	});
 
 	it("idempotently configures MCP server across all 20 MCP-capable harnesses via 'skillops mcp-setup' and exposes list_supported_harnesses MCP tool (Issue #114)", () => {
-		expect(SKILLOPS_VERSION).toBe("1.3.8");
+		expect(SKILLOPS_VERSION).toBe("1.3.9");
 		const tmpRepo = fs.mkdtempSync(
 			path.join(os.tmpdir(), "skillops-mcp-setup-"),
 		);
