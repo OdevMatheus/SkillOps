@@ -6,12 +6,9 @@ import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli.js";
 import {
 	ALL_RUNTIME_TARGETS,
-	CORE_RUNTIME_TARGETS,
-	ExitCode,
-	RUNTIME_HARNESS_SPECS,
-	SKILLOPS_VERSION,
 	auditCatalog,
 	auditCatalogTokenBudgets,
+	CORE_RUNTIME_TARGETS,
 	computeCollisionMatrix,
 	countWords,
 	createSkillManifest,
@@ -19,11 +16,14 @@ import {
 	detectInstalledHarnesses,
 	discoverSkillDirectories,
 	discoverSubagentFiles,
+	ExitCode,
 	estimateTokenCount,
 	fingerprintRepository,
 	parseSkillDirectory,
 	parseSubagentFile,
+	RUNTIME_HARNESS_SPECS,
 	resolveRuntimeTargets,
+	SKILLOPS_VERSION,
 } from "../src/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -308,7 +308,7 @@ describe("SkillOps NPX Core Models & Subagent Contracts (Issue #59)", () => {
 				]),
 			).toBe(ExitCode.SUCCESS);
 			expect(runCli(["node", "cli.js", "--version"])).toBe(0);
-			expect(SKILLOPS_VERSION).toBe("1.3.7");
+			expect(SKILLOPS_VERSION).toBe("1.3.8");
 		} finally {
 			fs.rmSync(tmpDir, { recursive: true, force: true });
 		}

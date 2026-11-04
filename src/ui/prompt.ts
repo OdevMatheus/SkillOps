@@ -8,6 +8,13 @@
  * - `Space` to toggle selection across tabs, `a` to toggle all in current tab, `Enter` to confirm
  */
 
+import {
+	CHARM_PALETTE,
+	fgHex,
+	renderKeycap,
+	renderPaginationDots,
+	renderPill,
+} from "./lipgloss.js";
 import { padVisible, style, visibleLength } from "./terminal.js";
 
 export type MultiSelectTab = "skill" | "agent";
@@ -434,15 +441,27 @@ export function renderMultiSelectFrame(
 	const submitVerb = options.submitActionLabel ?? "import";
 	const isSinglePage = totalAgents === 0 || totalSkills === 0;
 
-	const header = `${style.bold(style.cyan(`◆ ${title}`, c), c)}`;
-	const tabHint = isSinglePage ? "" : " · ←/→ tab";
-	const instructions = state.searchMode
-		? `${bar}  ${style.dim(`↑/↓ move${tabHint} · Space select · Esc clear · Enter ${submitVerb}`, c)}`
-		: `${bar}  ${style.dim(`↑/↓ move${tabHint} · Space select · / search · a all · Enter ${submitVerb}`, c)}`;
+	const header = renderPill(`◆ ${title}`, {
+		fg: CHARM_PALETTE.white,
+		bg: CHARM_PALETTE.indigo,
+		bold: true,
+		colorEnabled: c,
+	});
+	const sep = style.dim(" · ", c);
+	const keyItems = [
+		renderKeycap("↑/↓", "move", c),
+		...(isSinglePage ? [] : [renderKeycap("←/→", "tab", c)]),
+		renderKeycap("Space", "select", c),
+		...(state.searchMode
+			? [renderKeycap("Esc", "clear", c)]
+			: [renderKeycap("/", "search", c), renderKeycap("a", "all", c)]),
+		renderKeycap("Enter", submitVerb, c),
+	];
+	const instructions = `${bar}  ${keyItems.join(sep)}`;
 
 	const lines: string[] = [header];
 	if (options.subtitle) {
-		lines.push(`${bar}  ${options.subtitle}`);
+		lines.push(`${bar}  ${fgHex(CHARM_PALETTE.lavender, options.subtitle, c)}`);
 	}
 	lines.push(instructions, bar);
 
@@ -457,17 +476,21 @@ export function renderMultiSelectFrame(
 
 	const skillTabLabel =
 		state.activeTab === "skill"
-			? style.bold(
-					style.cyan(`[ ◆ ${skillTabTitle} (${skillCountStr}) ]`, c),
-					c,
-				)
+			? renderPill(`[ ◆ ${skillTabTitle} (${skillCountStr}) ]`, {
+					fg: CHARM_PALETTE.white,
+					bg: CHARM_PALETTE.indigo,
+					bold: true,
+					colorEnabled: c,
+				})
 			: style.dim(`○ ${skillTabTitle} (${skillCountStr})`, c);
 	const agentTabLabel =
 		state.activeTab === "agent"
-			? style.bold(
-					style.magenta(`[ ◆ ${agentTabTitle} (${agentCountStr}) ]`, c),
-					c,
-				)
+			? renderPill(`[ ◆ ${agentTabTitle} (${agentCountStr}) ]`, {
+					fg: CHARM_PALETTE.white,
+					bg: CHARM_PALETTE.hotPink,
+					bold: true,
+					colorEnabled: c,
+				})
 			: style.dim(`○ ${agentTabTitle} (${agentCountStr})`, c);
 
 	const rawQuerySlice =
@@ -476,7 +499,15 @@ export function renderMultiSelectFrame(
 			: state.searchQuery;
 	const searchSuffix =
 		state.searchMode || hasQuery
-			? `   ${style.yellow(`/ Filter: ${rawQuerySlice}${state.searchMode ? "█" : ""}`, c)}`
+			? `   ${renderPill(
+					`/ Filter: ${rawQuerySlice}${state.searchMode ? "█" : ""}`,
+					{
+						fg: CHARM_PALETTE.amber,
+						bg: CHARM_PALETTE.surface,
+						bold: true,
+						colorEnabled: c,
+					},
+				)}`
 			: `   ${style.dim("(/ search)", c)}`;
 
 	const singleTabLabel = totalSkills > 0 ? skillTabLabel : agentTabLabel;
@@ -500,9 +531,20 @@ export function renderMultiSelectFrame(
 			startIdx = Math.max(0, Math.min(state.cursor - half, total - maxVisible));
 		}
 		const endIdx = Math.min(total, startIdx + maxVisible);
+		const totalPages = Math.max(1, Math.ceil(total / maxVisible));
+		const currentPage = Math.min(
+			totalPages - 1,
+			Math.floor(state.cursor / maxVisible),
+		);
+		const pageDots =
+			totalPages > 1
+				? `  ${renderPaginationDots(currentPage, totalPages, c)}`
+				: "";
 
 		if (startIdx > 0) {
-			lines.push(`${bar}  ${style.dim(`↑ ${startIdx} more above...`, c)}`);
+			lines.push(
+				`${bar}  ${style.dim(`↑ ${startIdx} more above...`, c)}${endIdx >= total ? pageDots : ""}`,
+			);
 		}
 
 		const maxLabelCols = Math.min(
@@ -524,11 +566,13 @@ export function renderMultiSelectFrame(
 				? allRealSelected
 				: state.selected.has(opt.value);
 
-			const pointer = isCurrent ? style.cyan("❯", c) : " ";
+			const pointer = isCurrent
+				? fgHex(CHARM_PALETTE.hotPink, style.bold("❯", c), c)
+				: " ";
 			const checkbox = isChecked
 				? style.green("◉", c)
 				: opt.isSelectAll && someRealSelected
-					? style.cyan("◐", c)
+					? fgHex(CHARM_PALETTE.fuchsia, "◐", c)
 					: style.dim("◯", c);
 
 			const labelRaw =
@@ -537,7 +581,7 @@ export function renderMultiSelectFrame(
 					: opt.label;
 			const labelPadded = padVisible(labelRaw, maxLabelCols + 1, "left");
 			const styledLabel = isCurrent
-				? style.bold(labelPadded, c)
+				? fgHex(CHARM_PALETTE.fuchsia, style.bold(labelPadded, c), c)
 				: isChecked
 					? style.green(labelPadded, c)
 					: labelPadded;
@@ -549,14 +593,20 @@ export function renderMultiSelectFrame(
 				rawHint.length > maxHintCols
 					? `${rawHint.slice(0, maxHintCols - 1)}…`
 					: rawHint;
-			const hintPart = shortHint ? ` ${style.dim(shortHint, c)}` : "";
+			const hintPart = shortHint
+				? ` ${
+						isCurrent
+							? fgHex(CHARM_PALETTE.lavender, shortHint, c)
+							: style.dim(shortHint, c)
+					}`
+				: "";
 
 			lines.push(`${bar}  ${pointer} ${checkbox} ${styledLabel}${hintPart}`);
 		}
 
 		if (endIdx < total) {
 			lines.push(
-				`${bar}  ${style.dim(`↓ ${total - endIdx} more below...`, c)}`,
+				`${bar}  ${style.dim(`↓ ${total - endIdx} more below...`, c)}${pageDots}`,
 			);
 		}
 	}
@@ -581,9 +631,13 @@ export function renderMultiSelectFrame(
 	const shortTarget =
 		rawTarget.length > 18 ? `${rawTarget.slice(0, 17)}…` : rawTarget;
 	const targetSuffix = shortTarget ? ` · IDE: ${shortTarget}` : "";
+	const styledSummary =
+		state.selected.size > 0
+			? fgHex(CHARM_PALETTE.mint, style.bold(summaryText, c), c)
+			: fgHex(CHARM_PALETTE.lavender, style.bold(summaryText, c), c);
 
 	lines.push(
-		`${style.dim("╰─", c)} ${style.bold(summaryText, c)}${style.dim(`${targetSuffix} — Enter to ${submitVerb}`, c)}`,
+		`${style.dim("╰─", c)} ${styledSummary}${style.dim(`${targetSuffix} — Enter to ${submitVerb}`, c)}`,
 	);
 
 	return lines.join("\n");

@@ -17,26 +17,26 @@ import fs from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
 import {
-	type ParsedSkillDirectory,
-	type ParsedSubagentFile,
 	discoverSkillDirectories,
 	discoverSubagentFiles,
+	type ParsedSkillDirectory,
+	type ParsedSubagentFile,
 	parseSkillDirectory,
 	parseSubagentFile,
 } from "../auditor/parser.js";
 import {
 	ALL_RUNTIME_TARGETS,
 	CORE_RUNTIME_TARGETS,
-	RUNTIME_HARNESS_SPECS,
 	type RoutedBundle,
+	RUNTIME_HARNESS_SPECS,
 	type RuntimeTarget,
 	SKILLOPS_VERSION,
+	type SyncedArtifact,
 	type SyncLockEntry,
 	type SyncLockfile,
 	SyncLockfileSchema,
 	type SyncReport,
 	SyncReportSchema,
-	type SyncedArtifact,
 } from "../models.js";
 import { type RouteOptions, routeRepository } from "../router/index.js";
 import { renderAiUsageGuide, renderNextSteps } from "../ui/terminal.js";

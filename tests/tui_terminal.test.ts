@@ -1,16 +1,24 @@
 import { describe, expect, it } from "vitest";
 import {
 	applyMultiSelectKey,
+	bgHex,
+	CHARM_PALETTE,
 	createMultiSelectState,
+	fgHex,
 	formatBadge,
+	hexToRgb,
 	isColorEnabled,
+	joinHorizontal,
 	padVisible,
 	renderAiUsageGuide,
 	renderBox,
 	renderGlobalHelp,
 	renderHeaderBanner,
+	renderKeycap,
 	renderMultiSelectFrame,
 	renderNextSteps,
+	renderPaginationDots,
+	renderPill,
 	renderStep,
 	renderTable,
 	renderTokenBar,
@@ -328,5 +336,61 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 		expect(suggestCommand("quikstart", validCmds)).toBe("quickstart");
 		expect(suggestCommand("recomend", validCmds)).toBe("recommend");
 		expect(suggestCommand("zzzzzzzzzz", validCmds)).toBeNull();
+	});
+
+	it("renders Charmbracelet Lip Gloss TrueColor (24-bit RGB) pills, paginator dots, keycaps, and horizontal layouts", () => {
+		expect(hexToRgb("#7D56F4")).toEqual([125, 86, 244]);
+		expect(hexToRgb("#F0A")).toEqual([255, 0, 170]);
+
+		const fgStyled = fgHex(CHARM_PALETTE.indigo, "Charm", true);
+		expect(fgStyled).toContain("\x1b[38;2;125;86;244mCharm\x1b[39m");
+		expect(stripAnsi(fgStyled)).toBe("Charm");
+		expect(visibleLength(fgStyled)).toBe(5);
+
+		const bgStyled = bgHex(CHARM_PALETTE.hotPink, "Bubble", true);
+		expect(bgStyled).toContain("\x1b[48;2;242;93;148mBubble\x1b[49m");
+		expect(stripAnsi(bgStyled)).toBe("Bubble");
+
+		const pill = renderPill("[ ◆ Skills (10) ]", {
+			fg: CHARM_PALETTE.white,
+			bg: CHARM_PALETTE.indigo,
+			bold: true,
+			colorEnabled: true,
+		});
+		expect(pill).toContain("\x1b[48;2;125;86;244m");
+		expect(pill).toContain("\x1b[38;2;250;250;250m");
+		expect(stripAnsi(pill)).toBe("[ ◆ Skills (10) ]");
+		expect(visibleLength(pill)).toBe(17);
+
+		const keycap = renderKeycap("Space", "select", true);
+		expect(stripAnsi(keycap)).toBe("Space select");
+		expect(visibleLength(keycap)).toBe(12);
+
+		const dots = renderPaginationDots(1, 3, true);
+		expect(stripAnsi(dots)).toBe("◦ • ◦");
+
+		const sideBySide = joinHorizontal("top", "Left 1\nLeft 2", "Right 1", 2);
+		expect(sideBySide.split("\n")).toEqual(["Left 1  Right 1", "Left 2"]);
+
+		// Verify TrueColor multi-select frame preserves <= 78 visible columns per line
+		const manyState = createMultiSelectState(
+			Array.from({ length: 15 }, (_, idx) => ({
+				value: `skill-${idx + 1}`,
+				label: `skill-${idx + 1}`,
+				kind: "skill" as const,
+				hint: `Automated verification skill #${idx + 1}`,
+			})),
+			{ showSelectAll: true },
+		);
+		const colorFrame = renderMultiSelectFrame(
+			"SkillOps — Step 2/2: Select Skills & Agents to Import",
+			manyState,
+			{ maxVisible: 6, colorEnabled: true },
+		);
+		expect(colorFrame).toContain("\x1b[48;2;125;86;244m");
+		expect(stripAnsi(colorFrame)).toContain("• ◦ ◦");
+		for (const line of colorFrame.split("\n")) {
+			expect(visibleLength(line)).toBeLessThanOrEqual(78);
+		}
 	});
 });

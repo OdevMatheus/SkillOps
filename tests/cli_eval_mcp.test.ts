@@ -6,10 +6,9 @@ import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli.js";
 import {
 	ALL_RUNTIME_TARGETS,
-	ExitCode,
-	SKILLOPS_VERSION,
 	analyzeRepoTokenEconomy,
 	diagnoseRepository,
+	ExitCode,
 	evaluateCatalog,
 	formatDoctorReport,
 	formatEvalSummary,
@@ -19,6 +18,7 @@ import {
 	handleMcpJsonRpcRequest,
 	inspectHarnesses,
 	loadSkillOpsConfig,
+	SKILLOPS_VERSION,
 	setupMcpForHarnesses,
 } from "../src/index.js";
 
@@ -552,7 +552,7 @@ describe("SkillOps NPX Complete CLI, Deterministic Eval Runner & Stdio MCP Serve
 	});
 
 	it("idempotently configures MCP server across all 20 MCP-capable harnesses via 'skillops mcp-setup' and exposes list_supported_harnesses MCP tool (Issue #114)", () => {
-		expect(SKILLOPS_VERSION).toBe("1.3.7");
+		expect(SKILLOPS_VERSION).toBe("1.3.8");
 		const tmpRepo = fs.mkdtempSync(
 			path.join(os.tmpdir(), "skillops-mcp-setup-"),
 		);
