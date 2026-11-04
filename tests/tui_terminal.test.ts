@@ -217,7 +217,7 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 		msState = applyMultiSelectKey(msState, "\r");
 		expect(msState.status).toBe("submitted");
 
-		// Step 1 AI IDE selector mode: selectCursorOnEmptySubmit selects highlighted item on Enter
+		// Step 1 AI IDE selector mode: single unified page ordered by popularity + selectCursorOnEmptySubmit
 		let ideState = createMultiSelectState([
 			{
 				value: "cursor",
@@ -231,16 +231,19 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 				label: "antigravity",
 				kind: "ide",
 				tab: "skill",
-				hint: "Google Antigravity / Gemini CLI (.agent/skills)",
+				hint: "Google Antigravity IDE (.agent/skills)",
 			},
 			{
-				value: "continue",
-				label: "continue",
+				value: "gemini",
+				label: "gemini",
 				kind: "ide",
-				tab: "agent",
-				hint: "Continue.dev (.continue/rules)",
+				tab: "skill",
+				hint: "Google Gemini CLI (.gemini/skills)",
 			},
 		]);
+		// Right arrow is a no-op when all items live on a single unified page
+		ideState = applyMultiSelectKey(ideState, "\x1b[C");
+		expect(ideState.activeTab).toBe("skill");
 		// Move down to 'antigravity' and press Enter without pressing Space
 		ideState = applyMultiSelectKey(ideState, "\x1b[B");
 		expect(ideState.cursor).toBe(1);
@@ -248,14 +251,14 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 			"SkillOps — Step 1/2: Select Your AI IDE / Agent",
 			ideState,
 			{
-				tabLabels: { skill: "Popular AIs", agent: "More AIs" },
+				tabLabels: { skill: "AI IDEs & Agents", agent: "" },
 				submitActionLabel: "continue",
 				selectCursorOnEmptySubmit: true,
 				colorEnabled: false,
 			},
 		);
-		expect(ideFrame).toContain("[ ◆ Popular AIs (2) ]");
-		expect(ideFrame).toContain("○ More AIs (1)");
+		expect(ideFrame).toContain("[ ◆ AI IDEs & Agents (3) ]");
+		expect(ideFrame).not.toContain("←/→ tab");
 		expect(ideFrame).toContain("Target: antigravity — Enter to continue");
 		for (const line of ideFrame.split("\n")) {
 			expect(visibleLength(line)).toBeLessThanOrEqual(78);

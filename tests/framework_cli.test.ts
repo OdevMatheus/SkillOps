@@ -391,10 +391,14 @@ describe("SkillOps 1-Command Quickstart & CLI Aliases", () => {
 
 	it("builds interactive catalog options and supports 'list [query]' and 'add --all' (Issue #140)", () => {
 		const targetOptions = buildInteractiveTargetOptions();
-		expect(targetOptions.length).toBe(20);
-		expect(targetOptions.filter((o) => o.tab === "skill").length).toBe(10);
-		expect(targetOptions.filter((o) => o.tab === "agent").length).toBe(10);
+		expect(targetOptions.length).toBe(28);
+		expect(targetOptions.filter((o) => o.tab === "skill").length).toBe(28);
+		expect(targetOptions.filter((o) => o.tab === "agent").length).toBe(0);
 		expect(targetOptions[0]?.value).toBe("cursor");
+		expect(targetOptions[1]?.value).toBe("claude");
+		expect(targetOptions[2]?.value).toBe("copilot");
+		expect(targetOptions[3]?.value).toBe("antigravity");
+		expect(targetOptions[6]?.value).toBe("gemini");
 
 		const options = buildInteractiveCatalogOptions(CATALOG_DIR);
 		expect(options.length).toBeGreaterThanOrEqual(19);

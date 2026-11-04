@@ -396,7 +396,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "sync",
 		aliases: [],
 		pillar: "runtime",
-		summary: "Transpile bundle across 20 AI agents",
+		summary: "Transpile bundle across 28 AI agents",
 		usage: "npx skillops-cli sync [options]",
 		options: [
 			{
@@ -427,7 +427,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 			},
 			{
 				command: "npx skillops-cli sync --harness all",
-				description: "Transpile across all 20 supported AI agents",
+				description: "Transpile across all 28 supported AI agents",
 			},
 		],
 	},
@@ -520,7 +520,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "harnesses",
 		aliases: [],
 		pillar: "runtime",
-		summary: "List 20 supported AI agents & repo status",
+		summary: "List 28 supported AI agents & repo status",
 		usage: "npx skillops-cli harnesses [options]",
 		options: [
 			{
@@ -535,7 +535,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		examples: [
 			{
 				command: "npx skillops-cli harnesses",
-				description: "View all 20 supported AI IDEs/CLI agents",
+				description: "View all 28 supported AI IDEs/CLI agents",
 			},
 		],
 	},
@@ -543,7 +543,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		name: "mcp-setup",
 		aliases: [],
 		pillar: "runtime",
-		summary: "Wire MCP server across 13 AI IDEs & agents",
+		summary: "Wire MCP server across 20 AI IDEs & agents",
 		usage: "npx skillops-cli mcp-setup [options]",
 		options: [
 			{

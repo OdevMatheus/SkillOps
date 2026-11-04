@@ -6,9 +6,10 @@ import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli.js";
 import {
 	ALL_RUNTIME_TARGETS,
+	ExitCode,
+	SKILLOPS_VERSION,
 	analyzeRepoTokenEconomy,
 	diagnoseRepository,
-	ExitCode,
 	evaluateCatalog,
 	formatDoctorReport,
 	formatEvalSummary,
@@ -18,7 +19,6 @@ import {
 	handleMcpJsonRpcRequest,
 	inspectHarnesses,
 	loadSkillOpsConfig,
-	SKILLOPS_VERSION,
 	setupMcpForHarnesses,
 } from "../src/index.js";
 
@@ -433,9 +433,9 @@ describe("SkillOps NPX Complete CLI, Deterministic Eval Runner & Stdio MCP Serve
 		).toBe(ExitCode.SUCCESS);
 	});
 
-	it("audits Startup Token Tax across all 20 AI coding agents, reports detected harnesses in doctor, and executes 'skillops harnesses' (Issue #113)", () => {
+	it("audits Startup Token Tax across all 28 AI coding agents, reports detected harnesses in doctor, and executes 'skillops harnesses' (Issue #113)", () => {
 		const tmpRepo = fs.mkdtempSync(
-			path.join(os.tmpdir(), "skillops-tokens-top20-"),
+			path.join(os.tmpdir(), "skillops-tokens-top28-"),
 		);
 		try {
 			// Seed always-on instruction files and MCP configs from multiple AI coding agents
@@ -515,11 +515,11 @@ describe("SkillOps NPX Complete CLI, Deterministic Eval Runner & Stdio MCP Serve
 			);
 
 			const harnessReport = inspectHarnesses(tmpRepo);
-			expect(harnessReport.total_supported).toBe(20);
+			expect(harnessReport.total_supported).toBe(28);
 			expect(harnessReport.detected_count).toBe(6);
 			expect(
 				formatHarnessInspectionReport(harnessReport, "markdown"),
-			).toContain("SkillOps Universal Top-20 AI Coding Agent Harnesses");
+			).toContain("SkillOps Universal Top-28 AI Coding Agent Harnesses");
 			expect(formatHarnessInspectionReport(harnessReport, "table")).toContain(
 				"[DETECTED] windsurf",
 			);
@@ -551,38 +551,47 @@ describe("SkillOps NPX Complete CLI, Deterministic Eval Runner & Stdio MCP Serve
 		}
 	});
 
-	it("idempotently configures MCP server across all 13 MCP-capable harnesses via 'skillops mcp-setup' and exposes list_supported_harnesses MCP tool (Issue #114)", () => {
-		expect(SKILLOPS_VERSION).toBe("1.3.4");
+	it("idempotently configures MCP server across all 20 MCP-capable harnesses via 'skillops mcp-setup' and exposes list_supported_harnesses MCP tool (Issue #114)", () => {
+		expect(SKILLOPS_VERSION).toBe("1.3.5");
 		const tmpRepo = fs.mkdtempSync(
 			path.join(os.tmpdir(), "skillops-mcp-setup-"),
 		);
 		try {
-			// Dry-run across all 20 targets should not write files
+			// Dry-run across all 28 targets should not write files
 			const dryRunReport = setupMcpForHarnesses(tmpRepo, {
 				targets: [...ALL_RUNTIME_TARGETS],
 				dryRun: true,
 			});
 			expect(dryRunReport.dry_run).toBe(true);
-			expect(dryRunReport.configured_count).toBe(13);
+			expect(dryRunReport.configured_count).toBe(20);
 			expect(
 				dryRunReport.actions.filter((a) => a.status === "unsupported"),
-			).toHaveLength(7);
+			).toHaveLength(8);
 			expect(fs.existsSync(path.join(tmpRepo, ".mcp.json"))).toBe(false);
 
-			// Actual run across all 20 targets creates all 13 MCP config files
+			// Actual run across all 28 targets creates all 20 MCP config files
 			const firstReport = setupMcpForHarnesses(tmpRepo, {
 				targets: [...ALL_RUNTIME_TARGETS],
 				dryRun: false,
 			});
-			expect(firstReport.configured_count).toBe(13);
+			expect(firstReport.configured_count).toBe(20);
 			expect(
 				firstReport.actions.filter((a) => a.status === "created"),
-			).toHaveLength(13);
+			).toHaveLength(20);
 			expect(fs.existsSync(path.join(tmpRepo, ".mcp.json"))).toBe(true);
+			expect(
+				fs.existsSync(path.join(tmpRepo, ".agent", "mcp_config.json")),
+			).toBe(true);
+			expect(
+				fs.existsSync(path.join(tmpRepo, ".gemini", "settings.json")),
+			).toBe(true);
 			expect(fs.existsSync(path.join(tmpRepo, ".vscode", "mcp.json"))).toBe(
 				true,
 			);
 			expect(fs.existsSync(path.join(tmpRepo, ".codex", "config.toml"))).toBe(
+				true,
+			);
+			expect(fs.existsSync(path.join(tmpRepo, ".vibe", "config.toml"))).toBe(
 				true,
 			);
 			expect(fs.existsSync(path.join(tmpRepo, ".zed", "settings.json"))).toBe(
@@ -594,16 +603,17 @@ describe("SkillOps NPX Complete CLI, Deterministic Eval Runner & Stdio MCP Serve
 				),
 			).toBe(true);
 			expect(fs.existsSync(path.join(tmpRepo, "opencode.json"))).toBe(true);
+			expect(fs.existsSync(path.join(tmpRepo, ".crush.json"))).toBe(true);
 
 			// Second run should be 100% idempotent ("unchanged")
 			const secondReport = setupMcpForHarnesses(tmpRepo, {
 				targets: [...ALL_RUNTIME_TARGETS],
 				dryRun: false,
 			});
-			expect(secondReport.configured_count).toBe(13);
+			expect(secondReport.configured_count).toBe(20);
 			expect(
 				secondReport.actions.filter((a) => a.status === "unchanged"),
-			).toHaveLength(13);
+			).toHaveLength(20);
 			expect(formatMcpSetupReport(secondReport, "markdown")).toContain(
 				"SkillOps Universal MCP Server Registration",
 			);
@@ -646,8 +656,8 @@ describe("SkillOps NPX Complete CLI, Deterministic Eval Runner & Stdio MCP Serve
 				total_supported: number;
 				detected_harnesses: string[];
 			};
-			expect(mcpPayload.total_supported).toBe(20);
-			expect(mcpPayload.detected_harnesses.length).toBeGreaterThanOrEqual(10);
+			expect(mcpPayload.total_supported).toBe(28);
+			expect(mcpPayload.detected_harnesses.length).toBeGreaterThanOrEqual(15);
 		} finally {
 			fs.rmSync(tmpRepo, { recursive: true, force: true });
 		}

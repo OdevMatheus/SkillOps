@@ -6,9 +6,9 @@ import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli.js";
 import {
 	ALL_RUNTIME_TARGETS,
+	ExitCode,
 	addSkillOrSubagent,
 	cleanSyncedArtifacts,
-	ExitCode,
 	fingerprintRepository,
 	removeSkillOrSubagent,
 	routeRepository,
@@ -314,9 +314,9 @@ describe("SkillOps NPX Router & Multi-Runtime Subagent/Skill Transpiler (Issue #
 		}
 	});
 
-	it("transpiles Skills and Subagents natively across all Top 20 AI coding agents (--targets all & --targets auto) (Issue #112)", () => {
+	it("transpiles Skills and Subagents natively across all Top 28 AI coding agents (--targets all & --targets auto) (Issue #112)", () => {
 		const tmpRepo = fs.mkdtempSync(
-			path.join(os.tmpdir(), "skillops-top20-sync-"),
+			path.join(os.tmpdir(), "skillops-top28-sync-"),
 		);
 		try {
 			expect(
@@ -349,7 +349,7 @@ describe("SkillOps NPX Router & Multi-Runtime Subagent/Skill Transpiler (Issue #
 				]),
 			).toBe(ExitCode.SUCCESS);
 
-			// Verify all 20 AI coding agent skill artifacts on disk
+			// Verify all 28 AI coding agent skill artifacts on disk
 			const expectedSkillPaths = [
 				".claude/skills/mcp-architect/SKILL.md",
 				".agent/skills/mcp-architect/SKILL.md",
@@ -372,6 +372,14 @@ describe("SkillOps NPX Router & Multi-Runtime Subagent/Skill Transpiler (Issue #
 				".trae/rules/skillops-mcp-architect.md",
 				".amazonq/rules/skillops-mcp-architect.md",
 				".junie/skills/skillops-mcp-architect.md",
+				".gemini/skills/mcp-architect/SKILL.md",
+				".factory/skills/mcp-architect/SKILL.md",
+				".qwen/skills/mcp-architect/SKILL.md",
+				".augment/rules/skillops-mcp-architect.md",
+				".vibe/skills/mcp-architect/SKILL.md",
+				".warp/skills/mcp-architect/SKILL.md",
+				".crush/skills/mcp-architect/SKILL.md",
+				".idx/rules/skillops-mcp-architect.md",
 			];
 			for (const rel of expectedSkillPaths) {
 				expect(
@@ -380,7 +388,7 @@ describe("SkillOps NPX Router & Multi-Runtime Subagent/Skill Transpiler (Issue #
 				).toBe(true);
 			}
 
-			// Verify all 20 AI coding agent subagent artifacts on disk
+			// Verify all 28 AI coding agent subagent artifacts on disk
 			const expectedSubagentPaths = [
 				".claude/agents/context-scout.md",
 				".agent/agents/context-scout.md",
@@ -402,6 +410,14 @@ describe("SkillOps NPX Router & Multi-Runtime Subagent/Skill Transpiler (Issue #
 				".trae/agents/skillops-agent-context-scout.md",
 				".amazonq/cli-agents/skillops-agent-context-scout.json",
 				".junie/agents/skillops-agent-context-scout.md",
+				".gemini/agents/context-scout.md",
+				".factory/droids/skillops-agent-context-scout.md",
+				".qwen/agents/context-scout.md",
+				".augment/agents/skillops-agent-context-scout.md",
+				".vibe/agents/skillops-agent-context-scout.toml",
+				".warp/agents/context-scout.md",
+				".crush/agents/context-scout.md",
+				".idx/agents/skillops-agent-context-scout.md",
 			];
 			for (const rel of expectedSubagentPaths) {
 				expect(
@@ -410,14 +426,14 @@ describe("SkillOps NPX Router & Multi-Runtime Subagent/Skill Transpiler (Issue #
 				).toBe(true);
 			}
 
-			// Verify lockfile recorded all 20 targets
+			// Verify lockfile recorded all 28 targets
 			const lockRaw = JSON.parse(
 				fs.readFileSync(path.join(tmpRepo, ".skillops-lock.json"), "utf-8"),
 			) as { targets: string[]; artifacts: Record<string, unknown> };
 			expect(lockRaw.targets).toHaveLength(ALL_RUNTIME_TARGETS.length);
-			expect(Object.keys(lockRaw.artifacts).length).toBeGreaterThanOrEqual(40);
+			expect(Object.keys(lockRaw.artifacts).length).toBeGreaterThanOrEqual(56);
 
-			// Clean all 20 runtimes cleanly
+			// Clean all 28 runtimes cleanly
 			expect(
 				runCli([
 					"node",
