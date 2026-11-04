@@ -1258,6 +1258,7 @@ export async function runCliInteractive(
 				: "SkillOps — Select Skills & Agents to Import";
 			const selected = await runMultiSelectPrompt(step2Title, options, {
 				targetHint: targets.join(", "),
+				showSelectAll: true,
 			});
 
 			if (!selected || selected.length === 0) {
@@ -1320,6 +1321,7 @@ export async function runCliInteractive(
 				{
 					submitActionLabel: "remove",
 					targetHint: targets ? targets.join(", ") : undefined,
+					showSelectAll: true,
 				},
 			);
 

@@ -270,6 +270,50 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 		expect(ideState.status).toBe("submitted");
 		expect([...ideState.selected]).toEqual(["antigravity"]);
 
+		// Select All option at the top of Skills & Agents tabs (showSelectAll: true)
+		let selectAllState = createMultiSelectState(
+			[
+				{
+					value: "arch-skill",
+					label: "arch-skill",
+					kind: "skill",
+					hint: "Architecture skill",
+				},
+				{
+					value: "sec-skill",
+					label: "sec-skill",
+					kind: "skill",
+					hint: "Security skill",
+				},
+				{
+					value: "verify-agent",
+					label: "verify-agent",
+					kind: "agent",
+					hint: "Verification agent",
+				},
+			],
+			{ showSelectAll: true },
+		);
+		// Cursor starts at 0 ([ALL] Select all Skills)
+		expect(selectAllState.options[0]?.isSelectAll).toBe(true);
+		expect(selectAllState.options[0]?.label).toBe("[ALL] Select all Skills");
+		// Press Space on [ALL] Select all Skills -> selects all Skills in the tab
+		selectAllState = applyMultiSelectKey(selectAllState, " ");
+		expect([...selectAllState.selected]).toEqual(["arch-skill", "sec-skill"]);
+		const allCheckedFrame = renderMultiSelectFrame(
+			"SkillOps — Step 2/2: Select Skills & Agents to Import",
+			selectAllState,
+			{ colorEnabled: false },
+		);
+		expect(allCheckedFrame).toContain("◉ [ALL] Select all Skills");
+		expect(allCheckedFrame).toContain("2 selected (2 Skills, 0 Agents)");
+		for (const line of allCheckedFrame.split("\n")) {
+			expect(visibleLength(line)).toBeLessThanOrEqual(78);
+		}
+		// Press Space again on [ALL] Select all Skills -> deselects all Skills in the tab
+		selectAllState = applyMultiSelectKey(selectAllState, " ");
+		expect([...selectAllState.selected]).toEqual([]);
+
 		const validCmds = [
 			"quickstart",
 			"install",

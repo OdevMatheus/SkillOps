@@ -19,6 +19,11 @@ export interface MultiSelectOption {
 	readonly tab?: MultiSelectTab;
 	readonly hint?: string;
 	readonly initialSelected?: boolean;
+	readonly isSelectAll?: boolean;
+}
+
+export interface CreateMultiSelectStateOptions {
+	readonly showSelectAll?: boolean;
 }
 
 export interface MultiSelectState {
@@ -44,6 +49,7 @@ export interface RenderMultiSelectOptions {
 	};
 	readonly submitActionLabel?: string;
 	readonly selectCursorOnEmptySubmit?: boolean;
+	readonly showSelectAll?: boolean;
 	readonly maxVisible?: number;
 	readonly colorEnabled?: boolean;
 }
@@ -65,6 +71,9 @@ function optionMatchesQuery(opt: MultiSelectOption, rawQuery: string): boolean {
 	const q = rawQuery.trim().toLowerCase();
 	if (!q) {
 		return true;
+	}
+	if (opt.isSelectAll) {
+		return false;
 	}
 	return (
 		opt.label.toLowerCase().includes(q) ||
@@ -91,16 +100,52 @@ export function getFilteredTabOptions(
  */
 export function createMultiSelectState(
 	options: readonly MultiSelectOption[],
+	stateOptions: CreateMultiSelectStateOptions = {},
 ): MultiSelectState {
+	let finalOptions: readonly MultiSelectOption[] = options;
+	if (
+		stateOptions.showSelectAll &&
+		!options.some((opt) => opt.isSelectAll === true)
+	) {
+		const skillItems = options.filter((opt) => optionMatchesTab(opt, "skill"));
+		const agentItems = options.filter((opt) => optionMatchesTab(opt, "agent"));
+		const withAll: MultiSelectOption[] = [];
+		if (skillItems.length > 0) {
+			withAll.push({
+				value: "__all_skills__",
+				label: "[ALL] Select all Skills",
+				kind: "skill",
+				tab: "skill",
+				isSelectAll: true,
+				hint: `Select or deselect all ${skillItems.length} Skills in this tab`,
+			});
+			withAll.push(...skillItems);
+		}
+		if (agentItems.length > 0) {
+			withAll.push({
+				value: "__all_agents__",
+				label: "[ALL] Select all Agents",
+				kind: "agent",
+				tab: "agent",
+				isSelectAll: true,
+				hint: `Select or deselect all ${agentItems.length} Agents in this tab`,
+			});
+			withAll.push(...agentItems);
+		}
+		if (withAll.length > 0) {
+			finalOptions = withAll;
+		}
+	}
+
 	const initial = new Set<string>();
-	for (const opt of options) {
-		if (opt.initialSelected) {
+	for (const opt of finalOptions) {
+		if (opt.initialSelected && !opt.isSelectAll) {
 			initial.add(opt.value);
 		}
 	}
-	const hasSkills = options.some((opt) => optionMatchesTab(opt, "skill"));
+	const hasSkills = finalOptions.some((opt) => optionMatchesTab(opt, "skill"));
 	return {
-		options,
+		options: finalOptions,
 		activeTab: hasSkills ? "skill" : "agent",
 		cursor: 0,
 		selected: initial,
@@ -230,6 +275,29 @@ export function applyMultiSelectKey(
 		if (!currentOpt) {
 			return state;
 		}
+		if (currentOpt.isSelectAll) {
+			const realVisible = visible.filter((opt) => !opt.isSelectAll);
+			if (realVisible.length === 0) {
+				return state;
+			}
+			const allTabSelected = realVisible.every((opt) =>
+				state.selected.has(opt.value),
+			);
+			const nextSelected = new Set(state.selected);
+			if (allTabSelected) {
+				for (const opt of realVisible) {
+					nextSelected.delete(opt.value);
+				}
+			} else {
+				for (const opt of realVisible) {
+					nextSelected.add(opt.value);
+				}
+			}
+			return {
+				...state,
+				selected: nextSelected,
+			};
+		}
 		const nextSelected = new Set(state.selected);
 		if (nextSelected.has(currentOpt.value)) {
 			nextSelected.delete(currentOpt.value);
@@ -307,19 +375,20 @@ export function applyMultiSelectKey(
 
 	// Toggle all options in active tab: 'a' or 'A'
 	if (key === "a" || key === "A") {
-		if (visible.length === 0) {
+		const realVisible = visible.filter((opt) => !opt.isSelectAll);
+		if (realVisible.length === 0) {
 			return state;
 		}
-		const allTabSelected = visible.every((opt) =>
+		const allTabSelected = realVisible.every((opt) =>
 			state.selected.has(opt.value),
 		);
 		const nextSelected = new Set(state.selected);
 		if (allTabSelected) {
-			for (const opt of visible) {
+			for (const opt of realVisible) {
 				nextSelected.delete(opt.value);
 			}
 		} else {
-			for (const opt of visible) {
+			for (const opt of realVisible) {
 				nextSelected.add(opt.value);
 			}
 		}
@@ -344,15 +413,20 @@ export function renderMultiSelectFrame(
 	const bar = style.dim("│", c);
 	const maxVisible = options.maxVisible ?? 10;
 
-	const totalSkills = state.options.filter((o) =>
+	const realOptions = state.options.filter((o) => !o.isSelectAll);
+	const totalSkills = realOptions.filter((o) =>
 		optionMatchesTab(o, "skill"),
 	).length;
-	const totalAgents = state.options.filter((o) =>
+	const totalAgents = realOptions.filter((o) =>
 		optionMatchesTab(o, "agent"),
 	).length;
 	const filteredSkills = getFilteredTabOptions(state, "skill");
 	const filteredAgents = getFilteredTabOptions(state, "agent");
+	const realFilteredSkills = filteredSkills.filter((o) => !o.isSelectAll);
+	const realFilteredAgents = filteredAgents.filter((o) => !o.isSelectAll);
 	const visible = state.activeTab === "skill" ? filteredSkills : filteredAgents;
+	const realVisible =
+		state.activeTab === "skill" ? realFilteredSkills : realFilteredAgents;
 	const total = visible.length;
 
 	const skillTabTitle = options.tabLabels?.skill ?? "Skills";
@@ -375,10 +449,10 @@ export function renderMultiSelectFrame(
 	// Render horizontal Tabs + Search bar
 	const hasQuery = state.searchQuery.length > 0;
 	const skillCountStr = hasQuery
-		? `${filteredSkills.length}/${totalSkills}`
+		? `${realFilteredSkills.length}/${totalSkills}`
 		: `${totalSkills}`;
 	const agentCountStr = hasQuery
-		? `${filteredAgents.length}/${totalAgents}`
+		? `${realFilteredAgents.length}/${totalAgents}`
 		: `${totalAgents}`;
 
 	const skillTabLabel =
@@ -440,10 +514,22 @@ export function renderMultiSelectFrame(
 			const opt = visible[i];
 			if (!opt) continue;
 			const isCurrent = i === state.cursor;
-			const isChecked = state.selected.has(opt.value);
+			const allRealSelected =
+				realVisible.length > 0 &&
+				realVisible.every((o) => state.selected.has(o.value));
+			const someRealSelected =
+				realVisible.some((o) => state.selected.has(o.value)) &&
+				!allRealSelected;
+			const isChecked = opt.isSelectAll
+				? allRealSelected
+				: state.selected.has(opt.value);
 
 			const pointer = isCurrent ? style.cyan("❯", c) : " ";
-			const checkbox = isChecked ? style.green("◉", c) : style.dim("◯", c);
+			const checkbox = isChecked
+				? style.green("◉", c)
+				: opt.isSelectAll && someRealSelected
+					? style.cyan("◐", c)
+					: style.dim("◯", c);
 
 			const labelRaw =
 				opt.label.length > maxLabelCols
@@ -476,10 +562,10 @@ export function renderMultiSelectFrame(
 	}
 
 	lines.push(bar);
-	const selectedSkillsCount = state.options.filter(
+	const selectedSkillsCount = realOptions.filter(
 		(o) => optionMatchesTab(o, "skill") && state.selected.has(o.value),
 	).length;
-	const selectedAgentsCount = state.options.filter(
+	const selectedAgentsCount = realOptions.filter(
 		(o) => optionMatchesTab(o, "agent") && state.selected.has(o.value),
 	).length;
 
@@ -516,7 +602,9 @@ export async function runMultiSelectPrompt(
 		return null;
 	}
 
-	let state = createMultiSelectState(options);
+	let state = createMultiSelectState(options, {
+		showSelectAll: renderOpts.showSelectAll,
+	});
 	let renderedLineCount = 0;
 
 	const render = () => {
