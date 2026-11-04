@@ -1,6 +1,6 @@
 # Contributing to SkillOps
 
-Thank you for contributing to **SkillOps** (`npx skillops-cli@latest`)! Because SkillOps is an **AI-Agent-first** open-source platform powered by a **Zero-API Node.js 20+ / TypeScript engine** and **deterministic Python 3.12+ catalog scripts**, these guidelines apply equally to **human contributors** and **all 20 supported AI coding agents** (`claude`, `antigravity`, `cursor`, `codex`, `copilot`, `windsurf`, `cline`, `roocode`, `kilocode`, `zed`, `continue`, `aider`, `openhands`, `amp`, `opencode`, `goose`, `kiro`, `trae`, `junie`, `amazonq`).
+Thank you for contributing to **SkillOps** (`npx skillops-cli@latest`)! Because SkillOps is an **AI-Agent-first** open-source platform powered by a **Zero-API Node.js 20+ / TypeScript engine** and **deterministic Python 3.12+ catalog scripts**, these guidelines apply equally to **human contributors** and **all 28 supported AI coding agents** (`cursor`, `claude`, `copilot`, `antigravity`, `windsurf`, `codex`, `gemini`, `cline`, `roocode`, `kilocode`, `zed`, `continue`, `aider`, `kiro`, `trae`, `augment`, `factory`, `qwen`, `opencode`, `openhands`, `amp`, `goose`, `warp`, `crush`, `vibe`, `junie`, `amazonq`, `idx`).
 
 ---
 
@@ -53,9 +53,9 @@ Every skill in `catalog/<track>/<skill-slug>/` must satisfy [`SKILL_CONTRACT.md`
    ```bash
    npx skillops-cli@latest eval --catalog catalog --strict
    ```
-4. **Verify transpilability across all 20 AI coding agents (dry-run):**
+4. **Verify transpilability across all 28 AI coding agents (dry-run):**
    ```bash
-   npx skillops-cli@latest sync --repo . --targets all --dry-run
+   npx skillops-cli@latest add --all --targets all --dry-run
    ```
 
 ---
