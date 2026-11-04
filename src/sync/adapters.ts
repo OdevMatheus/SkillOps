@@ -17,26 +17,26 @@ import fs from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
 import {
-	discoverSkillDirectories,
-	discoverSubagentFiles,
 	type ParsedSkillDirectory,
 	type ParsedSubagentFile,
+	discoverSkillDirectories,
+	discoverSubagentFiles,
 	parseSkillDirectory,
 	parseSubagentFile,
 } from "../auditor/parser.js";
 import {
 	ALL_RUNTIME_TARGETS,
 	CORE_RUNTIME_TARGETS,
-	type RoutedBundle,
 	RUNTIME_HARNESS_SPECS,
+	type RoutedBundle,
 	type RuntimeTarget,
 	SKILLOPS_VERSION,
-	type SyncedArtifact,
 	type SyncLockEntry,
 	type SyncLockfile,
 	SyncLockfileSchema,
 	type SyncReport,
 	SyncReportSchema,
+	type SyncedArtifact,
 } from "../models.js";
 import { type RouteOptions, routeRepository } from "../router/index.js";
 import { renderAiUsageGuide, renderNextSteps } from "../ui/terminal.js";
@@ -218,7 +218,21 @@ export function renderSkillFilesForRuntime(
 		return files;
 	}
 
-	// Remaining markdown-rule harnesses: cline, roocode, kilocode, zed, continue, aider, trae, amazonq, junie
+	if (target === "augment") {
+		const augFrontmatter = YAML.stringify({
+			type: "agent_requested",
+			description: parsed.manifest.description,
+		}).trim();
+		files.push({
+			target,
+			itemName: name,
+			relativePath: `.augment/rules/skillops-${name}.md`,
+			content: `---\n${augFrontmatter}\n---\n\n${body}\n`,
+		});
+		return files;
+	}
+
+	// Remaining markdown-rule harnesses: cline, roocode, kilocode, zed, continue, aider, trae, amazonq, junie, idx
 	const ruleFrontmatter = YAML.stringify({
 		name,
 		description: parsed.manifest.description,
@@ -247,6 +261,7 @@ export function renderSubagentFilesForRuntime(
 	const fm = YAML.stringify({
 		name: subagent.manifest.name,
 		description: subagent.manifest.description,
+		model: "inherit",
 		model_tier: subagent.manifest.model_tier,
 		tools: subagent.manifest.tools,
 		max_output_tokens: subagent.manifest.max_output_tokens,
@@ -256,10 +271,14 @@ export function renderSubagentFilesForRuntime(
 	if (
 		target === "claude" ||
 		target === "antigravity" ||
+		target === "gemini" ||
 		target === "codex" ||
 		target === "amp" ||
 		target === "goose" ||
-		target === "opencode"
+		target === "opencode" ||
+		target === "qwen" ||
+		target === "warp" ||
+		target === "crush"
 	) {
 		return [
 			{
@@ -267,6 +286,41 @@ export function renderSubagentFilesForRuntime(
 				itemName: name,
 				relativePath: `${spec.subagentsDir}/${name}.md`,
 				content: normalizedDoc,
+			},
+		];
+	}
+
+	if (target === "factory") {
+		const droidFm = YAML.stringify({
+			name,
+			description: subagent.manifest.description,
+			model: "inherit",
+		}).trim();
+		return [
+			{
+				target,
+				itemName: name,
+				relativePath: `.factory/droids/skillops-agent-${name}.md`,
+				content: `---\n${droidFm}\n---\n\n${promptBody}\n`,
+			},
+		];
+	}
+
+	if (target === "vibe") {
+		const escapedDesc = JSON.stringify(subagent.manifest.description);
+		const escapedPrompt = JSON.stringify(promptBody);
+		const tomlDoc = [
+			`name = "${name}"`,
+			`description = ${escapedDesc}`,
+			`system_prompt = ${escapedPrompt}`,
+			"",
+		].join("\n");
+		return [
+			{
+				target,
+				itemName: name,
+				relativePath: `.vibe/agents/skillops-agent-${name}.toml`,
+				content: tomlDoc,
 			},
 		];
 	}

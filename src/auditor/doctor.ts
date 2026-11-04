@@ -14,12 +14,12 @@ import fs from "node:fs";
 import path from "node:path";
 import {
 	ALL_RUNTIME_TARGETS,
-	detectInstalledHarnesses,
-	loadSkillOpsConfig,
 	RUNTIME_HARNESS_SPECS,
 	type RuntimeHarnessSpec,
 	type RuntimeTarget,
 	SyncLockfileSchema,
+	detectInstalledHarnesses,
+	loadSkillOpsConfig,
 } from "../models.js";
 import { analyzeRepoTokenEconomy } from "./token_economy.js";
 
@@ -176,16 +176,16 @@ export function diagnoseRepository(
 		);
 	}
 
-	// 2.5. Detected AI Coding Agent Harnesses (Top 20)
+	// 2.5. Detected AI Coding Agent Harnesses (Top 28)
 	const detectedHarnesses = detectInstalledHarnesses(resolvedRepo);
 	checks.push({
 		id: "detected_harnesses",
-		title: "Detected AI Coding Harnesses (Top 20)",
+		title: "Detected AI Coding Harnesses (Top 28)",
 		status: "pass",
 		summary:
 			detectedHarnesses.length > 0
 				? `Detected ${detectedHarnesses.length} AI coding harness(es): ${detectedHarnesses.join(", ")}.`
-				: "No repo-local AI harness folders detected yet (ready to sync all 20 agents).",
+				: "No repo-local AI harness folders detected yet (ready to sync all 28 agents).",
 	});
 
 	// 3. Declarative Config (.skillops.yml) Check
@@ -405,7 +405,7 @@ export function formatHarnessInspectionReport(
 
 	if (format === "markdown") {
 		const lines: string[] = [
-			`## SkillOps Universal Top-20 AI Coding Agent Harnesses (\`${report.repo_path}\`)`,
+			`## SkillOps Universal Top-28 AI Coding Agent Harnesses (\`${report.repo_path}\`)`,
 			"",
 			`- **Supported AI Coding Harnesses:** \`${report.total_supported}\``,
 			`- **Detected in Repository:** \`${report.detected_count}\` (${
@@ -428,7 +428,7 @@ export function formatHarnessInspectionReport(
 	}
 
 	const lines: string[] = [
-		`=== SkillOps Universal Top-20 AI Coding Harnesses (${report.repo_path}) ===`,
+		`=== SkillOps Universal Top-28 AI Coding Harnesses (${report.repo_path}) ===`,
 		`Supported Harnesses : ${report.total_supported}`,
 		`Detected in Repo    : ${report.detected_count} (${
 			report.detected_harnesses.length > 0

@@ -176,6 +176,12 @@ export function applyMultiSelectKey(
 	) {
 		const nextTab: MultiSelectTab =
 			state.activeTab === "skill" ? "agent" : "skill";
+		const hasNextTabOptions = state.options.some((opt) =>
+			optionMatchesTab(opt, nextTab),
+		);
+		if (!hasNextTabOptions) {
+			return state;
+		}
 		return {
 			...state,
 			activeTab: nextTab,
@@ -352,11 +358,13 @@ export function renderMultiSelectFrame(
 	const skillTabTitle = options.tabLabels?.skill ?? "Skills";
 	const agentTabTitle = options.tabLabels?.agent ?? "Agents";
 	const submitVerb = options.submitActionLabel ?? "import";
+	const isSinglePage = totalAgents === 0;
 
 	const header = `${style.bold(style.cyan(`◆ ${title}`, c), c)}`;
+	const tabHint = isSinglePage ? "" : " · ←/→ tab";
 	const instructions = state.searchMode
-		? `${bar}  ${style.dim(`↑/↓ move · ←/→ tab · Space select · Esc clear · Enter ${submitVerb}`, c)}`
-		: `${bar}  ${style.dim(`↑/↓ move · ←/→ tab · Space select · / search · a all · Enter ${submitVerb}`, c)}`;
+		? `${bar}  ${style.dim(`↑/↓ move${tabHint} · Space select · Esc clear · Enter ${submitVerb}`, c)}`
+		: `${bar}  ${style.dim(`↑/↓ move${tabHint} · Space select · / search · a all · Enter ${submitVerb}`, c)}`;
 
 	const lines: string[] = [header];
 	if (options.subtitle) {
@@ -375,11 +383,17 @@ export function renderMultiSelectFrame(
 
 	const skillTabLabel =
 		state.activeTab === "skill"
-			? style.bold(style.cyan(`[ ◆ ${skillTabTitle} (${skillCountStr}) ]`, c), c)
+			? style.bold(
+					style.cyan(`[ ◆ ${skillTabTitle} (${skillCountStr}) ]`, c),
+					c,
+				)
 			: style.dim(`○ ${skillTabTitle} (${skillCountStr})`, c);
 	const agentTabLabel =
 		state.activeTab === "agent"
-			? style.bold(style.magenta(`[ ◆ ${agentTabTitle} (${agentCountStr}) ]`, c), c)
+			? style.bold(
+					style.magenta(`[ ◆ ${agentTabTitle} (${agentCountStr}) ]`, c),
+					c,
+				)
 			: style.dim(`○ ${agentTabTitle} (${agentCountStr})`, c);
 
 	const rawQuerySlice =
@@ -392,7 +406,9 @@ export function renderMultiSelectFrame(
 			: `   ${style.dim("(/ search)", c)}`;
 
 	lines.push(
-		`${style.dim("├─", c)} ${skillTabLabel}   ${agentTabLabel}${searchSuffix}`,
+		isSinglePage
+			? `${style.dim("├─", c)} ${skillTabLabel}${searchSuffix}`
+			: `${style.dim("├─", c)} ${skillTabLabel}   ${agentTabLabel}${searchSuffix}`,
 		bar,
 	);
 

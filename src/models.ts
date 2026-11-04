@@ -10,7 +10,7 @@ import fs from "node:fs";
 import YAML from "yaml";
 import { z } from "zod";
 
-export const SKILLOPS_VERSION = "1.3.4";
+export const SKILLOPS_VERSION = "1.3.5";
 
 const SKILL_NAME_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SEMVER_REGEX = /^\d+\.\d+\.\d+$/;
@@ -111,6 +111,14 @@ export const RuntimeTargetSchema = z.enum([
 	"trae",
 	"amazonq",
 	"junie",
+	"gemini",
+	"factory",
+	"qwen",
+	"augment",
+	"vibe",
+	"warp",
+	"crush",
+	"idx",
 ]);
 export type RuntimeTarget = z.infer<typeof RuntimeTargetSchema>;
 
@@ -143,6 +151,14 @@ export const ALL_RUNTIME_TARGETS: readonly RuntimeTarget[] = [
 	"trae",
 	"amazonq",
 	"junie",
+	"gemini",
+	"factory",
+	"qwen",
+	"augment",
+	"vibe",
+	"warp",
+	"crush",
+	"idx",
 ];
 
 export type HarnessCategory =
@@ -190,15 +206,15 @@ export const RUNTIME_HARNESS_SPECS: Readonly<
 	},
 	antigravity: {
 		id: "antigravity",
-		displayName: "Google Antigravity / Gemini CLI",
+		displayName: "Google Antigravity IDE",
 		vendor: "Google DeepMind",
 		category: "ai-ide",
 		skillFormat: "progressive-skill-dir",
 		skillsDir: ".agent/skills",
 		subagentsDir: ".agent/agents",
-		detectionPaths: [".agent", ".gemini", "GEMINI.md"],
-		alwaysOnFiles: ["GEMINI.md", ".gemini/GEMINI.md"],
-		mcpConfigPath: ".gemini/settings.json",
+		detectionPaths: [".agent", "GEMINI.md"],
+		alwaysOnFiles: ["GEMINI.md"],
+		mcpConfigPath: ".agent/mcp_config.json",
 		supportsMcp: true,
 	},
 	cursor: {
@@ -444,6 +460,110 @@ export const RUNTIME_HARNESS_SPECS: Readonly<
 		mcpConfigPath: null,
 		supportsMcp: false,
 	},
+	gemini: {
+		id: "gemini",
+		displayName: "Google Gemini CLI",
+		vendor: "Google",
+		category: "cli-agent",
+		skillFormat: "progressive-skill-dir",
+		skillsDir: ".gemini/skills",
+		subagentsDir: ".gemini/agents",
+		detectionPaths: [".gemini", "GEMINI.md"],
+		alwaysOnFiles: ["GEMINI.md", ".gemini/GEMINI.md", ".gemini/STYLEGUIDE.md"],
+		mcpConfigPath: ".gemini/settings.json",
+		supportsMcp: true,
+	},
+	factory: {
+		id: "factory",
+		displayName: "Factory AI Droid",
+		vendor: "Factory AI",
+		category: "cli-agent",
+		skillFormat: "progressive-skill-dir",
+		skillsDir: ".factory/skills",
+		subagentsDir: ".factory/droids",
+		detectionPaths: [".factory"],
+		alwaysOnFiles: ["AGENTS.md", ".factory/instructions.md"],
+		mcpConfigPath: ".factory/mcp.json",
+		supportsMcp: true,
+	},
+	qwen: {
+		id: "qwen",
+		displayName: "Qwen Code CLI",
+		vendor: "Alibaba Cloud / Qwen",
+		category: "cli-agent",
+		skillFormat: "progressive-skill-dir",
+		skillsDir: ".qwen/skills",
+		subagentsDir: ".qwen/agents",
+		detectionPaths: [".qwen", "QWEN.md"],
+		alwaysOnFiles: ["QWEN.md", "AGENTS.md"],
+		mcpConfigPath: ".qwen/settings.json",
+		supportsMcp: true,
+	},
+	augment: {
+		id: "augment",
+		displayName: "Augment Code",
+		vendor: "Augment",
+		category: "ide-extension",
+		skillFormat: "markdown-rule",
+		skillsDir: ".augment/rules",
+		subagentsDir: ".augment/agents",
+		detectionPaths: [".augment", ".augment-guidelines"],
+		alwaysOnFiles: [".augment-guidelines", "AGENTS.md"],
+		mcpConfigPath: ".augment/settings.json",
+		supportsMcp: true,
+	},
+	vibe: {
+		id: "vibe",
+		displayName: "Mistral Vibe CLI",
+		vendor: "Mistral AI",
+		category: "cli-agent",
+		skillFormat: "progressive-skill-dir",
+		skillsDir: ".vibe/skills",
+		subagentsDir: ".vibe/agents",
+		detectionPaths: [".vibe"],
+		alwaysOnFiles: [".vibe/config.toml", "AGENTS.md"],
+		mcpConfigPath: ".vibe/config.toml",
+		supportsMcp: true,
+	},
+	warp: {
+		id: "warp",
+		displayName: "Warp AI Terminal",
+		vendor: "Warp",
+		category: "cli-agent",
+		skillFormat: "progressive-skill-dir",
+		skillsDir: ".warp/skills",
+		subagentsDir: ".warp/agents",
+		detectionPaths: [".warp", "WARP.md"],
+		alwaysOnFiles: ["WARP.md", "AGENTS.md"],
+		mcpConfigPath: null,
+		supportsMcp: false,
+	},
+	crush: {
+		id: "crush",
+		displayName: "Charmbracelet Crush",
+		vendor: "Charmbracelet",
+		category: "cli-agent",
+		skillFormat: "progressive-skill-dir",
+		skillsDir: ".crush/skills",
+		subagentsDir: ".crush/agents",
+		detectionPaths: [".crush", ".crush.json", "CRUSH.md"],
+		alwaysOnFiles: ["CRUSH.md", "AGENTS.md"],
+		mcpConfigPath: ".crush.json",
+		supportsMcp: true,
+	},
+	idx: {
+		id: "idx",
+		displayName: "Firebase Studio (Project IDX)",
+		vendor: "Google",
+		category: "ai-ide",
+		skillFormat: "markdown-rule",
+		skillsDir: ".idx/rules",
+		subagentsDir: ".idx/agents",
+		detectionPaths: [".idx"],
+		alwaysOnFiles: [".idx/airules.md", "GEMINI.md"],
+		mcpConfigPath: ".idx/mcp.json",
+		supportsMcp: true,
+	},
 };
 
 /**
@@ -496,7 +616,12 @@ export function resolveRuntimeTargets(
 	};
 
 	for (const token of tokens) {
-		if (token === "all" || token === "*" || token === "top20") {
+		if (
+			token === "all" ||
+			token === "*" ||
+			token === "top20" ||
+			token === "top28"
+		) {
 			for (const t of ALL_RUNTIME_TARGETS) {
 				pushUnique(t);
 			}

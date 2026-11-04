@@ -40,13 +40,13 @@ import {
 	ALL_RUNTIME_TARGETS,
 	CORE_RUNTIME_TARGETS,
 	ExitCode,
-	loadSkillOpsConfig,
 	RUNTIME_HARNESS_SPECS,
 	type RuntimeTarget,
-	resolveRuntimeTargets,
 	SKILLOPS_VERSION,
 	type SkillOpsConfig,
 	SkillOpsConfigSchema,
+	loadSkillOpsConfig,
+	resolveRuntimeTargets,
 } from "./models.js";
 import {
 	fingerprintRepository,
@@ -61,8 +61,8 @@ import {
 	syncRepository,
 } from "./sync/index.js";
 import {
-	findCommandHelpSpec,
 	type MultiSelectOption,
+	findCommandHelpSpec,
 	renderCommandHelp,
 	renderGlobalHelp,
 	renderNextSteps,
@@ -181,14 +181,32 @@ function resolveCatalogDir(
 const POPULAR_AI_ORDER: readonly RuntimeTarget[] = [
 	"cursor",
 	"claude",
-	"antigravity",
 	"copilot",
+	"antigravity",
 	"windsurf",
 	"codex",
+	"gemini",
 	"cline",
 	"roocode",
 	"kilocode",
 	"zed",
+	"continue",
+	"aider",
+	"kiro",
+	"trae",
+	"augment",
+	"factory",
+	"qwen",
+	"opencode",
+	"openhands",
+	"amp",
+	"goose",
+	"warp",
+	"crush",
+	"vibe",
+	"junie",
+	"amazonq",
+	"idx",
 ];
 
 export function buildInteractiveTargetOptions(): MultiSelectOption[] {
@@ -198,13 +216,13 @@ export function buildInteractiveTargetOptions(): MultiSelectOption[] {
 		...ALL_RUNTIME_TARGETS.filter((t) => !popularSet.has(t)),
 	];
 
-	return orderedTargets.map((targetId, index) => {
+	return orderedTargets.map((targetId) => {
 		const spec = RUNTIME_HARNESS_SPECS[targetId];
 		return {
 			value: spec.id,
 			label: spec.id,
 			kind: "ide",
-			tab: index < 10 ? "skill" : "agent",
+			tab: "skill",
 			hint: `${spec.displayName} (${spec.skillsDir})`,
 		};
 	});
@@ -1096,8 +1114,8 @@ export async function runCliInteractive(
 				targetOptions,
 				{
 					tabLabels: {
-						skill: "Popular AIs",
-						agent: "More AIs",
+						skill: "AI IDEs & Agents",
+						agent: "",
 					},
 					submitActionLabel: "continue",
 					selectCursorOnEmptySubmit: true,

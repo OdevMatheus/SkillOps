@@ -168,7 +168,7 @@ const MCP_TOOLS = [
 	{
 		name: "list_supported_harnesses",
 		description:
-			"Inspect all 20 supported AI coding agents, IDEs, and CLI harnesses (target paths, MCP support, and repository auto-detection).",
+			"Inspect all 28 supported AI coding agents, IDEs, and CLI harnesses (target paths, MCP support, and repository auto-detection).",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -414,7 +414,7 @@ function buildUpdatedMcpConfigContent(
 ): string {
 	const mcpArgs = ["-y", "skillops-cli@latest", "mcp"];
 
-	if (target === "codex") {
+	if (target === "codex" || target === "vibe") {
 		const tomlBlock = [
 			`[mcp_servers.${serverName}]`,
 			'command = "npx"',
@@ -528,7 +528,26 @@ function buildUpdatedMcpConfigContent(
 		return `${JSON.stringify(parsedObj, null, 2)}\n`;
 	}
 
-	// Standard mcpServers JSON (claude, antigravity, cursor, roocode, kilocode, kiro, amazonq)
+	if (target === "crush") {
+		if (!("$schema" in parsedObj)) {
+			parsedObj.$schema = "https://charm.land/crush.json";
+		}
+		const mcpMap =
+			parsedObj.mcp &&
+			typeof parsedObj.mcp === "object" &&
+			!Array.isArray(parsedObj.mcp)
+				? { ...(parsedObj.mcp as Record<string, unknown>) }
+				: {};
+		mcpMap[serverName] = {
+			type: "stdio",
+			command: "npx",
+			args: mcpArgs,
+		};
+		parsedObj.mcp = mcpMap;
+		return `${JSON.stringify(parsedObj, null, 2)}\n`;
+	}
+
+	// Standard mcpServers JSON (claude, antigravity, gemini, cursor, roocode, kilocode, kiro, amazonq, factory, qwen, augment, idx)
 	const mcpServers =
 		parsedObj.mcpServers &&
 		typeof parsedObj.mcpServers === "object" &&

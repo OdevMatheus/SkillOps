@@ -14,12 +14,12 @@ import fs from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
 import {
-	estimateTokenCount,
-	splitFrontmatter,
 	type TokenEconomyReport,
 	TokenEconomyReportSchema,
 	type TokenFileEntry,
 	type TokenWasteHotspot,
+	estimateTokenCount,
+	splitFrontmatter,
 } from "../models.js";
 import { renderNextSteps, renderProgressBar } from "../ui/terminal.js";
 import {
@@ -40,6 +40,10 @@ const ALWAYS_ON_INSTRUCTION_CANDIDATES = [
 	"AGENTS.md",
 	"GEMINI.md",
 	".gemini/GEMINI.md",
+	".gemini/STYLEGUIDE.md",
+	"QWEN.md",
+	"WARP.md",
+	"CRUSH.md",
 	"AGENT.md",
 	"CONVENTIONS.md",
 	".github/copilot-instructions.md",
@@ -49,11 +53,15 @@ const ALWAYS_ON_INSTRUCTION_CANDIDATES = [
 	".roorules",
 	".kilocoderules",
 	".continuerules",
+	".augment-guidelines",
 	".rules",
 	".goosehints",
 	".junie/guidelines.md",
 	".openhands/microagents/repo.md",
 	".trae/rules/project_rules.md",
+	".factory/instructions.md",
+	".idx/airules.md",
+	".vibe/config.toml",
 	".kiro/steering/product.md",
 	".kiro/steering/tech.md",
 	".kiro/steering/structure.md",
@@ -61,6 +69,7 @@ const ALWAYS_ON_INSTRUCTION_CANDIDATES = [
 
 const MCP_CONFIG_CANDIDATES = [
 	".mcp.json",
+	".agent/mcp_config.json",
 	".cursor/mcp.json",
 	".vscode/mcp.json",
 	".gemini/settings.json",
@@ -73,6 +82,12 @@ const MCP_CONFIG_CANDIDATES = [
 	"opencode.json",
 	".kiro/settings/mcp.json",
 	".amazonq/mcp.json",
+	".factory/mcp.json",
+	".qwen/settings.json",
+	".augment/settings.json",
+	".vibe/config.toml",
+	".crush.json",
+	".idx/mcp.json",
 ] as const;
 
 function countMcpServersInConfig(rawText: string, relPath: string): number {
