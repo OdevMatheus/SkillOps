@@ -40,14 +40,14 @@ import {
 	ALL_RUNTIME_TARGETS,
 	CORE_RUNTIME_TARGETS,
 	ExitCode,
+	loadSkillOpsConfig,
 	RUNTIME_HARNESS_SPECS,
 	type RuntimeTarget,
+	resolveRuntimeTargets,
 	SKILLOPS_VERSION,
 	type SkillOpsConfig,
 	SkillOpsConfigSchema,
 	SyncLockfileSchema,
-	loadSkillOpsConfig,
-	resolveRuntimeTargets,
 } from "./models.js";
 import {
 	fingerprintRepository,
@@ -62,13 +62,16 @@ import {
 	syncRepository,
 } from "./sync/index.js";
 import {
-	type MultiSelectOption,
 	findCommandHelpSpec,
+	formatBadge,
+	type MultiSelectOption,
 	renderCommandHelp,
 	renderGlobalHelp,
+	renderHeaderBanner,
 	renderNextSteps,
 	renderProgressBar,
 	runMultiSelectPrompt,
+	style,
 	suggestCommand,
 } from "./ui/index.js";
 
@@ -643,18 +646,21 @@ export function runCli(argv: readonly string[]): number {
 			unit: "tokens",
 		});
 		const firstSkill = summary.skills[0]?.skillName ?? "security-sast-gate";
+		const skillBadge = formatBadge("skill", "SKILL");
+		const subagentBadge = formatBadge("subagent", "SUBAGENT");
 		const lines = [
-			`=== SkillOps Catalog (v${SKILLOPS_VERSION}) ===`,
-			`Skills (${summary.skills.length}) — Total L1 Routing Tax: ${summary.totalL1Tokens} tokens`,
-			`L1 Budget Meter: ${l1Bar}`,
+			renderHeaderBanner("Catalog — Hybrid Skills & Context-Isolated Agents"),
+			`${style.dim("├─")} ${style.bold(`Skills (${summary.skills.length})`)} — Total L1 Routing Tax: ${style.green(`${summary.totalL1Tokens} tokens`)}`,
+			`${style.dim("│")}  L1 Budget Meter: ${l1Bar}`,
 			...summary.skills.map(
 				(s) =>
-					`  [SKILL] ${s.skillName} — L1: ${s.l1Tokens}t | L2: ${s.l2Lines} lines (${s.l2Tokens}t) | L3 Scripts: ${s.scriptsCount}`,
+					`${style.dim("│")}  ${skillBadge} ${style.bold(s.skillName)} — L1: ${s.l1Tokens}t | L2: ${s.l2Lines} lines (${s.l2Tokens}t) | L3 Scripts: ${s.scriptsCount}`,
 			),
-			`Subagents (${summary.subagents.length}) — Context-Isolated Specialist Agents:`,
+			style.dim("│"),
+			`${style.dim("├─")} ${style.bold(`Subagents (${summary.subagents.length})`)} — Context-Isolated Specialist Agents:`,
 			...summary.subagents.map(
 				(a) =>
-					`  [SUBAGENT] ${a.subagentName} (prompt=${a.systemPromptTokens}t, max_out<=${a.maxOutputTokens}t, tools=${a.tools.length})`,
+					`${style.dim("│")}  ${subagentBadge} ${style.bold(a.subagentName)} (prompt=${a.systemPromptTokens}t, max_out<=${a.maxOutputTokens}t, tools=${a.tools.length})`,
 			),
 			renderNextSteps([
 				{

@@ -6,9 +6,9 @@ import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli.js";
 import {
 	ALL_RUNTIME_TARGETS,
-	ExitCode,
 	addSkillOrSubagent,
 	cleanSyncedArtifacts,
+	ExitCode,
 	fingerprintRepository,
 	removeSkillOrSubagent,
 	routeRepository,

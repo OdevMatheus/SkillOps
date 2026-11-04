@@ -8,6 +8,7 @@
  */
 
 import { SKILLOPS_VERSION } from "../models.js";
+import { CHARM_PALETTE, fgHex, renderPill } from "./lipgloss.js";
 
 const ESC = String.fromCharCode(27);
 const ANSI_ESCAPE_REGEX = new RegExp(`${ESC}\\[[0-9;]*m`, "g");
@@ -66,21 +67,21 @@ export const style = {
 	underline: (text: string, enabled?: boolean): string =>
 		wrapAnsi("4", "24", text, enabled),
 	cyan: (text: string, enabled?: boolean): string =>
-		wrapAnsi("36", "39", text, enabled),
+		fgHex(CHARM_PALETTE.cyan, text, enabled),
 	green: (text: string, enabled?: boolean): string =>
-		wrapAnsi("32", "39", text, enabled),
+		fgHex(CHARM_PALETTE.mint, text, enabled),
 	yellow: (text: string, enabled?: boolean): string =>
-		wrapAnsi("33", "39", text, enabled),
+		fgHex(CHARM_PALETTE.amber, text, enabled),
 	red: (text: string, enabled?: boolean): string =>
-		wrapAnsi("31", "39", text, enabled),
+		fgHex(CHARM_PALETTE.coral, text, enabled),
 	magenta: (text: string, enabled?: boolean): string =>
-		wrapAnsi("35", "39", text, enabled),
+		fgHex(CHARM_PALETTE.fuchsia, text, enabled),
 	blue: (text: string, enabled?: boolean): string =>
-		wrapAnsi("34", "39", text, enabled),
+		fgHex(CHARM_PALETTE.indigo, text, enabled),
 	gray: (text: string, enabled?: boolean): string =>
-		wrapAnsi("90", "39", text, enabled),
+		fgHex(CHARM_PALETTE.muted, text, enabled),
 	white: (text: string, enabled?: boolean): string =>
-		wrapAnsi("37", "39", text, enabled),
+		fgHex(CHARM_PALETTE.white, text, enabled),
 };
 
 /**
@@ -139,7 +140,7 @@ export function renderBox(
 	const paddingX = options?.paddingX ?? 2;
 	const minWidth = options?.minWidth ?? 36;
 	const colorEnabled = options?.colorEnabled;
-	const borderFn = options?.borderColor ?? style.cyan;
+	const borderFn = options?.borderColor ?? style.blue;
 
 	const titleText = options?.title ? ` ${options.title.trim()} ` : "";
 	const titleVisibleLen = visibleLength(titleText);
@@ -179,7 +180,13 @@ export function renderHeaderBanner(
 ): string {
 	const ver = options?.version ?? SKILLOPS_VERSION;
 	const c = options?.colorEnabled;
-	return `${style.bold(style.cyan(`◆ SkillOps v${ver}`, c), c)} ${style.dim("—", c)} ${subtitle}`;
+	const brandPill = renderPill(`◆ SkillOps v${ver}`, {
+		fg: CHARM_PALETTE.white,
+		bg: CHARM_PALETTE.indigo,
+		bold: true,
+		colorEnabled: c,
+	});
+	return `${brandPill} ${style.dim("—", c)} ${fgHex(CHARM_PALETTE.lavender, subtitle, c)}`;
 }
 
 export interface TableOptions {
@@ -327,15 +334,19 @@ export function formatBadge(
 				colorEnabled,
 			);
 		case "skill":
-			return style.bold(
-				style.cyan(`[${customLabel ?? "SKILL"}]`, colorEnabled),
+			return renderPill(`[${customLabel ?? "SKILL"}]`, {
+				fg: CHARM_PALETTE.white,
+				bg: CHARM_PALETTE.indigo,
+				bold: true,
 				colorEnabled,
-			);
+			});
 		case "subagent":
-			return style.bold(
-				style.magenta(`[${customLabel ?? "SUBAGENT"}]`, colorEnabled),
+			return renderPill(`[${customLabel ?? "SUBAGENT"}]`, {
+				fg: CHARM_PALETTE.white,
+				bg: CHARM_PALETTE.hotPink,
+				bold: true,
 				colorEnabled,
-			);
+			});
 	}
 }
 

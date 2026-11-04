@@ -14,12 +14,12 @@ import fs from "node:fs";
 import path from "node:path";
 import {
 	ALL_RUNTIME_TARGETS,
+	detectInstalledHarnesses,
+	loadSkillOpsConfig,
 	RUNTIME_HARNESS_SPECS,
 	type RuntimeHarnessSpec,
 	type RuntimeTarget,
 	SyncLockfileSchema,
-	detectInstalledHarnesses,
-	loadSkillOpsConfig,
 } from "../models.js";
 import { analyzeRepoTokenEconomy } from "./token_economy.js";
 
