@@ -11,10 +11,14 @@ import {
 	auditCatalog,
 	auditCatalogTokenBudgets,
 	diagnoseRepository,
+	discoverSkillDirectories,
+	discoverSubagentFiles,
 	formatDoctorReport,
 	formatHarnessInspectionReport,
 	formatTokenEconomyReport,
 	inspectHarnesses,
+	parseSkillDirectory,
+	parseSubagentFile,
 } from "./auditor/index.js";
 import { evaluateCatalog, formatEvalSummary } from "./eval/index.js";
 import {
@@ -56,10 +60,12 @@ import {
 } from "./sync/index.js";
 import {
 	findCommandHelpSpec,
+	type MultiSelectOption,
 	renderCommandHelp,
 	renderGlobalHelp,
 	renderNextSteps,
 	renderProgressBar,
+	runMultiSelectPrompt,
 	suggestCommand,
 } from "./ui/index.js";
 
@@ -168,6 +174,49 @@ function resolveCatalogDir(
 		return cwdCatalog;
 	}
 	return path.join(PACKAGE_ROOT, "catalog");
+}
+
+export function buildInteractiveCatalogOptions(
+	catalogDir: string,
+): MultiSelectOption[] {
+	const options: MultiSelectOption[] = [];
+	const seen = new Set<string>();
+
+	for (const skillDir of discoverSkillDirectories(catalogDir)) {
+		try {
+			const parsed = parseSkillDirectory(skillDir, { requireLayout: false });
+			if (!seen.has(parsed.manifest.name)) {
+				seen.add(parsed.manifest.name);
+				options.push({
+					value: parsed.manifest.name,
+					label: parsed.manifest.name,
+					kind: "skill",
+					hint: parsed.manifest.description,
+				});
+			}
+		} catch {
+			// Skip invalid entry
+		}
+	}
+
+	for (const saPath of discoverSubagentFiles(catalogDir)) {
+		try {
+			const parsed = parseSubagentFile(saPath);
+			if (!seen.has(parsed.manifest.name)) {
+				seen.add(parsed.manifest.name);
+				options.push({
+					value: parsed.manifest.name,
+					label: parsed.manifest.name,
+					kind: "agent",
+					hint: parsed.manifest.description,
+				});
+			}
+		} catch {
+			// Skip invalid entry
+		}
+	}
+
+	return options;
 }
 
 export function runCli(argv: readonly string[]): number {
@@ -399,6 +448,7 @@ export function runCli(argv: readonly string[]): number {
 	}
 
 	if (command === "list") {
+		const positionals = getPositionalArgs(args);
 		const repoPath =
 			getFlagValue(args, "--repo", "--project", "-p") ?? process.cwd();
 		const cfgRes = loadSkillOpsConfig(repoPath);
@@ -410,6 +460,15 @@ export function runCli(argv: readonly string[]): number {
 		}
 		const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
 		const rawFormat = getFlagValue(args, "--format", "-f") ?? "table";
+
+		if (positionals.length > 0) {
+			const format: "table" | "json" | "markdown" =
+				rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
+			const report = searchCatalog(catalogDir, positionals.join(" "));
+			process.stdout.write(formatCatalogSearchReport(report, format));
+			return ExitCode.SUCCESS;
+		}
+
 		const summary = auditCatalogTokenBudgets(catalogDir, {
 			requireLayout: false,
 		});
@@ -699,7 +758,13 @@ export function runCli(argv: readonly string[]): number {
 		const format: "table" | "json" | "markdown" =
 			rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
 
-		if (positionals.length === 0) {
+		const importAll = args.includes("--all");
+		const itemsToAdd =
+			importAll && positionals.length === 0
+				? buildInteractiveCatalogOptions(catalogDir).map((o) => o.value)
+				: positionals;
+
+		if (itemsToAdd.length === 0) {
 			if (command === "add") {
 				process.stderr.write(
 					"Usage: npx skillops-cli add <skill-or-subagent-name> [more-names...] [options]\n",
@@ -723,19 +788,30 @@ export function runCli(argv: readonly string[]): number {
 		}
 
 		try {
-			let allPassed = true;
-			for (const itemName of positionals) {
-				const report = addSkillOrSubagent(repoPath, catalogDir, itemName, {
+			const reports = itemsToAdd.map((itemName) =>
+				addSkillOrSubagent(repoPath, catalogDir, itemName, {
 					targets,
 					dryRun,
 					force,
-				});
-				process.stdout.write(formatSyncReport(report, format));
-				if (!report.passed) {
-					allPassed = false;
-				}
+				}),
+			);
+			const firstReport = reports[0];
+			if (!firstReport) {
+				return ExitCode.ERROR;
 			}
-			return allPassed ? ExitCode.SUCCESS : ExitCode.ERROR;
+			const finalReport =
+				reports.length === 1
+					? firstReport
+					: {
+							...firstReport,
+							artifacts: reports.flatMap((r) => r.artifacts),
+							drift_conflicts: [
+								...new Set(reports.flatMap((r) => r.drift_conflicts)),
+							],
+							passed: reports.every((r) => r.passed),
+						};
+			process.stdout.write(formatSyncReport(finalReport, format));
+			return finalReport.passed ? ExitCode.SUCCESS : ExitCode.ERROR;
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
 			process.stderr.write(`Error: ${msg}\n`);
@@ -945,6 +1021,63 @@ export function runCli(argv: readonly string[]): number {
 	return ExitCode.ERROR;
 }
 
+export async function runCliInteractive(
+	argv: readonly string[],
+): Promise<number> {
+	const args = argv.slice(2);
+	const command = args[0];
+
+	if (
+		command === "add" &&
+		!args.includes("--help") &&
+		!args.includes("-h") &&
+		!args.includes("--all") &&
+		getPositionalArgs(args).length === 0 &&
+		process.stdin.isTTY &&
+		process.stdout.isTTY
+	) {
+		const repoPath =
+			getFlagValue(args, "--repo", "--project", "-p") ?? process.cwd();
+		const cfgRes = loadSkillOpsConfig(repoPath);
+		if (cfgRes.error) {
+			process.stderr.write(
+				`Invalid .skillops.yml at ${cfgRes.configPath}: ${cfgRes.error}\n`,
+			);
+			return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+		}
+		const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
+		const targetsArg = resolveTargetsArg(args);
+		let targets: RuntimeTarget[];
+		try {
+			targets = targetsArg
+				? resolveRuntimeTargets(targetsArg, repoPath)
+				: (cfgRes.config?.targets ?? [...CORE_RUNTIME_TARGETS]);
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			process.stderr.write(`Invalid --targets: ${msg}\n`);
+			return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+		}
+
+		const options = buildInteractiveCatalogOptions(catalogDir);
+		const selected = await runMultiSelectPrompt(
+			"SkillOps — Select Skills & Agents to Import",
+			options,
+			{
+				targetHint: `${targets.join(", ")} -> ${repoPath.replace(/\\/g, "/")}`,
+			},
+		);
+
+		if (!selected || selected.length === 0) {
+			process.stdout.write("No Skills or Agents selected.\n");
+			return ExitCode.SUCCESS;
+		}
+
+		return runCli([...argv, ...selected]);
+	}
+
+	return runCli(argv);
+}
+
 function isDirectCliInvocation(): boolean {
 	const entryArg = process.argv[1];
 	if (!entryArg) {
@@ -970,6 +1103,7 @@ function isDirectCliInvocation(): boolean {
 }
 
 if (isDirectCliInvocation()) {
-	const code = runCli(process.argv);
-	process.exit(code);
+	runCliInteractive(process.argv).then((code) => {
+		process.exit(code);
+	});
 }

@@ -9,8 +9,8 @@ authors:
 repository-code: "https://github.com/OdevMatheus/SkillOps"
 url: "https://github.com/OdevMatheus/SkillOps"
 license: MIT
-version: "1.3.1"
-date-released: "2026-11-03"
+version: "1.3.2"
+date-released: "2026-11-04"
 keywords:
   - ai-coding-agents
   - token-economy
