@@ -34,11 +34,10 @@ jobs:
           npm test
           npm run build
 
-      - name: Verify Zero-API Catalog Audit & Token Economy
+      - name: Verify CLI Entrypoint
         run: |
-          node dist/cli.js audit --catalog catalog --strict --require-layout
-          node dist/cli.js tokens --strict
-          node dist/cli.js eval --catalog catalog --strict
+          node dist/cli.js --version
+          node dist/cli.js --help
 
       - name: Publish skillops-cli to NPM with Provenance
         if: env.NODE_AUTH_TOKEN != ''

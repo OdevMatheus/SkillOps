@@ -27,7 +27,6 @@ import {
 import {
 	ALL_RUNTIME_TARGETS,
 	CORE_RUNTIME_TARGETS,
-	type RoutedBundle,
 	RUNTIME_HARNESS_SPECS,
 	type RuntimeTarget,
 	SKILLOPS_VERSION,
@@ -38,14 +37,7 @@ import {
 	type SyncReport,
 	SyncReportSchema,
 } from "../models.js";
-import { type RouteOptions, routeRepository } from "../router/index.js";
 import { renderAiUsageGuide, renderNextSteps } from "../ui/terminal.js";
-
-export interface SyncOptions extends RouteOptions {
-	readonly targets?: readonly RuntimeTarget[];
-	readonly dryRun?: boolean;
-	readonly force?: boolean;
-}
 
 export interface AddOptions {
 	readonly targets?: readonly RuntimeTarget[];
@@ -471,12 +463,13 @@ function applyPlannedFiles(
 	resolvedRepo: string,
 	resolvedCatalog: string,
 	targets: readonly RuntimeTarget[],
-	routedBundle: RoutedBundle,
 	plannedFiles: readonly PlannedFile[],
 	options: {
 		dryRun: boolean;
 		force: boolean;
 		preserveUnlistedLockEntries: boolean;
+		addedSkillName?: string;
+		addedSubagentName?: string;
 	},
 ): SyncReport {
 	const lockfilePath = path.join(resolvedRepo, ".skillops-lock.json");
@@ -576,13 +569,32 @@ function applyPlannedFiles(
 
 	// Write updated lockfile if not dry-run and no drift conflicts
 	if (!options.dryRun && driftConflicts.length === 0) {
+		const mergedTargets = [
+			...new Set<RuntimeTarget>([
+				...(existingLock?.targets ?? []),
+				...targets,
+			]),
+		];
+		const mergedSkills = [
+			...new Set<string>([
+				...(existingLock?.selected_skills ?? []),
+				...(options.addedSkillName ? [options.addedSkillName] : []),
+			]),
+		];
+		const mergedSubagents = [
+			...new Set<string>([
+				...(existingLock?.selected_subagents ?? []),
+				...(options.addedSubagentName ? [options.addedSubagentName] : []),
+			]),
+		];
+
 		const lockData: SyncLockfile = SyncLockfileSchema.parse({
 			schema_version: "1.0",
 			skillops_version: SKILLOPS_VERSION,
-			targets: [...targets],
-			selected_skills: routedBundle.selected_skills.map((s) => s.name),
-			selected_subagents: routedBundle.recommended_subagents,
-			total_l1_tokens: routedBundle.total_l1_tokens,
+			targets: mergedTargets,
+			selected_skills: mergedSkills,
+			selected_subagents: mergedSubagents,
+			total_l1_tokens: existingLock?.total_l1_tokens ?? 0,
 			artifacts: newLockArtifacts,
 		});
 		fs.writeFileSync(
@@ -598,88 +610,11 @@ function applyPlannedFiles(
 		targets: [...targets],
 		dry_run: options.dryRun,
 		force: options.force,
-		routed_bundle: routedBundle,
 		artifacts,
 		drift_conflicts: driftConflicts,
 		lockfile_path: lockfilePath.replace(/\\/g, "/"),
-		passed: driftConflicts.length === 0 && routedBundle.passed_invariants,
+		passed: driftConflicts.length === 0,
 	});
-}
-
-export function syncRepository(
-	repoPath: string,
-	catalogDir: string,
-	options: SyncOptions = {},
-): SyncReport {
-	const resolvedRepo = path.resolve(repoPath);
-	const resolvedCatalog = path.resolve(catalogDir);
-	const targets = options.targets?.length
-		? options.targets
-		: CORE_RUNTIME_TARGETS;
-	const dryRun = options.dryRun ?? false;
-	const force = options.force ?? false;
-
-	const routedBundle = routeRepository(resolvedRepo, resolvedCatalog, options);
-
-	// Load selected skills
-	const selectedSkills: ParsedSkillDirectory[] =
-		routedBundle.selected_skills.map((s) =>
-			parseSkillDirectory(s.skill_dir, { requireLayout: false }),
-		);
-
-	// Load catalog subagents (deduplicated by manifest.name)
-	const subagentMap = new Map<string, ParsedSubagentFile>();
-	for (const saPath of discoverSubagentFiles(resolvedCatalog)) {
-		try {
-			const parsedSa = parseSubagentFile(saPath);
-			if (!subagentMap.has(parsedSa.manifest.name)) {
-				subagentMap.set(parsedSa.manifest.name, parsedSa);
-			}
-		} catch {
-			// Skip invalid
-		}
-	}
-	const selectedSubagents = [...subagentMap.values()];
-
-	const plannedFiles: PlannedFile[] = [];
-	for (const target of targets) {
-		for (const skill of selectedSkills) {
-			plannedFiles.push(...renderSkillFilesForRuntime(skill, target));
-		}
-		for (const sa of selectedSubagents) {
-			plannedFiles.push(...renderSubagentFilesForRuntime(sa, target));
-		}
-		if (target === "codex") {
-			const agentsMdPath = path.join(resolvedRepo, "AGENTS.md");
-			const existingAgentsMd =
-				fs.existsSync(agentsMdPath) && fs.statSync(agentsMdPath).isFile()
-					? fs.readFileSync(agentsMdPath, "utf-8")
-					: null;
-			plannedFiles.push({
-				target: "codex",
-				itemName: "codex-agents-index",
-				relativePath: "AGENTS.md",
-				content: renderCodexAgentsIndex(
-					existingAgentsMd,
-					selectedSkills,
-					selectedSubagents,
-				),
-			});
-		}
-	}
-
-	return applyPlannedFiles(
-		resolvedRepo,
-		resolvedCatalog,
-		targets,
-		routedBundle,
-		plannedFiles,
-		{
-			dryRun,
-			force,
-			preserveUnlistedLockEntries: false,
-		},
-	);
 }
 
 /**
@@ -746,17 +681,17 @@ export function addSkillOrSubagent(
 		}
 	}
 
-	const routedBundle = routeRepository(resolvedRepo, resolvedCatalog);
 	return applyPlannedFiles(
 		resolvedRepo,
 		resolvedCatalog,
 		targets,
-		routedBundle,
 		plannedFiles,
 		{
 			dryRun,
 			force,
 			preserveUnlistedLockEntries: true,
+			addedSkillName: matchedSkill?.manifest.name,
+			addedSubagentName: matchedSubagent?.manifest.name,
 		},
 	);
 }
@@ -820,7 +755,7 @@ export function removeSkillOrSubagent(
 	const existingLock = loadExistingLockfile(lockfilePath);
 	if (!existingLock) {
 		throw new Error(
-			`No .skillops-lock.json found in '${resolvedRepo.replace(/\\/g, "/")}'. Run 'sync' or 'add' first.`,
+			`No .skillops-lock.json found in '${resolvedRepo.replace(/\\/g, "/")}'. Run 'add' first.`,
 		);
 	}
 
@@ -903,14 +838,12 @@ export function removeSkillOrSubagent(
 		);
 	}
 
-	const routedBundle = routeRepository(resolvedRepo, resolvedCatalog);
 	return SyncReportSchema.parse({
 		repo_path: resolvedRepo.replace(/\\/g, "/"),
 		catalog_path: resolvedCatalog.replace(/\\/g, "/"),
 		targets: targetFilter ? [...targetFilter] : existingLock.targets,
 		dry_run: dryRun,
 		force,
-		routed_bundle: routedBundle,
 		artifacts,
 		drift_conflicts: driftConflicts,
 		lockfile_path: lockfilePath.replace(/\\/g, "/"),
@@ -933,7 +866,6 @@ export function cleanSyncedArtifacts(
 
 	const lockfilePath = path.join(resolvedRepo, ".skillops-lock.json");
 	const existingLock = loadExistingLockfile(lockfilePath);
-	const routedBundle = routeRepository(resolvedRepo, resolvedCatalog);
 
 	if (!existingLock) {
 		return SyncReportSchema.parse({
@@ -942,7 +874,6 @@ export function cleanSyncedArtifacts(
 			targets: [...ALL_RUNTIME_TARGETS],
 			dry_run: dryRun,
 			force,
-			routed_bundle: routedBundle,
 			artifacts: [],
 			drift_conflicts: [],
 			lockfile_path: lockfilePath.replace(/\\/g, "/"),
@@ -1010,7 +941,6 @@ export function cleanSyncedArtifacts(
 		targets: existingLock.targets,
 		dry_run: dryRun,
 		force,
-		routed_bundle: routedBundle,
 		artifacts,
 		drift_conflicts: driftConflicts,
 		lockfile_path: lockfilePath.replace(/\\/g, "/"),
@@ -1054,29 +984,22 @@ export function formatSyncReport(
 	);
 	const firstSkill =
 		activeArtifacts.find((a) => a.skill_name !== "codex-agents-index")
-			?.skill_name ??
-		report.routed_bundle.selected_skills[0]?.name ??
-		"mcp-architect";
+			?.skill_name ?? "mcp-architect";
 
 	const usageBox =
 		activeArtifacts.length > 0
-			? renderAiUsageGuide(
-					report.targets,
-					[firstSkill],
-					report.routed_bundle.recommended_subagents,
-					c,
-				)
+			? renderAiUsageGuide(report.targets, [firstSkill], ["context-scout"], c)
 			: "";
 
 	const nextSteps = renderNextSteps(
 		[
 			{
-				command: `npx skillops-cli info ${firstSkill}`,
-				description: "Inspect triggers, token budget & L3 scripts",
+				command: "npx skillops-cli add",
+				description: "Install more Skills or Subagents interactively",
 			},
 			{
-				command: "npx skillops-cli doctor",
-				description: "Verify lockfile SHA-256 & Startup Token Tax",
+				command: "npx skillops-cli remove",
+				description: "Remove installed Skills or Subagents interactively",
 			},
 		],
 		c,

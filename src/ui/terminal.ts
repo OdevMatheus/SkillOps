@@ -245,46 +245,6 @@ export function renderTable(
 	].join("\n");
 }
 
-export interface TokenBarOptions {
-	readonly width?: number;
-	readonly label?: string;
-	readonly unit?: string;
-	readonly colorEnabled?: boolean;
-}
-
-/**
- * Render a visual token budget progress bar (`[████████░░░░░░░░] 48.0% (720 / 1,500 tokens)`).
- */
-export function renderTokenBar(
-	current: number,
-	max: number,
-	options?: TokenBarOptions,
-): string {
-	const width = options?.width ?? 10;
-	const unit = options?.unit ?? "tokens";
-	const c = options?.colorEnabled;
-	const safeMax = max > 0 ? max : 1;
-	const ratio = Math.max(0, current / safeMax);
-	const clampedRatio = Math.min(1, ratio);
-	const filledCount = Math.round(clampedRatio * width);
-	const emptyCount = Math.max(0, width - filledCount);
-
-	const colorFn =
-		ratio > 1 ? style.red : ratio > 0.85 ? style.yellow : style.green;
-
-	const filledStr = colorFn("█".repeat(filledCount), c);
-	const emptyStr = style.dim("░".repeat(emptyCount), c);
-	const pctStr = `${(ratio * 100).toFixed(1)}%`;
-	const prefix = options?.label ? `${style.bold(options.label, c)} ` : "";
-
-	return `${prefix}[${filledStr}${emptyStr}] ${style.bold(pctStr, c)} (${current} / ${max} ${unit})`;
-}
-
-/**
- * Alias for renderTokenBar used across token/budget progress visualizations.
- */
-export const renderProgressBar = renderTokenBar;
-
 /**
  * Render a clean minimalist tree section header (`├─ Title`).
  */
@@ -348,31 +308,6 @@ export function formatBadge(
 				colorEnabled,
 			});
 	}
-}
-
-/**
- * Render a numbered onboarding step line (`│  ✔ [1/4] Title · Detail`).
- */
-export function renderStep(
-	step: number,
-	total: number,
-	title: string,
-	detail?: string,
-	status: "done" | "warn" | "skip" = "done",
-	colorEnabled?: boolean,
-): string {
-	const icon =
-		status === "done"
-			? style.green("✔", colorEnabled)
-			: status === "warn"
-				? style.yellow("⚠", colorEnabled)
-				: style.dim("○", colorEnabled);
-	const stepBadge = style.dim(`[${step}/${total}]`, colorEnabled);
-	const titleStyled = style.bold(padVisible(title, 20, "left"), colorEnabled);
-	const detailStyled = detail
-		? ` ${style.dim("·", colorEnabled)} ${detail}`
-		: "";
-	return `${style.dim("│", colorEnabled)}  ${icon} ${stepBadge} ${titleStyled}${detailStyled}`;
 }
 
 export interface NextStepHint {
@@ -461,9 +396,6 @@ export function renderAiUsageGuide(
 			`${bar}  • ${style.bold("Windsurf/Cline/Roo/Kilo:", c)} Workspace rules load automatically`,
 		);
 	}
-	lines.push(
-		`${bar}  • ${style.bold("Inspect:", c)} ${style.green(`npx skillops-cli info ${sampleSkill}`, c)}`,
-	);
 
 	return lines.join("\n");
 }
@@ -493,35 +425,11 @@ export function levenshteinDistance(a: string, b: string): number {
 }
 
 export const DEFAULT_VALID_COMMANDS: readonly string[] = [
-	"quickstart",
-	"setup",
-	"init",
-	"list",
-	"search",
-	"find",
-	"info",
-	"show",
-	"inspect",
 	"add",
 	"install",
 	"remove",
 	"uninstall",
 	"rm",
-	"clean",
-	"create",
-	"new",
-	"harnesses",
-	"doctor",
-	"status",
-	"tokens",
-	"budget",
-	"audit",
-	"route",
-	"recommend",
-	"sync",
-	"eval",
-	"mcp",
-	"mcp-setup",
 ];
 
 /**

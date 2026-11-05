@@ -8,7 +8,5 @@ export {
 	type RemoveOptions,
 	removeSkillOrSubagent,
 	renderCodexAgentsIndex,
-	type SyncOptions,
 	stripCodexAgentsBlock,
-	syncRepository,
 } from "./adapters.js";

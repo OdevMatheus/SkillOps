@@ -89,21 +89,6 @@ Pick a Skill. Pick your AI tools. It wires everything into your repository in se
 | **Context-Isolated Subagents** | Packages specialist subagents (`SUBAGENT.md`) with dedicated system prompts, scoped tool permissions (`read_file`, `grep_search`, etc.), and capped output token budgets (`≤ 400` tokens) so parent agents stay lean. |
 | **SHA-256 Lockfile & Drift Guard** | `.skillops-lock.json` tracks every generated artifact by target, item name, and SHA-256 hash—preventing accidental overwrites of local edits and powering surgical `skillops remove`. |
 | **Zero-API Offline Execution** | Runs anywhere Node.js 20+ is installed with zero external dependencies on OpenAI, Anthropic, or Google APIs. |
-
-<details>
-<summary><b>Everything else it does</b></summary>
-
-| Feature | Description |
-| :--- | :--- |
-| **Startup Token Tax Analyzer** | `skillops tokens` calculates the exact startup context tax across all 28 AI coding harnesses in your workspace and compares monolithic vs. progressive-disclosure token savings. |
-| **Semantic Collision Auditor** | `skillops audit` runs pairwise TF-IDF cosine similarity and Jaccard token overlap checks (`< 0.72` threshold) across all catalog items to prevent ambiguous routing between skills. |
-| **Offline TDD Trigger Evals** | `skillops eval` validates `should_trigger` and `should_not_trigger` prompt assertions and generates a standalone HTML benchmark dashboard (`with_skill` vs. `without_skill`). |
-| **Skill & Subagent Scaffolder** | `skillops create <name>` scaffolds a contract-compliant `SKILL.md` (with `scripts/`, `references/`, and `evals/`) or `--type subagent` (`SUBAGENT.md`) in one command. |
-| **Universal MCP Bootstrapper** | `skillops mcp-setup` automatically configures the SkillOps MCP server across 20 MCP-capable IDEs and CLIs (`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, `.codex/config.toml`, etc.). |
-| **Built-in Stdio MCP Server** | `skillops mcp` exposes catalog search, skill inspection, and repository diagnostics over JSON-RPC 2.0 `stdio` for any MCP client. |
-| **GitHub Actions Native Output** | Pass `--format github` to `audit`, `tokens`, `eval`, or `doctor` to emit native GitHub Actions `::error` and `::notice` workflow annotations in CI. |
-
-</details>
 <!-- readme-gen:end:features -->
 
 ---
@@ -214,7 +199,7 @@ npm install -g .
 npm i -g skillops-cli
 ```
 
-This installs the `skillops` binary globally so you can run `skillops add`, `skillops list`, `skillops info`, and `skillops remove` in any repository without typing `npx skillops-cli@latest`.
+This installs the `skillops` binary globally so you can run `skillops add` and `skillops remove` in any repository without typing `npx skillops-cli@latest`.
 
 **Which one should you use?**
 - `npx skillops-cli@latest add` — Best for quick, zero-footprint setups in any project.
@@ -239,61 +224,14 @@ Once `skillops add` finishes, your selected Skills and Subagents live natively i
 | **Codex, OpenCode, Amp, Crush, Vibe, Qwen** | Auto-discovered from `.codex/skills/`, `.opencode/skills/`, etc. | Ask in plain language or invoke agent profile from `agents/` |
 | **Windsurf, Cline, Roo Code, Kilo Code** | Auto-loaded from `.windsurf/rules/`, `.clinerules/`, `.roo/rules/`, `.kilocode/rules/` | Trigger via `/skillops-agent-<name>` workflow or Architect mode |
 
-### The everyday commands
+### Commands
 
 | Command | What it does |
 | :--- | :--- |
-| `skillops add` | Launch the interactive 2-step TUI to select **Skills / Subagents** and **Target AI IDEs** |
-| `skillops add <name> -t cursor,claude` | Non-interactively install specific items into chosen AI targets (or `--all -t all` for everything) |
+| `skillops add` | Launch the interactive 2-step TUI to select **Target AI IDEs** and **Skills / Subagents** |
+| `skillops add <name...> -t cursor,claude` | Non-interactively install specific items into chosen AI targets (or `--all -t all` for everything) |
 | `skillops remove` | Launch the interactive uninstaller showing only items currently installed in your repo (`.skillops-lock.json`) |
-| `skillops list` | Browse all available Skills and Subagents in the catalog with L1/L2 token metrics |
-| `skillops search <query>` | Filter the catalog by keyword, technology stack, domain, or tag |
-| `skillops info <name>` | Inspect a Skill or Subagent card, its exact trigger description, bundled L3 scripts, and IDE usage examples |
-
-<details>
-<summary><b>All commands, by stage of the workflow</b></summary>
-
-**Discover & Inspect**
-
-| Command | What it does |
-| :--- | :--- |
-| `skillops list [query]` | List every Skill and Subagent in `catalog/` (supports `--format json`) |
-| `skillops search <query>` | Search catalog entries by name, description, track, or tag |
-| `skillops info <name>` | Show full manifest details, token footprint, L3 scripts, and per-IDE invocation hints |
-| `skillops harnesses` | List all 28 supported AI coding harnesses and show which ones are detected in the current repository |
-
-**Install & Uninstall**
-
-| Command | What it does |
-| :--- | :--- |
-| `skillops add [name...]` | Interactive 2-step installer (`--all` installs every catalog item; `-t, --targets` selects IDEs; `--dry-run` previews) |
-| `skillops remove [name...]` | Interactive or direct uninstaller (`--all` removes all SkillOps-managed artifacts recorded in `.skillops-lock.json`) |
-| `skillops clean` | Remove all SkillOps-managed files across all targets and delete `.skillops-lock.json` |
-
-**Author & Scaffold**
-
-| Command | What it does |
-| :--- | :--- |
-| `skillops create <name>` | Scaffold a new Progressive-Disclosure Skill directory (`SKILL.md`, `scripts/`, `references/`, `evals/`) |
-| `skillops create <name> --type subagent` | Scaffold a new Context-Isolated Subagent (`SUBAGENT.md` + `evals/triggers.json`) |
-
-**Audit, Token Budget & TDD Evaluation**
-
-| Command | What it does |
-| :--- | :--- |
-| `skillops audit` | Validate YAML frontmatter contracts (`INV-SKILL-01`–`05`), token budgets, and TF-IDF semantic collisions (`< 0.72`) |
-| `skillops tokens` | Analyze repository Startup Token Tax across all 28 AI harnesses and report progressive-disclosure savings |
-| `skillops eval` | Run deterministic `should_trigger` / `should_not_trigger` TDD suites and export HTML benchmark reports |
-
-**Diagnostics & MCP Integration**
-
-| Command | What it does |
-| :--- | :--- |
-| `skillops doctor` | Verify Node.js 20+, Python 3.12+, `.skillops-lock.json` SHA-256 integrity, and active AI harnesses |
-| `skillops mcp-setup` | Bootstrap SkillOps MCP server configuration across all 20 MCP-capable AI IDEs and CLIs |
-| `skillops mcp` | Start the built-in Model Context Protocol (`stdio` JSON-RPC 2.0) server |
-
-</details>
+| `skillops remove <name...>` | Non-interactively remove specific items (or `skillops remove --all` to remove all managed files) |
 <!-- readme-gen:end:usage -->
 
 ---
@@ -351,15 +289,12 @@ SkillOps/
 │   └── subagents/
 │       └── context-scout/           # Reference Subagent (SUBAGENT.md + evals/triggers.json)
 ├── src/                             # TypeScript 5.8 Strict Zero-API Engine
-│   ├── cli.ts                       # CLI entrypoint & interactive command router
-│   ├── models.ts                    # Zod schemas, token estimators & 28 AI harness specs
+│   ├── cli.ts                       # CLI entrypoint (`add` / `remove`) & interactive TUI flow
+│   ├── models.ts                    # Zod schemas, manifest validators & 28 AI harness specs
 │   ├── ui/                          # Charmbracelet Lip Gloss TrueColor TUI & multi-select state machine
 │   ├── sync/                        # 28-target transpiler & SHA-256 .skillops-lock.json manager
-│   ├── auditor/                     # SKILL.md / SUBAGENT.md parser & TF-IDF collision detector
-│   ├── router/                      # Deterministic repository fingerprinter & bundle compiler
-│   ├── eval/                        # Offline TDD trigger & token budget benchmark runner
-│   └── mcp/                         # Built-in JSON-RPC 2.0 stdio MCP server & universal bootstrapper
-└── tests/                           # 38 Vitest unit, TUI, token-economy & multi-runtime integration tests
+│   └── auditor/                     # SKILL.md / SUBAGENT.md catalog discovery & parser
+└── tests/                           # Vitest unit, TUI & multi-runtime integration tests
 ```
 <!-- readme-gen:end:structure -->
 

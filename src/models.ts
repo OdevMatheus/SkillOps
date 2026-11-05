@@ -82,14 +82,6 @@ export const CatalogTrackSchema = z.enum([
 ]);
 export type CatalogTrack = z.infer<typeof CatalogTrackSchema>;
 
-export const CollisionSeveritySchema = z.enum([
-	"SAFE",
-	"WARNING",
-	"HIGH_RISK",
-	"BLOCKING_ERROR",
-]);
-export type CollisionSeverity = z.infer<typeof CollisionSeveritySchema>;
-
 export const RuntimeTargetSchema = z.enum([
 	"claude",
 	"antigravity",
@@ -889,203 +881,8 @@ export function parseSubagentMdFile(filePath: string): {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Semantic Collision & Token Budget Models (ADR-0002)
+// 3. Multi-Runtime Sync & Lockfile Models
 // ---------------------------------------------------------------------------
-
-export function classifyCollisionSeverity(
-	similarity: number,
-): CollisionSeverity {
-	if (similarity >= 0.85) {
-		return "BLOCKING_ERROR";
-	}
-	if (similarity >= 0.72) {
-		return "HIGH_RISK";
-	}
-	if (similarity >= 0.58) {
-		return "WARNING";
-	}
-	return "SAFE";
-}
-
-export const CollisionPairSchema = z
-	.object({
-		skill_a: z.string().min(1),
-		skill_b: z.string().min(1),
-		similarity: z.number().min(0).max(1),
-		severity: CollisionSeveritySchema,
-		shared_terms: z.array(z.string()).default([]),
-	})
-	.strict();
-export type CollisionPair = z.infer<typeof CollisionPairSchema>;
-
-export function createCollisionPair(
-	skillA: string,
-	skillB: string,
-	similarity: number,
-	sharedTerms: string[] = [],
-): CollisionPair {
-	const [orderedA, orderedB] =
-		skillA <= skillB ? [skillA, skillB] : [skillB, skillA];
-	const clamped = Math.min(1, Math.max(0, Number(similarity.toFixed(4))));
-	return CollisionPairSchema.parse({
-		skill_a: orderedA,
-		skill_b: orderedB,
-		similarity: clamped,
-		severity: classifyCollisionSeverity(clamped),
-		shared_terms: [...new Set(sharedTerms)].sort(),
-	});
-}
-
-export const CollisionReportSchema = z
-	.object({
-		catalog_path: z.string(),
-		skills_audited: z.number().int().min(0),
-		subagents_audited: z.number().int().min(0).default(0),
-		total_l1_tokens: z.number().int().min(0),
-		max_similarity: z.number().min(0).max(1).default(0),
-		pairs: z.array(CollisionPairSchema).default([]),
-		budget_errors: z.array(z.string()).default([]),
-	})
-	.strict();
-
-export type CollisionReport = z.infer<typeof CollisionReportSchema> & {
-	readonly blocking_collisions: CollisionPair[];
-	readonly high_risk_collisions: CollisionPair[];
-	readonly warning_collisions: CollisionPair[];
-	readonly passed: boolean;
-};
-
-export function createCollisionReport(
-	input: z.input<typeof CollisionReportSchema>,
-): CollisionReport {
-	const parsed = CollisionReportSchema.parse(input);
-	const blocking = parsed.pairs.filter((p) => p.severity === "BLOCKING_ERROR");
-	const highRisk = parsed.pairs.filter((p) => p.severity === "HIGH_RISK");
-	const warnings = parsed.pairs.filter((p) => p.severity === "WARNING");
-	return {
-		...parsed,
-		blocking_collisions: blocking,
-		high_risk_collisions: highRisk,
-		warning_collisions: warnings,
-		passed: parsed.budget_errors.length === 0 && blocking.length === 0,
-	};
-}
-
-// ---------------------------------------------------------------------------
-// 4. Token Economy & Startup Context Tax Models (Issue #60)
-// ---------------------------------------------------------------------------
-
-export const TokenFileCategorySchema = z.enum([
-	"always_on_instructions",
-	"always_on_cursor_rule",
-	"mcp_schema_tax",
-	"skill_l1_metadata",
-	"skill_l2_body",
-	"skill_l3_script",
-	"subagent_definition",
-]);
-export type TokenFileCategory = z.infer<typeof TokenFileCategorySchema>;
-
-export const TokenFileEntrySchema = z
-	.object({
-		path: z.string().min(1),
-		category: TokenFileCategorySchema,
-		always_loaded_on_startup: z.boolean(),
-		lines: z.number().int().min(0),
-		estimated_tokens: z.number().int().min(0),
-		notes: z.string().default(""),
-	})
-	.strict();
-export type TokenFileEntry = z.infer<typeof TokenFileEntrySchema>;
-
-export const TokenWasteHotspotSchema = z
-	.object({
-		path: z.string().min(1),
-		severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
-		wasted_tokens: z.number().int().min(0),
-		issue: z.string().min(1),
-		recommendation: z.string().min(1),
-	})
-	.strict();
-export type TokenWasteHotspot = z.infer<typeof TokenWasteHotspotSchema>;
-
-export const TokenEconomyReportSchema = z
-	.object({
-		repo_path: z.string().min(1),
-		catalog_path: z.string().min(1),
-		startup_token_tax: z.number().int().min(0),
-		startup_tax_budget: z.number().int().min(100).default(2500),
-		monolithic_equivalent_tokens: z.number().int().min(0),
-		progressive_disclosure_l1_tokens: z.number().int().min(0),
-		zero_token_l3_scripts_count: z.number().int().min(0),
-		context_isolated_subagents_count: z.number().int().min(0),
-		estimated_tokens_saved: z.number().int().min(0),
-		token_savings_pct: z.number().min(0).max(100),
-		inspected_files: z.array(TokenFileEntrySchema).default([]),
-		hotspots: z.array(TokenWasteHotspotSchema).default([]),
-		passed_budget: z.boolean(),
-	})
-	.strict();
-export type TokenEconomyReport = z.infer<typeof TokenEconomyReportSchema>;
-
-// ---------------------------------------------------------------------------
-// 5. Router & Multi-Runtime Sync Models (Issue #61)
-// ---------------------------------------------------------------------------
-
-export const RepoProfileSchema = z
-	.object({
-		repo_path: z.string().min(1),
-		languages: z.array(z.string()).default([]),
-		frameworks: z.array(z.string()).default([]),
-		databases: z.array(z.string()).default([]),
-		dependencies: z.array(z.string()).default([]),
-		ci_systems: z.array(z.string()).default([]),
-		detected_files: z.array(z.string()).default([]),
-		signals: z.array(z.string()).default([]),
-		detected_harnesses: z.array(RuntimeTargetSchema).default([]),
-		python_312_plus: z.boolean().default(false),
-	})
-	.strict();
-export type RepoProfile = z.infer<typeof RepoProfileSchema>;
-
-export const ScoredSkillSchema = z
-	.object({
-		name: z.string().min(1),
-		track: CatalogTrackSchema,
-		skill_dir: z.string().min(1),
-		relevance_score: z.number().min(0).max(100),
-		l1_tokens: z.number().int().min(0),
-		matched_signals: z.array(z.string()).default([]),
-	})
-	.strict();
-export type ScoredSkill = z.infer<typeof ScoredSkillSchema>;
-
-export const SkippedSkillSchema = z
-	.object({
-		name: z.string().min(1),
-		track: CatalogTrackSchema,
-		relevance_score: z.number().min(0).max(100),
-		reason: z.string().min(1),
-	})
-	.strict();
-export type SkippedSkill = z.infer<typeof SkippedSkillSchema>;
-
-export const RoutedBundleSchema = z
-	.object({
-		repo_profile: RepoProfileSchema,
-		catalog_path: z.string().min(1),
-		max_skills: z.number().int().min(1).max(12).default(12),
-		max_l1_tokens: z.number().int().min(40).default(1500),
-		max_similarity: z.number().min(0.1).max(0.99).default(0.78),
-		selected_skills: z.array(ScoredSkillSchema).default([]),
-		recommended_subagents: z.array(z.string()).default([]),
-		skipped_skills: z.array(SkippedSkillSchema).default([]),
-		total_l1_tokens: z.number().int().min(0).default(0),
-		max_pairwise_similarity: z.number().min(0).max(1).default(0),
-		passed_invariants: z.boolean().default(true),
-	})
-	.strict();
-export type RoutedBundle = z.infer<typeof RoutedBundleSchema>;
 
 export const SyncedArtifactSchema = z
 	.object({
@@ -1135,7 +932,6 @@ export const SyncReportSchema = z
 		targets: z.array(RuntimeTargetSchema).default([]),
 		dry_run: z.boolean().default(false),
 		force: z.boolean().default(false),
-		routed_bundle: RoutedBundleSchema,
 		artifacts: z.array(SyncedArtifactSchema).default([]),
 		drift_conflicts: z.array(z.string()).default([]),
 		lockfile_path: z.string().min(1),
@@ -1145,7 +941,7 @@ export const SyncReportSchema = z
 export type SyncReport = z.infer<typeof SyncReportSchema>;
 
 // ---------------------------------------------------------------------------
-// 6. Declarative Workspace Configuration (.skillops.yml — Issue #102)
+// 4. Declarative Workspace Configuration (.skillops.yml)
 // ---------------------------------------------------------------------------
 
 export const SkillOpsTokenEconomyConfigSchema = z
