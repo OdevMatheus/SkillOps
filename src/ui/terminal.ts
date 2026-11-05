@@ -264,6 +264,14 @@ export type BadgeType =
 	| "skill"
 	| "subagent";
 
+export type SyncActionType =
+	| "created"
+	| "updated"
+	| "unchanged"
+	| "removed"
+	| "planned"
+	| "conflict";
+
 /**
  * Render a semantic status or artifact badge.
  */
@@ -310,6 +318,109 @@ export function formatBadge(
 	}
 }
 
+/**
+ * Render a fixed-width (11 visible cols) TrueColor pill badge for file sync actions.
+ */
+export function formatActionBadge(
+	action: SyncActionType,
+	colorEnabled?: boolean,
+): string {
+	switch (action) {
+		case "created":
+			return renderPill(" + CREATED ", {
+				fg: CHARM_PALETTE.white,
+				bg: CHARM_PALETTE.mint,
+				bold: true,
+				colorEnabled,
+			});
+		case "updated":
+			return renderPill(" ~ UPDATED ", {
+				fg: CHARM_PALETTE.surface,
+				bg: CHARM_PALETTE.cyan,
+				bold: true,
+				colorEnabled,
+			});
+		case "removed":
+			return renderPill(" - REMOVED ", {
+				fg: CHARM_PALETTE.white,
+				bg: CHARM_PALETTE.hotPink,
+				bold: true,
+				colorEnabled,
+			});
+		case "planned":
+			return renderPill(" * PLANNED ", {
+				fg: CHARM_PALETTE.surface,
+				bg: CHARM_PALETTE.amber,
+				bold: true,
+				colorEnabled,
+			});
+		case "conflict":
+			return renderPill(" ! CONFLICT", {
+				fg: CHARM_PALETTE.white,
+				bg: CHARM_PALETTE.coral,
+				bold: true,
+				colorEnabled,
+			});
+		case "unchanged":
+			return renderPill(" = KEPT    ", {
+				fg: CHARM_PALETTE.lavender,
+				bg: CHARM_PALETTE.surface,
+				bold: false,
+				colorEnabled,
+			});
+	}
+}
+
+/**
+ * Render a persistent step-completion line (e.g. after interactive Step 1 or Step 2).
+ */
+export function renderCompletedStep(
+	label: string,
+	summary: string,
+	colorEnabled?: boolean,
+): string {
+	const c = colorEnabled;
+	const checkPill = renderPill(" ✔ ", {
+		fg: CHARM_PALETTE.white,
+		bg: CHARM_PALETTE.mint,
+		bold: true,
+		colorEnabled: c,
+	});
+	const labelPadded = padVisible(
+		fgHex(CHARM_PALETTE.lavender, style.bold(label, c), c),
+		22,
+		"left",
+	);
+	const maxSummaryCols = 48;
+	const shortSummary =
+		summary.length > maxSummaryCols
+			? `${summary.slice(0, maxSummaryCols - 1)}…`
+			: summary;
+	const styledSummary = fgHex(
+		CHARM_PALETTE.cyan,
+		style.bold(shortSummary, c),
+		c,
+	);
+	return `${checkPill} ${labelPadded}  ${styledSummary}`;
+}
+
+/**
+ * Render a styled step cancellation notice.
+ */
+export function renderCancelledStep(
+	message: string,
+	colorEnabled?: boolean,
+): string {
+	const c = colorEnabled;
+	const cancelPill = renderPill(" ✖ ", {
+		fg: CHARM_PALETTE.white,
+		bg: CHARM_PALETTE.coral,
+		bold: true,
+		colorEnabled: c,
+	});
+	return `${cancelPill} ${fgHex(CHARM_PALETTE.amber, message, c)}`;
+}
+
 export interface NextStepHint {
 	readonly command: string;
 	readonly description: string;
@@ -341,7 +452,7 @@ export function renderNextSteps(
 				h.description.length > maxDescCols
 					? `${h.description.slice(0, maxDescCols - 1)}…`
 					: h.description;
-			return `   ${style.dim("$", c)} ${style.green(cmdPadded, c)} ${style.dim(`— ${desc}`, c)}`;
+			return `   ${fgHex(CHARM_PALETTE.hotPink, "$", c)} ${style.bold(style.green(cmdPadded, c), c)} ${style.dim("—", c)} ${fgHex(CHARM_PALETTE.lavender, desc, c)}`;
 		}),
 	];
 	return `${lines.join("\n")}\n`;
@@ -360,6 +471,7 @@ export function renderAiUsageGuide(
 	const sampleSkill = skills[0] ?? "systematic-debugging";
 	const sampleAgent = subagents[0] ?? "context-scout";
 	const bar = style.dim("│", c);
+	const bullet = fgHex(CHARM_PALETTE.mint, "•", c);
 	const lines: string[] = [
 		bar,
 		`${style.dim("├─", c)} ${style.bold(style.cyan("Using Your Skills & Subagents", c), c)}`,
@@ -368,22 +480,22 @@ export function renderAiUsageGuide(
 	const targetSet = new Set(targets);
 	if (targetSet.has("claude") || targetSet.size === 0) {
 		lines.push(
-			`${bar}  • ${style.bold("Claude Code:", c)} Auto-routed (${sampleSkill}) or @${sampleAgent}`,
+			`${bar}  ${bullet} ${fgHex(CHARM_PALETTE.lavender, style.bold("Claude Code:", c), c)} Auto-routed (${style.cyan(sampleSkill, c)}) or ${style.magenta(`@${sampleAgent}`, c)}`,
 		);
 	}
 	if (targetSet.has("cursor")) {
 		lines.push(
-			`${bar}  • ${style.bold("Cursor IDE:", c)} Type ${style.cyan(`@${sampleSkill}`, c)} in Chat (.cursor/rules/)`,
+			`${bar}  ${bullet} ${fgHex(CHARM_PALETTE.lavender, style.bold("Cursor IDE:", c), c)} Type ${style.bold(style.cyan(`@${sampleSkill}`, c), c)} in Chat ${style.dim("(.cursor/rules/)", c)}`,
 		);
 	}
 	if (targetSet.has("antigravity")) {
 		lines.push(
-			`${bar}  • ${style.bold("Antigravity:", c)} Auto-activated (.agent/skills/${sampleSkill})`,
+			`${bar}  ${bullet} ${fgHex(CHARM_PALETTE.lavender, style.bold("Antigravity:", c), c)} Auto-activated ${style.dim(`(.agent/skills/${sampleSkill})`, c)}`,
 		);
 	}
 	if (targetSet.has("copilot")) {
 		lines.push(
-			`${bar}  • ${style.bold("Copilot:", c)} Use ${style.cyan(`/${sampleSkill}`, c)} in Chat (.github/instructions/)`,
+			`${bar}  ${bullet} ${fgHex(CHARM_PALETTE.lavender, style.bold("Copilot:", c), c)} Use ${style.bold(style.cyan(`/${sampleSkill}`, c), c)} in Chat ${style.dim("(.github/instructions/)", c)}`,
 		);
 	}
 	if (
@@ -393,7 +505,17 @@ export function renderAiUsageGuide(
 		targetSet.has("kilocode")
 	) {
 		lines.push(
-			`${bar}  • ${style.bold("Windsurf/Cline/Roo/Kilo:", c)} Workspace rules load automatically`,
+			`${bar}  ${bullet} ${fgHex(CHARM_PALETTE.lavender, style.bold("Windsurf/Cline/Roo/Kilo:", c), c)} Workspace rules load automatically`,
+		);
+	}
+	if (targetSet.has("gemini")) {
+		lines.push(
+			`${bar}  ${bullet} ${fgHex(CHARM_PALETTE.lavender, style.bold("Gemini CLI:", c), c)} Loaded from ${style.dim(`.gemini/skills/${sampleSkill}`, c)}`,
+		);
+	}
+	if (targetSet.has("codex")) {
+		lines.push(
+			`${bar}  ${bullet} ${fgHex(CHARM_PALETTE.lavender, style.bold("OpenAI Codex:", c), c)} Indexed in ${style.cyan("AGENTS.md", c)} & ${style.dim(".codex/skills/", c)}`,
 		);
 	}
 

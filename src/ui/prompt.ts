@@ -482,7 +482,7 @@ export function renderMultiSelectFrame(
 					bold: true,
 					colorEnabled: c,
 				})
-			: style.dim(`○ ${skillTabTitle} (${skillCountStr})`, c);
+			: fgHex(CHARM_PALETTE.lavender, `○ ${skillTabTitle} (${skillCountStr})`, c);
 	const agentTabLabel =
 		state.activeTab === "agent"
 			? renderPill(`[ ◆ ${agentTabTitle} (${agentCountStr}) ]`, {
@@ -491,7 +491,7 @@ export function renderMultiSelectFrame(
 					bold: true,
 					colorEnabled: c,
 				})
-			: style.dim(`○ ${agentTabTitle} (${agentCountStr})`, c);
+			: fgHex(CHARM_PALETTE.lavender, `○ ${agentTabTitle} (${agentCountStr})`, c);
 
 	const rawQuerySlice =
 		state.searchQuery.length > 14
@@ -508,7 +508,7 @@ export function renderMultiSelectFrame(
 						colorEnabled: c,
 					},
 				)}`
-			: `   ${style.dim("(/ search)", c)}`;
+			: `   ${style.dim("(", c)}${fgHex(CHARM_PALETTE.amber, "/", c)} ${fgHex(CHARM_PALETTE.lavender, "search", c)}${style.dim(")", c)}`;
 
 	const singleTabLabel = totalSkills > 0 ? skillTabLabel : agentTabLabel;
 
@@ -522,7 +522,7 @@ export function renderMultiSelectFrame(
 	if (total === 0) {
 		const tabName = state.activeTab === "skill" ? skillTabTitle : agentTabTitle;
 		lines.push(
-			`${bar}  ${style.dim(`No ${tabName} match "${state.searchQuery}". Press Esc to clear filter.`, c)}`,
+			`${bar}  ${fgHex(CHARM_PALETTE.amber, `No ${tabName} match "${state.searchQuery}". Press Esc to clear filter.`, c)}`,
 		);
 	} else {
 		let startIdx = 0;
@@ -543,7 +543,7 @@ export function renderMultiSelectFrame(
 
 		if (startIdx > 0) {
 			lines.push(
-				`${bar}  ${style.dim(`↑ ${startIdx} more above...`, c)}${endIdx >= total ? pageDots : ""}`,
+				`${bar}  ${fgHex(CHARM_PALETTE.lavender, `↑ ${startIdx} more above...`, c)}${endIdx >= total ? pageDots : ""}`,
 			);
 		}
 
@@ -570,21 +570,31 @@ export function renderMultiSelectFrame(
 				? fgHex(CHARM_PALETTE.hotPink, style.bold("❯", c), c)
 				: " ";
 			const checkbox = isChecked
-				? style.green("◉", c)
+				? style.bold(style.green("◉", c), c)
 				: opt.isSelectAll && someRealSelected
-					? fgHex(CHARM_PALETTE.fuchsia, "◐", c)
-					: style.dim("◯", c);
+					? fgHex(CHARM_PALETTE.amber, style.bold("◐", c), c)
+					: isCurrent
+						? fgHex(CHARM_PALETTE.fuchsia, "◯", c)
+						: style.dim("◯", c);
 
 			const labelRaw =
 				opt.label.length > maxLabelCols
 					? `${opt.label.slice(0, maxLabelCols - 1)}…`
 					: opt.label;
 			const labelPadded = padVisible(labelRaw, maxLabelCols + 1, "left");
-			const styledLabel = isCurrent
-				? fgHex(CHARM_PALETTE.fuchsia, style.bold(labelPadded, c), c)
-				: isChecked
-					? style.green(labelPadded, c)
-					: labelPadded;
+			const styledLabel = opt.isSelectAll
+				? isCurrent
+					? fgHex(CHARM_PALETTE.amber, style.bold(labelPadded, c), c)
+					: isChecked
+						? style.bold(style.green(labelPadded, c), c)
+						: fgHex(CHARM_PALETTE.cyan, style.bold(labelPadded, c), c)
+				: isCurrent
+					? isChecked
+						? style.bold(style.green(labelPadded, c), c)
+						: fgHex(CHARM_PALETTE.fuchsia, style.bold(labelPadded, c), c)
+					: isChecked
+						? style.bold(style.green(labelPadded, c), c)
+						: fgHex(CHARM_PALETTE.white, labelPadded, c);
 
 			const prefixWidth = 7 + maxLabelCols + 1;
 			const maxHintCols = Math.max(10, 76 - prefixWidth);
@@ -597,7 +607,9 @@ export function renderMultiSelectFrame(
 				? ` ${
 						isCurrent
 							? fgHex(CHARM_PALETTE.lavender, shortHint, c)
-							: style.dim(shortHint, c)
+							: isChecked
+								? fgHex(CHARM_PALETTE.cyan, shortHint, c)
+								: style.dim(shortHint, c)
 					}`
 				: "";
 
@@ -606,7 +618,7 @@ export function renderMultiSelectFrame(
 
 		if (endIdx < total) {
 			lines.push(
-				`${bar}  ${style.dim(`↓ ${total - endIdx} more below...`, c)}${pageDots}`,
+				`${bar}  ${fgHex(CHARM_PALETTE.lavender, `↓ ${total - endIdx} more below...`, c)}${pageDots}`,
 			);
 		}
 	}
@@ -630,14 +642,29 @@ export function renderMultiSelectFrame(
 	const rawTarget = options.targetHint ?? "";
 	const shortTarget =
 		rawTarget.length > 18 ? `${rawTarget.slice(0, 17)}…` : rawTarget;
-	const targetSuffix = shortTarget ? ` · IDE: ${shortTarget}` : "";
+	const targetSuffix = shortTarget
+		? fgHex(CHARM_PALETTE.cyan, ` · IDE: ${shortTarget}`, c)
+		: "";
 	const styledSummary =
 		state.selected.size > 0
 			? fgHex(CHARM_PALETTE.mint, style.bold(summaryText, c), c)
 			: fgHex(CHARM_PALETTE.lavender, style.bold(summaryText, c), c);
+	const ctaText = `Enter to ${submitVerb}`;
+	const styledCta =
+		state.selected.size > 0 || options.selectCursorOnEmptySubmit
+			? renderPill(ctaText, {
+					fg: CHARM_PALETTE.white,
+					bg:
+						submitVerb === "remove"
+							? CHARM_PALETTE.hotPink
+							: CHARM_PALETTE.mint,
+					bold: true,
+					colorEnabled: c,
+				})
+			: fgHex(CHARM_PALETTE.amber, style.bold(ctaText, c), c);
 
 	lines.push(
-		`${style.dim("╰─", c)} ${styledSummary}${style.dim(`${targetSuffix} — Enter to ${submitVerb}`, c)}`,
+		`${style.dim("╰─", c)} ${styledSummary}${targetSuffix}${style.dim(" — ", c)}${styledCta}`,
 	);
 
 	return lines.join("\n");
