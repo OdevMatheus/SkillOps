@@ -1,120 +1,110 @@
 # Contributing to SkillOps
 
-Thank you for contributing to **SkillOps** (`npx skillops-cli@latest`)! Because SkillOps is an **AI-Agent-first** open-source platform powered by a **Zero-API Node.js 20+ / TypeScript engine** and **deterministic Python 3.12+ catalog scripts**, these guidelines apply equally to **human contributors** and **all 28 supported AI coding agents** (`cursor`, `claude`, `copilot`, `antigravity`, `windsurf`, `codex`, `gemini`, `cline`, `roocode`, `kilocode`, `zed`, `continue`, `aider`, `kiro`, `trae`, `augment`, `factory`, `qwen`, `opencode`, `openhands`, `amp`, `goose`, `warp`, `crush`, `vibe`, `junie`, `amazonq`, `idx`).
+Thank you for contributing to **SkillOps** (`npx skillops-cli@latest`)! These guidelines apply to both **human contributors** and **AI coding agents**.
 
 ---
 
-## 1. Mandatory Pre-Flight Protocol
+## 1. Two-Track Contribution Policy (When Do You Need an Issue?)
 
-Before writing code, modifying documentation, or opening an Issue/Pull Request, read:
+To keep the **Skills & Subagents library** easy to grow while protecting the **Core CLI** from feature creep, SkillOps uses a two-track contribution workflow:
 
-1. [`AGENTS.md`](./AGENTS.md) — The canonical architecture and development governance contract.
-2. [`SKILL_CONTRACT.md`](./SKILL_CONTRACT.md) — The normative specification for Hybrid Executable Skills, Context-Isolated Subagents, 3-level token budgets, semantic collision audits, and TDD evaluations.
-3. [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) — Repository-wide coding and sanitization rules.
-4. [`.github/PULL_REQUEST_TEMPLATE.md`](./.github/PULL_REQUEST_TEMPLATE.md) — Required structure for all Pull Requests.
+| Contribution Track | Scope | Issue Required Before PR? | PR Title Example |
+| :--- | :--- | :---: | :--- |
+| **Track A — Library (`catalog/`)** | Adding or improving **Skills (`SKILL.md`)** and **Subagents (`SUBAGENT.md`)** | **No (Direct PR allowed)** | `feat(catalog): add fastapi-async-profiler skill` |
+| **Track B — Core Solution (`src/`, `.github/`, `docs/`)** | CLI commands, Lip Gloss TUI, 28-IDE transpiler, schemas, dependencies, or CI/CD | **Yes (Mandatory Issue first)** | `fix(sync): preserve cursor frontmatter globs (#162)` |
+
+> **Why this policy?**
+> - **Catalog additions (`catalog/`)** are self-contained and automatically validated by CI against [`SKILL_CONTRACT.md`](./SKILL_CONTRACT.md), so you can open a PR right away without waiting on Issue triage.
+> - **Core solution changes (`src/`)** affect the CLI architecture and all 28 runtime adapters. Opening an Issue first ensures your proposal aligns with the lean MVP scope (`add` / `remove`) before you invest time writing code.
 
 ---
 
-## 2. Quick Contributor Setup
+## 2. Quick Local Setup
 
 **Prerequisites:**
-- **Node.js `>= 20.0.0`** (Node `22` recommended; run `nvm use` to read [`.nvmrc`](./.nvmrc))
-- **Python `>= 3.12`** (standard library only — used for Level 3 deterministic `scripts/*.py` tools)
+- **Node.js `>= 20.0.0`** (Node `22` recommended; see [`.nvmrc`](./.nvmrc))
+- **Python `>= 3.12`** (standard library only — used for Level 3 deterministic `scripts/*.py` bundled inside Skills)
 
 ```bash
 git clone https://github.com/OdevMatheus/SkillOps.git
 cd SkillOps
 npm ci
 npm run build
-npx skillops-cli@latest doctor
+npm test
 ```
 
 ---
 
-## 3. 5-Minute Cookbook: Authoring a New Hybrid Executable Skill
+## 3. Track A: Contributing a New Skill or Subagent (No Issue Needed)
 
-Every skill in `catalog/<track>/<skill-slug>/` must satisfy [`SKILL_CONTRACT.md`](./SKILL_CONTRACT.md) (`INV-SKILL-01` through `INV-SKILL-05`):
+Every item in [`catalog/`](./catalog) must comply with [`SKILL_CONTRACT.md`](./SKILL_CONTRACT.md) (`INV-SKILL-01` through `INV-SKILL-04`):
 
-1. **Create the skill directory** under one of the tracks (`ai-engineering`, `python-backend`, or `arch-quality`):
+### 3.1 Adding a Hybrid Skill (`SKILL.md`)
+1. Create a folder under `catalog/<track>/<skill-slug>/` (e.g., `ai-engineering`, `python-backend`, `arch-quality`):
    ```text
    catalog/<track>/<skill-slug>/
-   ├── SKILL.md                  # Level 1 YAML frontmatter (40-110 words) + Level 2 body (<= 250 lines)
-   ├── scripts/
-   │   └── <tool_name>.py        # Level 3 zero-dependency Python 3.12+ CLI accepting --path and --json
-   └── evals/
-       ├── evals.json            # Deterministic with_skill vs without_skill evaluation cases
-       └── benchmark.json        # Comparative pass-rate lift (>= +15%) and token delta metrics
+   ├── SKILL.md                  # Level 1 YAML frontmatter + Level 2 instructions (<= 250 lines)
+   ├── scripts/                  # Level 3 zero-dependency deterministic script(s)
+   │   └── <tool_name>.py
+   └── references/               # Optional deep reference docs loaded on demand
    ```
-2. **Validate progressive disclosure budgets & pairwise semantic orthogonality (`cosine < 0.72`):**
-   ```bash
-   npx skillops-cli@latest audit --catalog catalog --strict --require-layout
+2. **Contract checklist for `SKILL.md`:**
+   - `description` must start with `"Use when..."` and contain **`40–110` words** (`<= 160` tokens), including explicit `Do not trigger for...` negative triggers.
+   - Markdown body must stay **`<= 250` lines** (`<= 1,800` tokens).
+
+### 3.2 Adding a Context-Isolated Subagent (`SUBAGENT.md`)
+1. Create a folder under `catalog/subagents/<subagent-slug>/`:
+   ```text
+   catalog/subagents/<subagent-slug>/
+   └── SUBAGENT.md               # Scoped specialist persona + explicit tool permissions
    ```
-3. **Run deterministic `with_skill` vs. `without_skill` TDD evaluations:**
-   ```bash
-   npx skillops-cli@latest eval --catalog catalog --strict
-   ```
-4. **Verify transpilability across all 28 AI coding agents (dry-run):**
-   ```bash
-   npx skillops-cli@latest add --all --targets all --dry-run
-   ```
+2. **Contract checklist for `SUBAGENT.md`:**
+   - `description` must start with `"Use when..."`.
+   - `tools` must list explicit least-privilege tools (e.g., `["read", "search"]`) — **wildcard `["*"]` is strictly forbidden (`INV-SKILL-04`)**.
+   - `max-output-tokens` must be **`<= 400` tokens**.
 
----
+### 3.3 Test Your Skill or Subagent Locally
+Verify that your new catalog entry parses cleanly and transpiles across all 28 supported AI IDEs and CLIs:
 
-## 4. Branching, Verification & Commit Strategy
-
-### 4.1 Branch Protection & Naming (`1 Issue = 1 Branch = 1 PR`)
-- **Never commit or push directly to `master`.**
-- Create a descriptive branch from `master`:
-  - `feat/<short-slug>` — New NPX CLI commands, engine modules (`src/`), hybrid executable skills, or subagents (`catalog/`)
-  - `fix/<short-slug>` — Bug fixes, schema fixes, or false-positive corrections
-  - `docs/<short-slug>` — Documentation, ADRs, and governance updates
-  - `chore/<short-slug>` / `ci/<short-slug>` — Repository tooling, CI/CD, or `.github/` maintenance
-  - `refactor/<short-slug>` — Structural refactoring without behavior changes
-  - `test/<short-slug>` — Vitest unit, contract, or TDD benchmark evaluation suites
-
-### 4.2 Local Verification Suite
-Run all verification gates before opening a PR:
 ```bash
-npm run lint
-npm run typecheck
-npm test
 npm run build
-node dist/cli.js audit --catalog catalog --strict --require-layout
-node dist/cli.js tokens --strict
-node dist/cli.js eval --catalog catalog --strict
+node dist/cli.js add <your-skill-or-subagent-name> --targets all --dry-run
+npm test
 ```
-
-### 4.3 Conventional Commits (`en-US`)
-All tracked repository files, code comments, commit messages, and Pull Request titles **must** be written in English (`en-US`) and follow [Conventional Commits](https://www.conventionalcommits.org/):
-- `feat(mcp): add universal 'skillops mcp-setup' across 13 MCP IDEs/agents (#114)`
-- `feat(catalog): add new hybrid executable skill and AST scanner script`
-- `docs(oss): add SUPPORT.md, CITATION.cff, and skill authoring cookbook (#120)`
 
 ---
 
-## 5. Pull Request Workflow via GitHub CLI (`gh`)
+## 4. Track B: Contributing to the Core Solution (Issue Required First)
 
-All Pull Requests should reference their corresponding Issue (`Closes #<id>`) and apply official repository labels:
+If you want to fix a bug, improve the TUI design, update a runtime adapter in `src/sync/`, or propose an architectural change:
 
-```bash
-gh pr create \
-  --base master \
-  --head <type>/<short-slug> \
-  --title "<type>(<scope>): <description> (#<issue>)" \
-  --body-file <filled-pull-request-template.md>
-```
-
-### Official Repository Labels
-- **Scope:** `🔴 core-architecture`, `🐍 core-engine`, `🧠 skill-catalog`, `🧪 eval-benchmark`, `🔄 multi-runtime`, `🔌 mcp-server`, `⚠️ agent-behavior`, `📄 docs`, `⚙️ ci`
-- **Type:** `✨ feat`, `🐛 fix`, `♻️ refactor`, `🔒 security`
-- **Lifecycle:** `🗺️ roadmap`, `🚧 work-in-progress`, `📌 pinned`
+1. **Open a GitHub Issue first** describing the problem, motivation, and proposed change.
+2. **Create a branch from `master`** following the required naming pattern (`1 Issue = 1 Branch = 1 PR` for core changes).
+3. **Run the full verification suite locally:**
+   ```bash
+   npm run lint
+   npm run typecheck
+   npm test
+   npm run build
+   ```
+4. **Link the Issue in your Pull Request description** using `Closes #<issue-number>`.
 
 ---
 
-## 6. Privacy, Security & Sanitization Checklist
+## 5. Branch Naming, Commits & PR Governance
 
-Every contribution is automatically audited by [`.github/workflows/pr-governance.yml`](./.github/workflows/pr-governance.yml), [`.github/workflows/ai-ci.yml`](./.github/workflows/ai-ci.yml), and [`.github/workflows/codeql.yml`](./.github/workflows/codeql.yml):
-1. **No Absolute Machine Paths:** Never include `C:\Users\...`, `/Users/...`, or `/home/...` in any tracked file. Always use relative paths (`./...`).
-2. **No Environment or Corporate Metadata:** Never expose OS usernames, internal domains, or non-public references.
-3. **No Secrets or AI API Keys:** Never commit `.env` files, AI provider keys (`sk-proj-...`, `sk-ant-...`, `AIzaSy...`, `hf_...`), or private tokens.
-4. **Line Endings & Strict Typing:** Respect [`.gitattributes`](./.gitattributes) and [`.editorconfig`](./.editorconfig) (`UTF-8` encoding and `LF` line endings) and strict TypeScript (`npm run typecheck`).
+All Pull Requests are automatically checked by [`.github/workflows/pr-governance.yml`](./.github/workflows/pr-governance.yml) and [`.github/workflows/ai-ci.yml`](./.github/workflows/ai-ci.yml):
+
+1. **Branch Naming (`<type>/<short-kebab-description>`):**
+   - `feat/<short-slug>` — New catalog Skills/Subagents or approved core features
+   - `fix/<short-slug>` — Bug fixes or adapter corrections
+   - `docs/<short-slug>` — Documentation updates
+   - `refactor/<short-slug>` / `test/<short-slug>` / `ci/<short-slug>` / `chore/<short-slug>`
+2. **PR Title & Commits (Lowercase Conventional Commits in `en-US`):**
+   - All tracked files, code comments, commit messages, and PR titles must be in **English (`en-US`)** and start with a lowercase imperative description after the prefix:
+   - ✅ `feat(catalog): add postgres-query-plan-auditor skill` *(Track A — no issue required)*
+   - ✅ `fix(ui): align multi-select footer pill width (#165)` *(Track B — linked to issue)*
+3. **Privacy, Security & Sanitization:**
+   - **No Absolute Machine Paths:** Never commit `C:\Users\...`, `/Users/...`, or `/home/...` in any tracked file. Use relative paths (`./...`).
+   - **No Environment or Corporate Metadata:** Never expose OS usernames, local hostnames, or private domains.
+   - **No Secrets or API Keys:** Never commit `.env` files or AI provider keys (`sk-proj-...`, `sk-ant-...`, `AIzaSy...`, `hf_...`).
