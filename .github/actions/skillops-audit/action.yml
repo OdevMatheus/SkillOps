@@ -1,29 +1,21 @@
-name: "SkillOps Audit (Zero-API NPX Token Economy & Collision Gate)"
-description: "Audits AI Coding Agent Skills & Context-Isolated Subagents for Startup Token Tax, L1/L2/L3 progressive disclosure budgets, lockfile drift, and semantic collisions."
+name: "SkillOps Multi-Runtime Catalog Verification Gate"
+description: "Verifies that all catalog Skills (SKILL.md) and Subagents (SUBAGENT.md) transpile cleanly across all 28 supported AI coding IDEs and CLIs."
 author: "OdevMatheus"
 branding:
   icon: "shield"
-  color: "blue"
+  color: "purple"
 
 inputs:
   catalog-path:
-    description: "Path to the Hybrid Executable Skill & Subagent catalog directory."
+    description: "Path to the Skill & Subagent catalog directory."
     required: false
     default: "catalog"
-  strict:
-    description: "Fail on high-risk semantic collisions (cosine >= 0.72) or Startup Token Tax violations."
+  targets:
+    description: "Target AI harnesses to verify (default: all)."
     required: false
-    default: "true"
-  tokens-check:
-    description: "Also run Startup Token Tax & Lockfile Doctor checks with native GitHub annotations."
-    required: false
-    default: "true"
-  step-summary:
-    description: "Append Markdown Token Economy and Doctor reports to $GITHUB_STEP_SUMMARY."
-    required: false
-    default: "true"
+    default: "all"
   node-version:
-    description: "Node.js version used to run SkillOps NPX engine (requires >= 20)."
+    description: "Node.js version used to run SkillOps CLI (requires >= 20)."
     required: false
     default: "22"
 
@@ -35,25 +27,12 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
 
-    - name: Run SkillOps NPX Semantic Collision, Token Tax & Lockfile Audit
+    - name: Verify Multi-Runtime Transpilation (Dry-Run)
       shell: bash
       run: |
-        STRICT_FLAG=""
-        if [ "${{ inputs.strict }}" = "true" ]; then
-          STRICT_FLAG="--strict"
-        fi
         if [ -f "dist/cli.js" ]; then
           SKILLOPS_CMD="node dist/cli.js"
         else
           SKILLOPS_CMD="npx --yes skillops-cli@latest"
         fi
-        $SKILLOPS_CMD audit --catalog "${{ inputs.catalog-path }}" --format github $STRICT_FLAG
-        if [ "${{ inputs.tokens-check }}" = "true" ]; then
-          $SKILLOPS_CMD tokens --catalog "${{ inputs.catalog-path }}" --format github $STRICT_FLAG
-          $SKILLOPS_CMD doctor --catalog "${{ inputs.catalog-path }}" --format github
-        fi
-        if [ "${{ inputs.step-summary }}" = "true" ] && [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-          $SKILLOPS_CMD tokens --catalog "${{ inputs.catalog-path }}" --format markdown >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          $SKILLOPS_CMD doctor --catalog "${{ inputs.catalog-path }}" --format markdown >> "$GITHUB_STEP_SUMMARY"
-        fi
+        $SKILLOPS_CMD add --all --catalog "${{ inputs.catalog-path }}" --targets "${{ inputs.targets }}" --dry-run

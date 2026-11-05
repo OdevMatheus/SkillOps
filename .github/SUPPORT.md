@@ -1,34 +1,34 @@
 # Support & Community Resources
 
-Thank you for using **SkillOps (`npx skillops-cli@latest`)**! To keep the issue tracker focused on actionable engineering tasks, please use the appropriate channel below when seeking help or reporting issues.
+Thank you for using **SkillOps (`npx skillops-cli@latest`)**! Please use the channels below when seeking help, contributing Skills, or reporting bugs.
 
 ---
 
-## 1. Documentation & Self-Diagnosis First
+## 1. Quick Verification & Preview
 
-Before opening a support request, run the built-in zero-API diagnostic tools in your repository:
+Before opening a bug report, you can preview how SkillOps transpiles files in your repository without modifying disk using `--dry-run`:
 
 ```bash
-# Verify Node.js (>=20), Python (>=3.12), .skillops.yml, .skillops-lock.json drift, and Startup Token Tax
-npx skillops-cli@latest doctor
+# Preview interactive or targeted installation without writing files
+npx skillops-cli@latest add mcp-architect -t cursor,claude --dry-run
 
-# Inspect the Top 20 supported AI coding agents & auto-detected harnesses in your workspace
-npx skillops-cli@latest harnesses
+# Inspect CLI help and available flags
+npx skillops-cli@latest --help
 ```
 
-You can also consult our canonical specifications:
-- **[`README.md`](../README.md):** Quick Start, CLI command reference, and the Universal Top-20 AI Coding Agents Matrix.
-- **[`SKILL_CONTRACT.md`](../SKILL_CONTRACT.md):** Normative specification for Hybrid Executable Skills, Context-Isolated Subagents, 3-level progressive disclosure budgets, and exit codes.
-- **[`docs/BENCHMARKS.md`](../docs/BENCHMARKS.md):** Empirical Startup Token Tax case study and deterministic `with_skill` vs. `without_skill` TDD evaluation metrics.
-- **[`docs/architecture/README.md`](../docs/architecture/README.md):** System architecture overview and Architecture Decision Records (`ADR-0001` through `ADR-0004`).
+Consult our core documentation:
+- **[`README.md`](../README.md):** Quick Start, interactive TUI guide, commands (`add` / `remove`), and the 28 supported AI IDEs & CLIs.
+- **[`CONTRIBUTING.md`](../CONTRIBUTING.md):** Two-Track Contribution Policy (**Track A:** Direct PRs for new catalog Skills/Subagents; **Track B:** Issue-first workflow for Core CLI changes).
+- **[`SKILL_CONTRACT.md`](../SKILL_CONTRACT.md):** Normative specification for `SKILL.md` and `SUBAGENT.md`.
 
 ---
 
-## 2. Where to Ask Questions & Get Help
+## 2. Where to Go
 
 | Topic | Channel |
 | :--- | :--- |
-| **Usage questions, architecture discussions, or custom skill design** | [**GitHub Discussions**](https://github.com/OdevMatheus/SkillOps/discussions) |
-| **Reproducible bugs, CLI errors, or runtime transpiler regressions** | [**GitHub Issues — Bug Report**](https://github.com/OdevMatheus/SkillOps/issues/new?template=bug_report.yml) |
-| **New Hybrid Skills, Subagents, or AI harness integrations** | [**GitHub Issues — Feature Request**](https://github.com/OdevMatheus/SkillOps/issues/new?template=feature_request.yml) |
-| **Security vulnerabilities or prompt-injection bypasses** | [**Private Vulnerability Reporting (`SECURITY.md`)**](./SECURITY.md) |
+| **Contribute a new Skill (`SKILL.md`) or Subagent (`SUBAGENT.md`)** | [**Open a Pull Request Directly (Track A — No Issue Needed)**](https://github.com/OdevMatheus/SkillOps/compare) |
+| **Questions, ideas, or custom Skill discussions** | [**GitHub Discussions**](https://github.com/OdevMatheus/SkillOps/discussions) |
+| **Reproducible CLI bugs or adapter regressions (`src/`)** | [**GitHub Issues — Bug Report (Track B)**](https://github.com/OdevMatheus/SkillOps/issues/new?template=bug_report.yml) |
+| **Core CLI / TUI / Transpiler feature proposals (`src/`)** | [**GitHub Issues — Feature Proposal (Track B)**](https://github.com/OdevMatheus/SkillOps/issues/new?template=feature_request.yml) |
+| **Security vulnerabilities** | [**Private Vulnerability Reporting (`SECURITY.md`)**](./SECURITY.md) |

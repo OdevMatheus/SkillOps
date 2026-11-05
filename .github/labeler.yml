@@ -23,25 +23,12 @@
       - any-glob-to-any-file:
           - "catalog/**"
 
-"🧪 eval-benchmark":
-  - changed-files:
-      - any-glob-to-any-file:
-          - "src/eval/**"
-          - "catalog/**/evals/**"
-          - "tests/*eval*"
-
 "🔄 multi-runtime":
   - changed-files:
       - any-glob-to-any-file:
-          - "src/router/**"
           - "src/sync/**"
           - ".github/copilot-instructions.md"
           - ".github/agents/**"
-
-"🔌 mcp-server":
-  - changed-files:
-      - any-glob-to-any-file:
-          - "src/mcp/**"
 
 "📄 docs":
   - changed-files:

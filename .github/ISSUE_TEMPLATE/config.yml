@@ -1,8 +1,11 @@
 blank_issues_enabled: false
 contact_links:
-  - name: GitHub Discussions & Ideas
+  - name: "⚡ Contributing a New Skill or Subagent (catalog/)? Open a PR Directly!"
+    url: https://github.com/OdevMatheus/SkillOps/compare
+    about: "Track A (Catalog): You do NOT need to open an Issue to contribute a new SKILL.md or SUBAGENT.md. Open a Pull Request directly!"
+  - name: "💬 GitHub Discussions & Community Q&A"
     url: https://github.com/OdevMatheus/SkillOps/discussions
-    about: For general questions, skill architecture proposals, and community discussions.
-  - name: Security Vulnerability Report
+    about: "Ask usage questions, share Skill ideas, or discuss AI coding workflows."
+  - name: "🔒 Private Security Vulnerability Report"
     url: https://github.com/OdevMatheus/SkillOps/security/advisories/new
-    about: Please report security issues privately instead of opening a public issue.
+    about: "Report security or prompt-injection vulnerabilities privately via GitHub Security Advisories."

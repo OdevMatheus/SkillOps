@@ -1,40 +1,45 @@
-name: Feature / Hybrid Skill / Subagent Proposal
-description: Propose a new Hybrid Executable Skill, Context-Isolated Subagent, NPX CLI capability, or runtime adapter for SkillOps
+name: "✨ Core Solution Feature Proposal (Track B — Issue Required)"
+description: "Propose an improvement to the Core CLI (add/remove), Lip Gloss TUI, or 28-IDE transpiler (Not required for new catalog Skills/Subagents)"
 title: "feat: "
 labels: ["✨ feat"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        > 💡 **Adding a new Skill (`SKILL.md`) or Subagent (`SUBAGENT.md`) to `catalog/`?**
+        > You do **not** need to open an Issue! Follow [`CONTRIBUTING.md`](https://github.com/OdevMatheus/SkillOps/blob/master/CONTRIBUTING.md) (**Track A**) and open a Pull Request directly.
+        >
+        > Use this template for **Track B (Core Solution)** changes (`src/`, `.github/`, new AI IDE adapters, or TUI improvements).
   - type: dropdown
     id: category
     attributes:
       label: Proposal Category
       options:
-        - Core Engine Feature (src/ — Auditor / Token Economy / Router / Sync / Eval / MCP)
-        - New Hybrid Executable Skill — Track 1: AI & Agentic Engineering (catalog/ai-engineering/)
-        - New Hybrid Executable Skill — Track 2: Python 3.12+ Backend (catalog/python-backend/)
-        - New Hybrid Executable Skill — Track 3: Architecture, Security & Quality (catalog/arch-quality/)
-        - New Context-Isolated Subagent (catalog/subagents/ or .github/agents/)
-        - Multi-Runtime Adapter (Claude Code / Antigravity / Cursor / Codex CLI / GitHub Copilot)
-        - Architecture Decision Record (ADR) / Governance Enhancement
+        - "Core CLI & Interactive TUI (src/cli.ts, src/ui/)"
+        - "New or Updated AI IDE / CLI Runtime Adapter (src/sync/adapters.ts)"
+        - "Lockfile & SHA-256 Sync Engine (src/sync/)"
+        - "Catalog Schema & Manifest Contract (src/models.ts, SKILL_CONTRACT.md)"
+        - "CI/CD, Release Automation & Open-Source Governance (.github/)"
     validations:
       required: true
   - type: textarea
     id: problem
     attributes:
-      label: Problem Statement & Empirical Motivation
-      description: What failure mode, routing collision, token waste, or engineering bottleneck does this solve?
+      label: Problem Statement & Motivation
+      description: What developer friction or limitation in the current add/remove workflow does this solve?
     validations:
       required: true
   - type: textarea
     id: solution
     attributes:
-      label: Proposed Design & Deterministic Execution Contract
-      description: Describe the TypeScript/Node.js 20+ module or Hybrid Skill (`SKILL.md` + `scripts/*.py --json` + `evals/evals.json`) or Subagent (`AGENT.md` with `max_output_tokens <= 400`).
+      label: Proposed Design
+      description: Describe the proposed change and how it fits within the lean SkillOps MVP.
     validations:
       required: true
   - type: textarea
     id: acceptance
     attributes:
-      label: Acceptance Criteria (EARS / TDD Assertions)
-      description: List verifiable criteria, token budget bounds, and expected pass-rate delta (`with_skill` vs `without_skill`).
+      label: Acceptance Criteria
+      description: List verifiable criteria and unit/integration test expectations (`npm test`).
     validations:
       required: true
