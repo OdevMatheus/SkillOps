@@ -2,6 +2,7 @@
  * SkillOps CLI Help System (`src/ui/help.ts`) — Focused exclusively on `add` and `remove`.
  */
 
+import { CHARM_PALETTE, fgHex, renderPill } from "./lipgloss.js";
 import {
 	formatBadge,
 	padVisible,
@@ -63,12 +64,12 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		],
 		examples: [
 			{
-				command: "npx skillops-cli add",
-				description: "Launch interactive 2-step TUI selector",
+				command: "skillops add",
+				description: "Interactive 2-step TUI selector",
 			},
 			{
-				command: "npx skillops-cli add mcp-architect -t claude,cursor",
-				description: "Install mcp-architect into Claude & Cursor",
+				command: "skillops add mcp-architect -t cursor",
+				description: "Install into Cursor IDE",
 			},
 		],
 	},
@@ -105,11 +106,11 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 		],
 		examples: [
 			{
-				command: "npx skillops-cli remove",
-				description: "Interactive selector of installed Skills & Agents",
+				command: "skillops remove",
+				description: "Interactive selector of installed items",
 			},
 			{
-				command: "npx skillops-cli remove mcp-architect",
+				command: "skillops remove mcp-architect",
 				description: "Remove runtime files & update lockfile",
 			},
 		],
@@ -145,13 +146,19 @@ export function renderGlobalHelp(
 		},
 	);
 
-	const coreCmds: readonly { readonly cmd: string; readonly desc: string }[] = [
+	const coreCmds: readonly {
+		readonly cmd: string;
+		readonly color: string;
+		readonly desc: string;
+	}[] = [
 		{
 			cmd: "add [name...]",
+			color: CHARM_PALETTE.mint,
 			desc: "Install Skills or Agents (interactive if no name given)",
 		},
 		{
 			cmd: "remove [name...]",
+			color: CHARM_PALETTE.hotPink,
 			desc: "Remove Skills or Agents (interactive if no name given)",
 		},
 	];
@@ -159,24 +166,26 @@ export function renderGlobalHelp(
 	const cmdRows = coreCmds
 		.map(
 			(item) =>
-				`${bar}  ${padVisible(style.bold(style.cyan(item.cmd, c), c), 18, "left")}${item.desc}`,
+				`${bar}  ${padVisible(fgHex(item.color, style.bold(item.cmd, c), c), 18, "left")}${fgHex(CHARM_PALETTE.white, item.desc, c)}`,
 		)
 		.join("\n");
 
+	const usageLine = `${bar}  ${fgHex(CHARM_PALETTE.lavender, style.bold("Usage:", c), c)} ${style.bold(style.green("skillops", c), c)} ${fgHex(CHARM_PALETTE.cyan, "<add|remove>", c)} ${style.dim("[options]", c)}`;
+
 	return [
 		banner,
-		`${bar}  Usage: skillops <add|remove> [options]`,
+		usageLine,
 		renderSectionHeader("Commands", c),
 		cmdRows,
 		renderSectionHeader("Options", c),
-		`${bar}  ${padVisible(style.cyan("-t, --target <ide>", c), 22, "left")}AI IDE (cursor, claude, copilot, antigravity...)`,
-		`${bar}  ${padVisible(style.cyan("-p, --project <dir>", c), 22, "left")}Project folder (default: current directory)`,
-		`${bar}  ${padVisible(style.cyan("--all", c), 22, "left")}Install or remove all Skills & Agents`,
+		`${bar}  ${padVisible(style.bold(style.cyan("-t, --target <ide>", c), c), 22, "left")}${fgHex(CHARM_PALETTE.lavender, "AI IDE (cursor, claude, copilot, antigravity...)", c)}`,
+		`${bar}  ${padVisible(style.bold(style.cyan("-p, --project <dir>", c), c), 22, "left")}${fgHex(CHARM_PALETTE.lavender, "Project folder (default: current directory)", c)}`,
+		`${bar}  ${padVisible(style.bold(style.cyan("--all", c), c), 22, "left")}${fgHex(CHARM_PALETTE.lavender, "Install or remove all Skills & Agents", c)}`,
 		renderSectionHeader("Examples", c),
-		`${bar}  ${style.dim("$", c)} ${style.green("skillops add", c)}                                  ${style.dim("— Interactive install", c)}`,
-		`${bar}  ${style.dim("$", c)} ${style.green("skillops remove", c)}                               ${style.dim("— Interactive removal", c)}`,
+		`${bar}  ${fgHex(CHARM_PALETTE.hotPink, "$", c)} ${style.bold(style.green("skillops add", c), c)}                                  ${style.dim("—", c)} ${fgHex(CHARM_PALETTE.lavender, "Interactive install", c)}`,
+		`${bar}  ${fgHex(CHARM_PALETTE.hotPink, "$", c)} ${style.bold(style.green("skillops remove", c), c)}                               ${style.dim("—", c)} ${fgHex(CHARM_PALETTE.lavender, "Interactive removal", c)}`,
 		bar,
-		`${style.dim("╰─", c)} ${style.dim("Run", c)} ${style.cyan("skillops <cmd> -h", c)} ${style.dim("for command options.", c)}`,
+		`${style.dim("╰─", c)} ${fgHex(CHARM_PALETTE.lavender, "Run", c)} ${style.bold(style.cyan("skillops <cmd> -h", c), c)} ${fgHex(CHARM_PALETTE.lavender, "for command options.", c)}`,
 	].join("\n");
 }
 
@@ -191,16 +200,24 @@ export function renderCommandHelp(
 	const c = colorEnabled;
 	const bar = style.dim("│", c);
 	const pillarBadge = formatBadge("info", "LIBRARY", c);
+	const brandPill = renderPill(`◆ SkillOps v${version}`, {
+		fg: CHARM_PALETTE.white,
+		bg: CHARM_PALETTE.indigo,
+		bold: true,
+		colorEnabled: c,
+	});
+	const cmdAccent =
+		spec.name === "remove" ? CHARM_PALETTE.hotPink : CHARM_PALETTE.mint;
 
 	const aliasText =
 		spec.aliases.length > 0
-			? ` (aliases: ${spec.aliases.map((a) => style.cyan(a, c)).join(", ")})`
+			? ` ${style.dim("(aliases:", c)} ${spec.aliases.map((a) => style.bold(style.cyan(a, c), c)).join(style.dim(", ", c))}${style.dim(")", c)}`
 			: "";
 
 	const headerLines = [
-		`${style.bold(style.cyan(`◆ SkillOps v${version}`, c), c)} ${style.dim("—", c)} ${style.bold(`skillops ${spec.name}`, c)}${aliasText} ${pillarBadge}`,
-		`${bar}  ${spec.summary}`,
-		`${bar}  ${style.bold("Usage:", c)} ${style.green(spec.usage, c)}`,
+		`${brandPill} ${style.dim("—", c)} ${fgHex(cmdAccent, style.bold(`skillops ${spec.name}`, c), c)}${aliasText} ${pillarBadge}`,
+		`${bar}  ${fgHex(CHARM_PALETTE.lavender, spec.summary, c)}`,
+		`${bar}  ${style.bold("Usage:", c)} ${style.bold(style.green(spec.usage, c), c)}`,
 	].join("\n");
 
 	const optionsSection =
@@ -209,7 +226,10 @@ export function renderCommandHelp(
 					renderSectionHeader("Options & Flags", c),
 					renderTable(
 						["Flag", "Description"],
-						spec.options.map((o) => [style.cyan(o.flags, c), o.description]),
+						spec.options.map((o) => [
+							style.bold(style.cyan(o.flags, c), c),
+							fgHex(CHARM_PALETTE.lavender, o.description, c),
+						]),
 						{ colorEnabled: c, indent: 3 },
 					),
 				].join("\n")

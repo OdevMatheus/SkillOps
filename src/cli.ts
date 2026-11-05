@@ -32,7 +32,9 @@ import {
 import {
 	findCommandHelpSpec,
 	type MultiSelectOption,
+	renderCancelledStep,
 	renderCommandHelp,
+	renderCompletedStep,
 	renderGlobalHelp,
 	runMultiSelectPrompt,
 	suggestCommand,
@@ -549,6 +551,7 @@ export async function runCliInteractive(
 				step1Title,
 				targetOptions,
 				{
+					subtitle: "Select one or more AI coding assistants to configure",
 					tabLabels: {
 						skill: "AI IDEs & Agents",
 						agent: "",
@@ -559,10 +562,13 @@ export async function runCliInteractive(
 			);
 
 			if (!selectedTargets || selectedTargets.length === 0) {
-				process.stdout.write("No AI IDE selected.\n");
+				process.stdout.write(`${renderCancelledStep("No AI IDE selected.")}\n`);
 				return ExitCode.SUCCESS;
 			}
 			resolvedTargetsArg = selectedTargets.join(",");
+			process.stdout.write(
+				`${renderCompletedStep(needsCatalogPrompt ? "Step 1/2 · AI IDE(s)" : "AI IDE(s)", selectedTargets.join(", "))}\n`,
+			);
 		}
 
 		let targets: RuntimeTarget[];
@@ -586,15 +592,23 @@ export async function runCliInteractive(
 				? "SkillOps — Step 2/2: Select Skills & Agents to Import"
 				: "SkillOps — Select Skills & Agents to Import";
 			const selected = await runMultiSelectPrompt(step2Title, options, {
+				subtitle: "Switch tabs with ←/→ · Press Space to select · Enter to install",
 				targetHint: targets.join(", "),
 				showSelectAll: true,
 			});
 
 			if (!selected || selected.length === 0) {
-				process.stdout.write("No Skills or Agents selected.\n");
+				process.stdout.write(
+					`${renderCancelledStep("No Skills or Agents selected.")}\n`,
+				);
 				return ExitCode.SUCCESS;
 			}
+			process.stdout.write(
+				`${renderCompletedStep(!explicitTargetsArg ? "Step 2/2 · Selected" : "Selected", selected.join(", "))}\n\n`,
+			);
 			extraArgs.push(...selected);
+		} else if (!explicitTargetsArg) {
+			process.stdout.write("\n");
 		}
 
 		return runCli([...argv, ...extraArgs]);
@@ -639,7 +653,7 @@ export async function runCliInteractive(
 			);
 			if (installedOptions.length === 0) {
 				process.stdout.write(
-					"No imported Skills or Agents found in this project.\n",
+					`${renderCancelledStep("No imported Skills or Agents found in this project.")}\n`,
 				);
 				return ExitCode.SUCCESS;
 			}
@@ -648,6 +662,7 @@ export async function runCliInteractive(
 				"SkillOps — Select Installed Skills & Agents to Remove",
 				installedOptions,
 				{
+					subtitle: "Select installed items with Space · Press Enter to remove",
 					submitActionLabel: "remove",
 					targetHint: targets ? targets.join(", ") : undefined,
 					showSelectAll: true,
@@ -655,9 +670,15 @@ export async function runCliInteractive(
 			);
 
 			if (!selected || selected.length === 0) {
-				process.stdout.write("No Skills or Agents selected for removal.\n");
+				process.stdout.write(
+					`${renderCancelledStep("No Skills or Agents selected for removal.")}\n`,
+				);
 				return ExitCode.SUCCESS;
 			}
+
+			process.stdout.write(
+				`${renderCompletedStep("Selected to remove", selected.join(", "))}\n\n`,
+			);
 
 			return runCli([...argv, ...selected]);
 		}

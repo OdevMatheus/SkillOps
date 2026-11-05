@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { formatSyncReport } from "../src/sync/index.js";
 import {
 	applyMultiSelectKey,
 	bgHex,
 	CHARM_PALETTE,
 	createMultiSelectState,
 	fgHex,
+	formatActionBadge,
 	formatBadge,
 	hexToRgb,
 	isColorEnabled,
@@ -12,6 +14,8 @@ import {
 	padVisible,
 	renderAiUsageGuide,
 	renderBox,
+	renderCancelledStep,
+	renderCompletedStep,
 	renderGlobalHelp,
 	renderHeaderBanner,
 	renderKeycap,
@@ -351,6 +355,66 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine", () => {
 		expect(colorFrame).toContain("\x1b[48;2;125;86;244m");
 		expect(stripAnsi(colorFrame)).toContain("• ◦ ◦");
 		for (const line of colorFrame.split("\n")) {
+			expect(visibleLength(line)).toBeLessThanOrEqual(78);
+		}
+
+		const createdBadge = formatActionBadge("created", true);
+		expect(visibleLength(createdBadge)).toBe(11);
+		expect(stripAnsi(createdBadge)).toBe(" + CREATED ");
+
+		const removedBadge = formatActionBadge("removed", true);
+		expect(visibleLength(removedBadge)).toBe(11);
+		expect(stripAnsi(removedBadge)).toBe(" - REMOVED ");
+
+		const stepLine = renderCompletedStep(
+			"Step 1/2 · AI IDE(s)",
+			"cursor, claude",
+			true,
+		);
+		expect(visibleLength(stepLine)).toBeLessThanOrEqual(78);
+		expect(stripAnsi(stepLine)).toContain("Step 1/2 · AI IDE(s)");
+		expect(stripAnsi(stepLine)).toContain("cursor, claude");
+
+		const cancelLine = renderCancelledStep("No AI IDE selected.", true);
+		expect(visibleLength(cancelLine)).toBeLessThanOrEqual(78);
+		expect(stripAnsi(cancelLine)).toContain("No AI IDE selected.");
+
+		const syncReportOut = formatSyncReport(
+			{
+				repo_path: "/workspace/demo",
+				catalog_path: "/workspace/demo/catalog",
+				targets: ["cursor", "claude"],
+				dry_run: false,
+				force: false,
+				artifacts: [
+					{
+						target: "cursor",
+						skill_name: "mcp-architect",
+						relative_path: ".cursor/rules/skillops-mcp-architect.mdc",
+						sha256: "a".repeat(64),
+						action: "created",
+					},
+					{
+						target: "claude",
+						skill_name: "mcp-architect",
+						relative_path: ".claude/skills/mcp-architect/SKILL.md",
+						sha256: "b".repeat(64),
+						action: "created",
+					},
+				],
+				drift_conflicts: [],
+				lockfile_path: "/workspace/demo/.skillops-lock.json",
+				passed: true,
+			},
+			"table",
+			true,
+		);
+		expect(stripAnsi(syncReportOut)).toContain(
+			"◆ SkillOps v1.3.9 — Skills & Subagents Installed",
+		);
+		expect(stripAnsi(syncReportOut)).toContain("+ CREATED");
+		expect(stripAnsi(syncReportOut)).toContain("(cursor)");
+		for (const line of syncReportOut.split("\n")) {
 			expect(visibleLength(line)).toBeLessThanOrEqual(78);
 		}
 	});

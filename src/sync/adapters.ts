@@ -37,7 +37,17 @@ import {
 	type SyncReport,
 	SyncReportSchema,
 } from "../models.js";
-import { renderAiUsageGuide, renderNextSteps } from "../ui/terminal.js";
+import { CHARM_PALETTE, fgHex } from "../ui/lipgloss.js";
+import {
+	formatActionBadge,
+	formatBadge,
+	padVisible,
+	renderAiUsageGuide,
+	renderHeaderBanner,
+	renderNextSteps,
+	renderSectionHeader,
+	style,
+} from "../ui/terminal.js";
 
 export interface AddOptions {
 	readonly targets?: readonly RuntimeTarget[];
@@ -976,47 +986,157 @@ export function formatSyncReport(
 	}
 
 	const c = colorEnabled;
+	const bar = style.dim("│", c);
 	const activeArtifacts = report.artifacts.filter(
 		(a) =>
 			a.action === "created" ||
 			a.action === "updated" ||
 			a.action === "unchanged",
 	);
+	const isRemoval =
+		report.artifacts.length > 0 &&
+		report.artifacts.every((a) => a.action === "removed");
+	const subtitle = !report.passed
+		? "Drift Conflict Detected"
+		: report.dry_run
+			? "Dry-Run Sync Preview"
+			: isRemoval
+				? "Skills & Subagents Removed"
+				: "Skills & Subagents Installed";
+
+	const banner = renderHeaderBanner(subtitle, { colorEnabled: c });
+
+	const counts = {
+		created: 0,
+		updated: 0,
+		removed: 0,
+		unchanged: 0,
+		planned: 0,
+		conflict: 0,
+	};
+	for (const a of report.artifacts) {
+		counts[a.action] += 1;
+	}
+	const countParts: string[] = [];
+	if (counts.created > 0) countParts.push(`${counts.created} created`);
+	if (counts.updated > 0) countParts.push(`${counts.updated} updated`);
+	if (counts.removed > 0) countParts.push(`${counts.removed} removed`);
+	if (counts.planned > 0) countParts.push(`${counts.planned} planned`);
+	if (counts.unchanged > 0) countParts.push(`${counts.unchanged} kept`);
+	if (counts.conflict > 0) countParts.push(`${counts.conflict} conflict`);
+	const breakdown =
+		countParts.length > 0 ? style.dim(` (${countParts.join(", ")})`, c) : "";
+
+	const statusBadge = report.passed
+		? formatBadge("pass", report.dry_run ? "DRY-RUN" : "PASS", c)
+		: formatBadge("fail", "DRIFT CONFLICT", c);
+	const statusLine = `${bar}  ${padVisible(fgHex(CHARM_PALETTE.lavender, style.bold("Status:", c), c), 10, "left")}${statusBadge} ${style.dim("·", c)} ${fgHex(CHARM_PALETTE.white, `${report.artifacts.length} file(s)`, c)}${breakdown}`;
+
+	const visibleTargets =
+		report.targets.length <= 5
+			? report.targets
+					.map((t) => style.bold(style.cyan(t, c), c))
+					.join(style.dim(", ", c))
+			: `${report.targets
+					.slice(0, 4)
+					.map((t) => style.bold(style.cyan(t, c), c))
+					.join(
+						style.dim(", ", c),
+					)} ${fgHex(CHARM_PALETTE.lavender, `+${report.targets.length - 4} more (${report.targets.length} IDEs)`, c)}`;
+	const targetsLine = `${bar}  ${padVisible(fgHex(CHARM_PALETTE.lavender, style.bold("Targets:", c), c), 10, "left")}${visibleTargets}`;
+
+	const maxDisplayed = 12;
+	const shownArtifacts = report.artifacts.slice(0, maxDisplayed);
+	const hiddenCount = Math.max(0, report.artifacts.length - maxDisplayed);
+
+	const artifactLines: string[] = [
+		renderSectionHeader(`Runtime Artifacts (${report.artifacts.length})`, c),
+	];
+	if (report.artifacts.length === 0) {
+		artifactLines.push(`${bar}  ${style.dim("No runtime files matched.", c)}`);
+	} else {
+		for (const a of shownArtifacts) {
+			const badge = formatActionBadge(a.action, c);
+			const targetCol = padVisible(
+				fgHex(CHARM_PALETTE.cyan, style.bold(`(${a.target})`, c), c),
+				13,
+				"left",
+			);
+			const maxPathCols = 47;
+			const shortPath =
+				a.relative_path.length > maxPathCols
+					? `…${a.relative_path.slice(-(maxPathCols - 1))}`
+					: a.relative_path;
+			const styledPath =
+				a.action === "conflict"
+					? fgHex(CHARM_PALETTE.coral, shortPath, c)
+					: a.action === "removed"
+						? fgHex(CHARM_PALETTE.lavender, shortPath, c)
+						: fgHex(CHARM_PALETTE.white, shortPath, c);
+			artifactLines.push(`${bar}  ${badge} ${targetCol} ${styledPath}`);
+		}
+		if (hiddenCount > 0) {
+			artifactLines.push(
+				`${bar}  ${fgHex(CHARM_PALETTE.lavender, `… and ${hiddenCount} more runtime file(s) across ${report.targets.length} AI IDEs`, c)}`,
+			);
+		}
+	}
+
+	const conflictLines: string[] = [];
+	if (report.drift_conflicts.length > 0) {
+		conflictLines.push(renderSectionHeader("Drift Conflicts", c));
+		for (const cItem of report.drift_conflicts) {
+			const shortItem =
+				cItem.length > 52 ? `…${cItem.slice(-51)}` : cItem;
+			conflictLines.push(
+				`${bar}  ${formatBadge("fail", "DRIFT", c)} ${fgHex(CHARM_PALETTE.coral, shortItem, c)}`,
+			);
+		}
+		conflictLines.push(
+			`${bar}  ${fgHex(CHARM_PALETTE.amber, "Local changes detected. Re-run with --force to overwrite.", c)}`,
+		);
+	}
+
+	const isSubagentArtifact = (relPath: string): boolean =>
+		relPath.includes("/agents/") ||
+		relPath.includes("skillops-agent-") ||
+		relPath.endsWith(".agent.md");
+
 	const firstSkill =
-		activeArtifacts.find((a) => a.skill_name !== "codex-agents-index")
-			?.skill_name ?? "mcp-architect";
+		activeArtifacts.find(
+			(a) =>
+				a.skill_name !== "codex-agents-index" &&
+				!isSubagentArtifact(a.relative_path),
+		)?.skill_name ?? "mcp-architect";
+	const firstAgent =
+		activeArtifacts.find((a) => isSubagentArtifact(a.relative_path))
+			?.skill_name ?? "context-scout";
 
 	const usageBox =
 		activeArtifacts.length > 0
-			? renderAiUsageGuide(report.targets, [firstSkill], ["context-scout"], c)
+			? renderAiUsageGuide(report.targets, [firstSkill], [firstAgent], c)
 			: "";
 
 	const nextSteps = renderNextSteps(
 		[
 			{
 				command: "npx skillops-cli add",
-				description: "Install more Skills or Subagents interactively",
+				description: "Install more Skills or Subagents",
 			},
 			{
 				command: "npx skillops-cli remove",
-				description: "Remove installed Skills or Subagents interactively",
+				description: "Remove installed Skills or Subagents",
 			},
 		],
 		c,
 	);
 
 	return [
-		"=== SkillOps Multi-Runtime Transpiler & Sync Engine ===",
-		`Repo       : ${report.repo_path}`,
-		`Targets    : ${report.targets.join(", ")}`,
-		`Artifacts  : ${report.artifacts.length} file(s) [${report.passed ? "PASS" : "DRIFT CONFLICT"}]`,
-		...report.artifacts.map(
-			(a) => `  [${a.action.toUpperCase()}] (${a.target}) ${a.relative_path}`,
-		),
-		...report.drift_conflicts.map(
-			(cItem) =>
-				`  [DRIFT CONFLICT] ${cItem} modified locally. Re-run with --force to overwrite.`,
-		),
+		banner,
+		statusLine,
+		targetsLine,
+		...artifactLines,
+		...conflictLines,
 		usageBox,
 		nextSteps,
 	]
