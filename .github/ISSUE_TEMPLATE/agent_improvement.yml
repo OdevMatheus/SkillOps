@@ -1,34 +1,36 @@
-name: AI Agent Behavior, Skill Routing or Subagent Improvement
-description: Report routing collisions, Startup Token Tax bloat, or prompt improvements for AGENTS.md, SKILL.md, or Subagents
-title: "docs(agents): "
-labels: ["⚠️ agent-behavior", "📄 docs"]
+name: "🤖 AI IDE Adapter or Skill/Subagent Behavior Issue"
+description: "Report an output format mismatch in one of the 28 supported AI IDEs/CLIs or suggest an adjustment to an existing Skill/Subagent"
+title: "fix(sync): "
+labels: ["⚠️ agent-behavior", "🔄 multi-runtime"]
 body:
   - type: dropdown
     id: target_agent
     attributes:
-      label: Target AI Harness, Subagent or Skill Layer
+      label: Target AI IDE / CLI or Catalog Item
       options:
-        - All Harnesses (AGENTS.md / SKILL_CONTRACT.md)
-        - Antigravity / Gemini CLI (GEMINI.md / .agent/skills/ / .agent/agents/)
-        - Claude Code (CLAUDE.md / .claude/skills/ / .claude/agents/)
-        - Cursor (.cursor/rules/*.mdc)
-        - OpenAI Codex CLI (.codex/skills/ / .codex/agents/)
-        - GitHub Copilot (.github/copilot-instructions.md / .github/agents/*.agent.md)
-        - Catalog Hybrid Skill (catalog/<track>/<skill>/SKILL.md)
-        - Catalog Context-Isolated Subagent (catalog/subagents/<name>/AGENT.md)
+        - "Cursor (.cursor/rules/*.mdc)"
+        - "Claude Code (.claude/skills/ & .claude/agents/)"
+        - "GitHub Copilot (.github/instructions/ & .github/agents/)"
+        - "Google Antigravity (.agent/skills/ & .agent/agents/)"
+        - "Google Gemini CLI (.gemini/skills/ & .gemini/agents/)"
+        - "OpenAI Codex CLI (.codex/skills/ & AGENTS.md)"
+        - "Windsurf / Cline / Roo Code / Kilo Code"
+        - "Zed / Continue / Aider / AWS Kiro / Trae / Augment"
+        - "Other Supported Target (Factory, Qwen, OpenCode, OpenHands, Amp, Goose, Warp, Crush, Vibe, Junie, Amazon Q, IDX)"
+        - "Existing Catalog Skill or Subagent (catalog/)"
     validations:
       required: true
   - type: textarea
     id: current_behavior
     attributes:
-      label: Observed Agent Failure Mode or Routing Collision
-      description: How is the AI agent misrouting, colliding between skills, or wasting context window tokens (`npx skillops tokens` / `npx skillops audit`)?
+      label: Observed Behavior
+      description: How does the generated file or prompt behave in the target AI IDE or CLI?
     validations:
       required: true
   - type: textarea
     id: desired_behavior
     attributes:
-      label: Proposed Trigger Boundary or Prompt Adjustment
-      description: What explicit trigger (`Use when...`), negative boundary (`Do not trigger for...`), subagent token cap (`max_output_tokens <= 400`), or deterministic script change resolves this?
+      label: Expected Vendor Specification or Prompt Adjustment
+      description: Link to official vendor docs or describe the frontmatter/path adjustment needed.
     validations:
       required: true
