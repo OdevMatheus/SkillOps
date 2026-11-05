@@ -36,47 +36,14 @@ skillops add
 
 ### Interactive 2-Step TUI Flow
 
-<!-- 💡 SUGESTÃO DE IMAGEM/GIF: Substituir ou acompanhar o bloco abaixo por um GIF/print real do terminal (`docs/assets/skillops-demo.gif`) -->
+| 1. Select Your AI IDE / Agent | 2. Select Skills & Subagents |
+| :---: | :---: |
+| <img src="./docs/assets/step-1-select-ide.png" alt="Step 1: Select AI IDE or Agent" width="100%" /> | <img src="./docs/assets/step-2-select-skills.png" alt="Step 2: Select Skills & Subagents" width="100%" /> |
 
-```text
-◆ SkillOps — Step 1/2: Select Your AI IDE / Agent
-│  Select one or more AI coding assistants to configure
-│  ↑/↓ move · Space select · / search · a all · Enter continue
-│
-├─ [ ◆ AI IDEs & Agents (28) ]   (/ search)
-│
-│  ❯ ◉ cursor           Cursor AI IDE (.cursor/rules)
-│    ◉ claude           Anthropic Claude Code (.claude/skills)
-│    ◯ copilot          GitHub Copilot (.github/instructions)
-│    ◯ antigravity      Google Antigravity IDE (.agent/skills)
-│  ↓ 24 more below...  • ◦ ◦
-│
-╰─ 2 selected — Enter to continue
-```
-
-```text
- ✔  Step 1/2 · AI IDE(s)    cursor, claude
- ✔  Step 2/2 · Selected     mcp-architect, context-scout
-
-◆ SkillOps v1.3.9 — Skills & Subagents Installed
-│  Status:   ✔ PASS · 5 file(s) (5 created)
-│  Targets:  cursor, claude
-│
-├─ Runtime Artifacts (5)
-│   + CREATED  (cursor)      .cursor/rules/skillops-mcp-architect.mdc
-│   + CREATED  (cursor)      .cursor/rules/skillops-agent-context-scout.mdc
-│   + CREATED  (claude)      .claude/skills/mcp-architect/SKILL.md
-│   + CREATED  (claude)      …s/mcp-architect/scripts/validate_mcp_server.py
-│   + CREATED  (claude)      .claude/agents/context-scout.md
-│
-├─ Using Your Skills & Subagents
-│  • Claude Code: Auto-routed (mcp-architect) or @context-scout
-│  • Cursor IDE: Type @mcp-architect in Chat (.cursor/rules/)
-│
-╰─ Next Steps:
-   $ npx skillops-cli add    — Install more Skills or Subagents
-   $ npx skillops-cli remove — Remove installed Skills or Subagents
-```
+<div align="center">
+  <p><strong>3. Native Transpilation &amp; Installation Report</strong></p>
+  <img src="./docs/assets/step-3-install-success.png" alt="Step 3: Skills & Subagents Installed" width="78%" />
+</div>
 
 ---
 
