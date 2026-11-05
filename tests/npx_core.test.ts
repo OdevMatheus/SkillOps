@@ -6,10 +6,7 @@ import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli.js";
 import {
 	ALL_RUNTIME_TARGETS,
-	auditCatalog,
-	auditCatalogTokenBudgets,
 	CORE_RUNTIME_TARGETS,
-	computeCollisionMatrix,
 	countWords,
 	createSkillManifest,
 	createSubagentManifest,
@@ -18,7 +15,6 @@ import {
 	discoverSubagentFiles,
 	ExitCode,
 	estimateTokenCount,
-	fingerprintRepository,
 	parseSkillDirectory,
 	parseSubagentFile,
 	RUNTIME_HARNESS_SPECS,
@@ -33,7 +29,7 @@ const CATALOG_ROOT = path.join(REPO_ROOT, "catalog");
 const VALID_DESCRIPTION =
 	"Use when designing, implementing, or auditing Model Context Protocol (MCP) servers, JSON-RPC 2.0 stdio transports, tool input schemas, and context-window token footprints across enterprise coding agents and local developer harnesses. Do not trigger for generic REST APIs, GraphQL resolvers, or frontend UI component styling.";
 
-describe("SkillOps NPX Core Models & Subagent Contracts (Issue #59)", () => {
+describe("SkillOps Core Models & Subagent Contracts", () => {
 	it("validates a compliant SkillManifest and computes L1 words and tokens", () => {
 		const manifest = createSkillManifest({
 			name: "mcp-architect",
@@ -148,7 +144,7 @@ describe("SkillOps NPX Core Models & Subagent Contracts (Issue #59)", () => {
 		).toThrow();
 	});
 
-	it("discovers and audits real repository catalog skills and subagents", () => {
+	it("discovers and parses real repository catalog skills and subagents", () => {
 		const skillDirs = discoverSkillDirectories(CATALOG_ROOT);
 		expect(skillDirs.length).toBe(1);
 
@@ -173,126 +169,17 @@ describe("SkillOps NPX Core Models & Subagent Contracts (Issue #59)", () => {
 		);
 		expect(contextScout).toBeDefined();
 		expect(contextScout!.manifest.tools).toEqual(["read", "search"]);
-
-		const budgetSummary = auditCatalogTokenBudgets(CATALOG_ROOT, {
-			requireLayout: true,
-		});
-		expect(budgetSummary.passed).toBe(true);
-		expect(budgetSummary.skills.length).toBe(skillDirs.length);
-		expect(budgetSummary.subagents.length).toBeGreaterThanOrEqual(1);
-
-		const collisionReport = auditCatalog(CATALOG_ROOT, { requireLayout: true });
-		expect(collisionReport.passed).toBe(true);
-		expect(collisionReport.blocking_collisions).toHaveLength(0);
-		expect(collisionReport.high_risk_collisions).toHaveLength(0);
 	});
 
-	it("detects planted BLOCKING_ERROR collisions and runs 84-skill stress matrix in < 500ms", () => {
-		const baseManifest = createSkillManifest({
-			name: "sql-lock-doctor-a",
-			description: VALID_DESCRIPTION,
-			track: "python-backend",
-			tags: ["postgresql", "sql", "migration", "locks"],
-			entrypoints: {
-				scripts: [
-					{ path: "scripts/check.py", description: "Check SQL locks." },
-				],
-			},
-		});
-		const duplicateManifest = createSkillManifest({
-			name: "sql-lock-doctor-b",
-			description: VALID_DESCRIPTION,
-			track: "python-backend",
-			tags: ["postgresql", "sql", "migration", "locks"],
-			entrypoints: {
-				scripts: [
-					{ path: "scripts/check.py", description: "Check SQL locks." },
-				],
-			},
-		});
-
-		const pairs = computeCollisionMatrix([baseManifest, duplicateManifest]);
-		expect(pairs).toHaveLength(1);
-		expect(pairs[0]!.severity).toBe("BLOCKING_ERROR");
-		expect(pairs[0]!.similarity).toBeGreaterThanOrEqual(0.85);
-
-		// 84-skill stress test (3,486 pairwise comparisons)
-		const vocab = [
-			"kubernetes",
-			"terraform",
-			"graphql",
-			"postgres",
-			"redis",
-			"playwright",
-			"rust",
-			"golang",
-			"websocket",
-			"opentelemetry",
-			"kafka",
-			"duckdb",
-			"wasm",
-			"tokio",
-			"prisma",
-			"trpc",
-			"nextjs",
-			"tailwind",
-			"vitest",
-			"docker",
-		];
-		const synthetic = Array.from({ length: 84 }, (_, idx) => {
-			const w1 = vocab[idx % vocab.length]!;
-			const w2 = vocab[(idx * 3 + 1) % vocab.length]!;
-			const w3 = vocab[(idx * 7 + 2) % vocab.length]!;
-			const desc = `Use when auditing, profiling, or hardening ${w1}, ${w2}, and ${w3} subsystems for deterministic latency, memory safety, and zero-overhead schema validation in distributed production clusters with strict observability invariants and automated rollback verification gates. Do not trigger for unrelated legacy monoliths.`;
-			return createSkillManifest({
-				name: `synth-skill-${idx}-${w1}`,
-				description: desc,
-				track: "arch-quality",
-				tags: [w1, w2, `domain-${idx}`],
-				entrypoints: {
-					scripts: [
-						{
-							path: "scripts/run.mjs",
-							description: "Synthetic diagnostic script.",
-						},
-					],
-				},
-			});
-		});
-
-		const start = performance.now();
-		const matrix = computeCollisionMatrix(synthetic);
-		const elapsedMs = performance.now() - start;
-		expect(matrix).toHaveLength((84 * 83) / 2);
-		expect(elapsedMs).toBeLessThan(1000);
+	it("executes CLI --version and --help cleanly", () => {
+		expect(runCli(["node", "cli.js", "--version"])).toBe(ExitCode.SUCCESS);
+		expect(runCli(["node", "cli.js", "--help"])).toBe(ExitCode.SUCCESS);
+		expect(runCli(["node", "cli.js", "help", "add"])).toBe(ExitCode.SUCCESS);
+		expect(runCli(["node", "cli.js", "help", "remove"])).toBe(ExitCode.SUCCESS);
+		expect(SKILLOPS_VERSION).toBe("1.3.9");
 	});
 
-	it("executes CLI --version, --help, and audit command cleanly", () => {
-		const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "skillops-npx-test-"));
-		try {
-			expect(runCli(["node", "cli.js", "--version"])).toBe(ExitCode.SUCCESS);
-			expect(runCli(["node", "cli.js", "--help"])).toBe(ExitCode.SUCCESS);
-			expect(
-				runCli([
-					"node",
-					"cli.js",
-					"audit",
-					"--catalog",
-					CATALOG_ROOT,
-					"--require-layout",
-					"--strict",
-					"--format",
-					"json",
-				]),
-			).toBe(ExitCode.SUCCESS);
-			expect(runCli(["node", "cli.js", "--version"])).toBe(0);
-			expect(SKILLOPS_VERSION).toBe("1.3.9");
-		} finally {
-			fs.rmSync(tmpDir, { recursive: true, force: true });
-		}
-	});
-
-	it("validates Top-28 AI Coding Agent registry, auto-detection matrix, and target resolution (Issue #111)", () => {
+	it("validates Top-28 AI Coding Agent registry, auto-detection matrix, and target resolution", () => {
 		expect(ALL_RUNTIME_TARGETS).toHaveLength(28);
 		expect(CORE_RUNTIME_TARGETS).toEqual([
 			"claude",
@@ -316,7 +203,6 @@ describe("SkillOps NPX Core Models & Subagent Contracts (Issue #59)", () => {
 			path.join(os.tmpdir(), "skillops-harnesses-test-"),
 		);
 		try {
-			// Fresh repo has 0 detected harnesses, so "auto" falls back to CORE_RUNTIME_TARGETS
 			expect(detectInstalledHarnesses(tmpRepo)).toEqual([]);
 			expect(resolveRuntimeTargets("auto", tmpRepo)).toEqual([
 				...CORE_RUNTIME_TARGETS,
@@ -331,7 +217,6 @@ describe("SkillOps NPX Core Models & Subagent Contracts (Issue #59)", () => {
 				resolveRuntimeTargets("claude,windsurf,roocode,kiro,junie", tmpRepo),
 			).toEqual(["claude", "windsurf", "roocode", "kiro", "junie"]);
 
-			// Plant markers for Windsurf, Roo Code, Aider, AWS Kiro, and JetBrains Junie
 			fs.writeFileSync(
 				path.join(tmpRepo, ".windsurfrules"),
 				"# Windsurf\n",
@@ -347,23 +232,8 @@ describe("SkillOps NPX Core Models & Subagent Contracts (Issue #59)", () => {
 			fs.mkdirSync(path.join(tmpRepo, ".junie"), { recursive: true });
 
 			const detected = detectInstalledHarnesses(tmpRepo);
-			expect(detected).toEqual([
-				"windsurf",
-				"roocode",
-				"aider",
-				"kiro",
-				"junie",
-			]);
+			expect(detected).toEqual(["windsurf", "roocode", "aider", "kiro", "junie"]);
 			expect(resolveRuntimeTargets("auto", tmpRepo)).toEqual([
-				"windsurf",
-				"roocode",
-				"aider",
-				"kiro",
-				"junie",
-			]);
-
-			const profile = fingerprintRepository(tmpRepo);
-			expect(profile.detected_harnesses).toEqual([
 				"windsurf",
 				"roocode",
 				"aider",

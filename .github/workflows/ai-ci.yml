@@ -75,19 +75,12 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
 
-      - name: Run TypeScript Lint, Typecheck, Vitest, Build & NPX Audit/Tokens/Eval Gate
+      - name: Run TypeScript Lint, Typecheck, Vitest & Build
         run: |
           npm ci
           npm run lint
           npm run typecheck
           npm test
           npm run build
-          node dist/cli.js audit --catalog catalog --format github --strict --require-layout
-          node dist/cli.js tokens --format github --strict
-          node dist/cli.js eval --catalog catalog --format github --strict
-          node dist/cli.js doctor --catalog catalog --format github
-          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-            node dist/cli.js tokens --format markdown >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            node dist/cli.js doctor --catalog catalog --format markdown >> "$GITHUB_STEP_SUMMARY"
-          fi
+          node dist/cli.js --version
+          node dist/cli.js --help

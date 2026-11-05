@@ -19,16 +19,14 @@ import {
 	renderNextSteps,
 	renderPaginationDots,
 	renderPill,
-	renderStep,
 	renderTable,
-	renderTokenBar,
 	stripAnsi,
 	style,
 	suggestCommand,
 	visibleLength,
 } from "../src/ui/index.js";
 
-describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
+describe("Zero-Dependency ANSI TUI Aesthetic Engine", () => {
 	it("respects NO_COLOR, FORCE_COLOR, TERM=dumb, and TTY detection", () => {
 		expect(isColorEnabled({ env: { NO_COLOR: "1" }, isTTY: true })).toBe(false);
 		expect(isColorEnabled({ env: { FORCE_COLOR: "1" }, isTTY: false })).toBe(
@@ -58,10 +56,10 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 
 	it("renders rounded Unicode panels, clean tree header banners, and multi-column aligned tables", () => {
 		const banner = renderHeaderBanner("Framework & Library", {
-			version: "1.3.1",
+			version: "1.3.9",
 			colorEnabled: false,
 		});
-		expect(banner).toContain("◆ SkillOps v1.3.1");
+		expect(banner).toContain("◆ SkillOps v1.3.9");
 		expect(banner).toContain("Framework & Library");
 		expect(banner).not.toContain("⚡");
 
@@ -87,36 +85,18 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 		expect(table).toContain("✔ READY");
 	});
 
-	it("renders visual token budget bars, step indicators, AI usage guides, and fuzzy command suggestions", () => {
-		const bar = renderTokenBar(750, 1500, {
-			width: 10,
-			label: "L1 Budget",
-			colorEnabled: false,
-		});
-		expect(bar).toContain("L1 Budget [█████░░░░░] 50.0% (750 / 1500 tokens)");
-
-		const stepLine = renderStep(
-			1,
-			4,
-			"Stack & AI Agents",
-			"TypeScript • Cursor, Claude",
-			"done",
-			false,
-		);
-		expect(stepLine).toContain("✔ [1/4] Stack & AI Agents");
-		expect(stepLine).toContain("TypeScript • Cursor, Claude");
-
+	it("renders AI usage guides, 2-command global help, multi-select state machine, and fuzzy command suggestions", () => {
 		const nextSteps = renderNextSteps(
 			[
 				{
-					command: "npx skillops-cli quickstart",
-					description: "Setup repository in 1 step",
+					command: "npx skillops-cli add",
+					description: "Install Skills interactively",
 				},
 			],
 			false,
 		);
 		expect(nextSteps).toContain("╰─ Next Steps:");
-		expect(nextSteps).toContain("npx skillops-cli quickstart");
+		expect(nextSteps).toContain("npx skillops-cli add");
 		expect(nextSteps).not.toContain("💡");
 
 		const aiGuide = renderAiUsageGuide(
@@ -133,16 +113,14 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 			expect(visibleLength(line)).toBeLessThanOrEqual(78);
 		}
 
-		const helpOut = renderGlobalHelp("1.3.6", false);
+		const helpOut = renderGlobalHelp("1.3.9", false);
 		expect(helpOut).not.toMatch(/(?:🚀|📚|🛠️|⚙️|🌐|💡|⚡|📦|🔍)/u);
 		expect(helpOut).toContain("add [name...]");
 		expect(helpOut).toContain("remove [name...]");
-		expect(helpOut).toContain("list [query]");
-		expect(helpOut).toContain("search <query>");
-		expect(helpOut).toContain("info <name>");
-		expect(helpOut).not.toContain("\n│  init ");
+		expect(helpOut).not.toContain("quickstart");
+		expect(helpOut).not.toContain("tokens");
 		const helpLines = helpOut.split("\n");
-		expect(helpLines.length).toBeLessThanOrEqual(24);
+		expect(helpLines.length).toBeLessThanOrEqual(20);
 		for (const line of helpLines) {
 			expect(visibleLength(line)).toBeLessThanOrEqual(78);
 		}
@@ -250,10 +228,8 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 				hint: "Google Gemini CLI (.gemini/skills)",
 			},
 		]);
-		// Right arrow is a no-op when all items live on a single unified page
 		ideState = applyMultiSelectKey(ideState, "\x1b[C");
 		expect(ideState.activeTab).toBe("skill");
-		// Move down to 'antigravity' and press Enter without pressing Space
 		ideState = applyMultiSelectKey(ideState, "\x1b[B");
 		expect(ideState.cursor).toBe(1);
 		const ideFrame = renderMultiSelectFrame(
@@ -302,10 +278,8 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 			],
 			{ showSelectAll: true },
 		);
-		// Cursor starts at 0 ([ALL] Select all Skills)
 		expect(selectAllState.options[0]?.isSelectAll).toBe(true);
 		expect(selectAllState.options[0]?.label).toBe("[ALL] Select all Skills");
-		// Press Space on [ALL] Select all Skills -> selects all Skills in the tab
 		selectAllState = applyMultiSelectKey(selectAllState, " ");
 		expect([...selectAllState.selected]).toEqual(["arch-skill", "sec-skill"]);
 		const allCheckedFrame = renderMultiSelectFrame(
@@ -318,24 +292,12 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 		for (const line of allCheckedFrame.split("\n")) {
 			expect(visibleLength(line)).toBeLessThanOrEqual(78);
 		}
-		// Press Space again on [ALL] Select all Skills -> deselects all Skills in the tab
 		selectAllState = applyMultiSelectKey(selectAllState, " ");
 		expect([...selectAllState.selected]).toEqual([]);
 
-		const validCmds = [
-			"quickstart",
-			"install",
-			"recommend",
-			"info",
-			"search",
-			"create",
-			"list",
-			"doctor",
-		];
-		expect(suggestCommand("insatll", validCmds)).toBe("install");
-		expect(suggestCommand("quikstart", validCmds)).toBe("quickstart");
-		expect(suggestCommand("recomend", validCmds)).toBe("recommend");
-		expect(suggestCommand("zzzzzzzzzz", validCmds)).toBeNull();
+		expect(suggestCommand("insatll")).toBe("install");
+		expect(suggestCommand("remov")).toBe("remove");
+		expect(suggestCommand("zzzzzzzzzz")).toBeNull();
 	});
 
 	it("renders Charmbracelet Lip Gloss TrueColor (24-bit RGB) pills, paginator dots, keycaps, and horizontal layouts", () => {
@@ -372,7 +334,6 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine (Issue #125)", () => {
 		const sideBySide = joinHorizontal("top", "Left 1\nLeft 2", "Right 1", 2);
 		expect(sideBySide.split("\n")).toEqual(["Left 1  Right 1", "Left 2"]);
 
-		// Verify TrueColor multi-select frame preserves <= 78 visible columns per line
 		const manyState = createMultiSelectState(
 			Array.from({ length: 15 }, (_, idx) => ({
 				value: `skill-${idx + 1}`,
