@@ -201,7 +201,7 @@ export function renderCommandHelp(
 	const bar = style.dim("│", c);
 	const pillarBadge = formatBadge("info", "LIBRARY", c);
 	const brandPill = renderPill(`◆ SkillOps v${version}`, {
-		fg: CHARM_PALETTE.white,
+		fg: CHARM_PALETTE.inkDark,
 		bg: CHARM_PALETTE.indigo,
 		bold: true,
 		colorEnabled: c,
