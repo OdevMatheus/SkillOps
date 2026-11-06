@@ -268,6 +268,7 @@ export type SyncActionType =
 	| "created"
 	| "updated"
 	| "unchanged"
+	| "skipped"
 	| "removed"
 	| "planned"
 	| "conflict";
@@ -366,6 +367,13 @@ export function formatActionBadge(
 				fg: CHARM_PALETTE.lavender,
 				bg: CHARM_PALETTE.surface,
 				bold: false,
+				colorEnabled,
+			});
+		case "skipped":
+			return renderPill(" » SKIPPED ", {
+				fg: CHARM_PALETTE.inkDark,
+				bg: CHARM_PALETTE.amber,
+				bold: true,
 				colorEnabled,
 			});
 	}

@@ -14,7 +14,9 @@ import {
 	addSkillOrSubagent,
 	cleanSyncedArtifacts,
 	ExitCode,
+	formatSyncReport,
 	removeSkillOrSubagent,
+	stripAnsi,
 } from "../src/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -71,7 +73,7 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 				),
 			).toBe(true);
 
-			// Simulate local drift on a synced file
+			// Simulate existing skill in cursor with local edits + new target gemini (RN1 #169)
 			const driftedRelPath = ".cursor/rules/skillops-mcp-architect.mdc";
 			const driftedFullPath = path.join(tmpRepo, driftedRelPath);
 			fs.appendFileSync(
@@ -79,20 +81,36 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 				"\n<!-- manual local edit -->\n",
 				"utf-8",
 			);
+			const contentBeforeSkip = fs.readFileSync(driftedFullPath, "utf-8");
 
-			const conflictAdd = addSkillOrSubagent(
+			const skipAdd = addSkillOrSubagent(
 				tmpRepo,
 				CATALOG_ROOT,
 				"mcp-architect",
 				{
-					targets: ["cursor"],
+					targets: ["cursor", "gemini"],
 					force: false,
 				},
 			);
-			expect(conflictAdd.passed).toBe(false);
-			expect(conflictAdd.drift_conflicts).toContain(driftedRelPath);
+			expect(skipAdd.passed).toBe(true);
+			expect(skipAdd.skipped_existing).toContain(driftedRelPath);
+			// Existing file in cursor must NOT be overwritten
+			expect(fs.readFileSync(driftedFullPath, "utf-8")).toBe(contentBeforeSkip);
+			// Meanwhile, gemini (which did not have the skill yet) is created
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".gemini", "skills", "mcp-architect", "SKILL.md"),
+				),
+			).toBe(true);
+			// Final report notifies the user that cursor was skipped at the end
+			const formattedSkipReport = stripAnsi(formatSyncReport(skipAdd, "table", false));
+			expect(formattedSkipReport).toContain("SKIPPED");
+			expect(formattedSkipReport).toContain("Skipped — Already Exists (1)");
+			expect(formattedSkipReport).toContain(
+				"(cursor) mcp-architect already exists at .cursor/rules/skillops-mcp-architect.mdc",
+			);
 
-			// Force overwrite resolves drift
+			// Force overwrite replaces existing skill when --force is explicitly passed
 			const forcedAdd = addSkillOrSubagent(
 				tmpRepo,
 				CATALOG_ROOT,
@@ -103,7 +121,11 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 				},
 			);
 			expect(forcedAdd.passed).toBe(true);
+			expect(forcedAdd.skipped_existing).toEqual([]);
 			expect(forcedAdd.drift_conflicts).toEqual([]);
+			expect(fs.readFileSync(driftedFullPath, "utf-8")).not.toContain(
+				"<!-- manual local edit -->",
+			);
 
 			// Surgically remove mcp-architect via CLI
 			expect(
@@ -343,6 +365,63 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 		} finally {
 			stdoutSpy.mockRestore();
 			stderrSpy.mockRestore();
+			fs.rmSync(tmpRepo, { recursive: true, force: true });
+		}
+	});
+
+	it("validates pre-existing Skill or Subagent in a CLI folder without lockfile, skips without overwriting, and warns at the end (Issue #169)", () => {
+		const tmpRepo = fs.mkdtempSync(
+			path.join(os.tmpdir(), "skillops-skip-preexisting-"),
+		);
+		try {
+			// Pre-create a manual mcp-architect skill in .claude/skills/mcp-architect/SKILL.md before SkillOps ever runs
+			const manualSkillDir = path.join(
+				tmpRepo,
+				".claude",
+				"skills",
+				"mcp-architect",
+			);
+			fs.mkdirSync(manualSkillDir, { recursive: true });
+			const manualSkillFile = path.join(manualSkillDir, "SKILL.md");
+			const customContent = "# Custom user-owned mcp-architect skill\n";
+			fs.writeFileSync(manualSkillFile, customContent, "utf-8");
+
+			const report = addSkillOrSubagent(
+				tmpRepo,
+				CATALOG_ROOT,
+				"mcp-architect",
+				{
+					targets: ["claude", "cursor"],
+				},
+			);
+
+			expect(report.passed).toBe(true);
+			// Must NOT overwrite the existing skill in claude
+			expect(fs.readFileSync(manualSkillFile, "utf-8")).toBe(customContent);
+			expect(report.skipped_existing).toEqual([
+				".claude/skills/mcp-architect/SKILL.md",
+			]);
+			expect(
+				report.artifacts.find((a) => a.target === "claude")?.action,
+			).toBe("skipped");
+
+			// Must still create the skill in cursor
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".cursor", "rules", "skillops-mcp-architect.mdc"),
+				),
+			).toBe(true);
+			expect(
+				report.artifacts.find((a) => a.target === "cursor")?.action,
+			).toBe("created");
+
+			const tableOut = stripAnsi(formatSyncReport(report, "table", false));
+			expect(tableOut).toContain("1 created, 1 skipped");
+			expect(tableOut).toContain("Skipped — Already Exists (1)");
+			expect(tableOut).toContain(
+				"(claude) mcp-architect already exists at .claude/skills/mcp-architect/SKILL.md",
+			);
+		} finally {
 			fs.rmSync(tmpRepo, { recursive: true, force: true });
 		}
 	});

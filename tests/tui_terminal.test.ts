@@ -366,6 +366,10 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine", () => {
 		expect(visibleLength(removedBadge)).toBe(11);
 		expect(stripAnsi(removedBadge)).toBe(" - REMOVED ");
 
+		const skippedBadge = formatActionBadge("skipped", true);
+		expect(visibleLength(skippedBadge)).toBe(11);
+		expect(stripAnsi(skippedBadge)).toBe(" » SKIPPED ");
+
 		const stepLine = renderCompletedStep(
 			"Step 1/2 · AI IDE(s)",
 			"cursor, claude",
@@ -402,6 +406,7 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine", () => {
 						action: "created",
 					},
 				],
+				skipped_existing: [],
 				drift_conflicts: [],
 				lockfile_path: "/workspace/demo/.skillops-lock.json",
 				passed: true,
