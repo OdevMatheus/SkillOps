@@ -28,11 +28,11 @@ npx skillops-cli@latest add
 
 | 1. Select Your AI IDE / Agent | 2. Select Skills & Subagents |
 | :---: | :---: |
-| <img src="./docs/assets/step-1-select-ide.png" alt="Step 1: Select AI IDE or Agent" width="100%" /> | <img src="./docs/assets/step-2-select-skills.png" alt="Step 2: Select Skills & Subagents" width="100%" /> |
+| <img src="./docs/assets/tui-step-1-select-ide.png" alt="Step 1: Select AI IDE or Agent" width="100%" /> | <img src="./docs/assets/tui-step-2-select-skills.png" alt="Step 2: Select Skills & Subagents" width="100%" /> |
 
 <div align="center">
   <p><strong>3. Native Transpilation &amp; Installation Report</strong></p>
-  <img src="./docs/assets/step-3-install-success.png" alt="Step 3: Skills & Subagents Installed" width="82%" />
+  <img src="./docs/assets/tui-step-3-install-success.png" alt="Step 3: Skills & Subagents Installed" width="82%" />
 </div>
 
 ### CLI Reference
