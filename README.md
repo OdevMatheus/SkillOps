@@ -1,13 +1,13 @@
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:6366f1,50:a855f7,100:06b6d4&height=190&section=header&text=SkillOps&fontSize=56&fontColor=ffffff&animation=fadeIn&fontAlignY=36&desc=Install+and+manage+AI+Skills+and+Subagents+across+28+coding+IDEs+and+CLIs&descAlignY=58&descSize=16" width="100%" alt="SkillOps" />
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f0f0f,55:1a1a1a,100:dafa9c&height=190&section=header&text=SkillOps&fontSize=56&fontColor=dafa9c&animation=fadeIn&fontAlignY=36&desc=Install+and+manage+AI+Skills+and+Subagents+across+28+coding+IDEs+and+CLIs&descAlignY=58&descSize=16" width="100%" alt="SkillOps" />
 
 <p>
   <a href="https://github.com/OdevMatheus/SkillOps/actions/workflows/ai-ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/OdevMatheus/SkillOps/ai-ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI" alt="CI"></a>
   <a href="https://github.com/OdevMatheus/SkillOps/actions/workflows/codeql.yml"><img src="https://img.shields.io/github/actions/workflow/status/OdevMatheus/SkillOps/codeql.yml?branch=master&style=flat-square&logo=github&logoColor=white&label=CodeQL" alt="CodeQL"></a>
   <a href="https://www.npmjs.com/package/skillops-cli"><img src="https://img.shields.io/badge/npm-v1.3.10-dafa9c?style=flat-square&logo=npm&logoColor=0f0f0f&labelColor=0f0f0f" alt="npm version"></a>
-  <a href="#supported-ai-ides--clis-28"><img src="https://img.shields.io/badge/AI%20IDEs%20%26%20CLIs-28-a855f7?style=flat-square" alt="28 AI IDEs & CLIs"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-04B575?style=flat-square" alt="License: MIT"></a>
+  <a href="#supported-ai-ides--clis-28"><img src="https://img.shields.io/badge/AI%20IDEs%20%26%20CLIs-28-dafa9c?style=flat-square&labelColor=0f0f0f" alt="28 AI IDEs & CLIs"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-ffffff?style=flat-square&labelColor=0f0f0f" alt="License: MIT"></a>
 </p>
 
 <p>
