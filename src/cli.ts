@@ -45,18 +45,31 @@ const PACKAGE_ROOT = path.resolve(
 	"..",
 );
 
+function getAllFlagValues(
+	args: readonly string[],
+	...flagNames: string[]
+): string[] {
+	const flagSet = new Set(flagNames);
+	const values: string[] = [];
+	for (let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		if (!arg || !flagSet.has(arg)) {
+			continue;
+		}
+		const val = args[i + 1];
+		if (val && !val.startsWith("-")) {
+			values.push(val);
+			i += 1;
+		}
+	}
+	return values;
+}
+
 function getFlagValue(
 	args: readonly string[],
 	...flagNames: string[]
 ): string | undefined {
-	for (const flag of flagNames) {
-		const idx = args.indexOf(flag);
-		const val = idx !== -1 ? args[idx + 1] : undefined;
-		if (val && !val.startsWith("-")) {
-			return val;
-		}
-	}
-	return undefined;
+	return getAllFlagValues(args, ...flagNames)[0];
 }
 
 function getPositionalArgs(args: readonly string[]): string[] {
@@ -91,7 +104,7 @@ function getPositionalArgs(args: readonly string[]): string[] {
 }
 
 function resolveTargetsArg(args: readonly string[]): string | undefined {
-	const explicit = getFlagValue(
+	const explicitValues = getAllFlagValues(
 		args,
 		"--targets",
 		"--harness",
@@ -99,8 +112,8 @@ function resolveTargetsArg(args: readonly string[]): string | undefined {
 		"--target",
 		"-t",
 	);
-	if (explicit) {
-		return explicit;
+	if (explicitValues.length > 0) {
+		return explicitValues.join(",");
 	}
 	if (args.includes("--auto")) {
 		return "auto";
@@ -409,6 +422,7 @@ export function runCli(argv: readonly string[]): number {
 					? firstReport
 					: {
 							...firstReport,
+							targets: [...new Set(reports.flatMap((r) => r.targets))],
 							artifacts: reports.flatMap((r) => r.artifacts),
 							skipped_existing: [
 								...new Set(reports.flatMap((r) => r.skipped_existing)),
@@ -491,6 +505,7 @@ export function runCli(argv: readonly string[]): number {
 					? firstReport
 					: {
 							...firstReport,
+							targets: [...new Set(reports.flatMap((r) => r.targets))],
 							artifacts: reports.flatMap((r) => r.artifacts),
 							skipped_existing: [
 								...new Set(reports.flatMap((r) => r.skipped_existing)),
@@ -557,13 +572,15 @@ export async function runCliInteractive(
 				step1Title,
 				targetOptions,
 				{
-					subtitle: "Select one or more AI coding assistants to configure",
+					subtitle:
+						"Select one or more AI coding assistants with Space · Enter to continue",
 					tabLabels: {
 						skill: "AI IDEs & Agents",
 						agent: "",
 					},
 					submitActionLabel: "continue",
 					selectCursorOnEmptySubmit: true,
+					showSelectAll: true,
 				},
 			);
 

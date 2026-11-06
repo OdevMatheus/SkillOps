@@ -118,13 +118,20 @@ export function createMultiSelectState(
 		const agentItems = options.filter((opt) => optionMatchesTab(opt, "agent"));
 		const withAll: MultiSelectOption[] = [];
 		if (skillItems.length > 0) {
+			const isIdeSelector =
+				agentItems.length === 0 &&
+				skillItems.every((opt) => opt.kind === "ide");
 			withAll.push({
-				value: "__all_skills__",
-				label: "[ALL] Select all Skills",
-				kind: "skill",
+				value: isIdeSelector ? "__all_ides__" : "__all_skills__",
+				label: isIdeSelector
+					? "[ALL] Select all AI IDEs"
+					: "[ALL] Select all Skills",
+				kind: isIdeSelector ? "ide" : "skill",
 				tab: "skill",
 				isSelectAll: true,
-				hint: `Select or deselect all ${skillItems.length} Skills in this tab`,
+				hint: isIdeSelector
+					? `Select or deselect all ${skillItems.length} AI IDEs & CLIs`
+					: `Select or deselect all ${skillItems.length} Skills in this tab`,
 			});
 			withAll.push(...skillItems);
 		}
@@ -204,7 +211,13 @@ export function applyMultiSelectKey(
 		if (options.selectCursorOnEmptySubmit && state.selected.size === 0) {
 			const visibleOnSubmit = getFilteredTabOptions(state, state.activeTab);
 			const currentOpt = visibleOnSubmit[state.cursor];
-			if (currentOpt) {
+			if (currentOpt?.isSelectAll) {
+				finalSelected = new Set(
+					visibleOnSubmit
+						.filter((opt) => !opt.isSelectAll)
+						.map((opt) => opt.value),
+				);
+			} else if (currentOpt) {
 				finalSelected = new Set([currentOpt.value]);
 			}
 		}
@@ -632,9 +645,14 @@ export function renderMultiSelectFrame(
 	).length;
 
 	const currentOptLabel = visible[state.cursor]?.label ?? "";
+	const selectedList = [...state.selected];
+	const selectedPreview =
+		selectedList.length <= 3
+			? selectedList.join(", ")
+			: `${selectedList.slice(0, 2).join(", ")}, +${selectedList.length - 2}`;
 	const summaryText = options.tabLabels
 		? state.selected.size > 0
-			? `${state.selected.size} selected`
+			? `${state.selected.size} selected (${selectedPreview})`
 			: options.selectCursorOnEmptySubmit && currentOptLabel
 				? `Target: ${currentOptLabel}`
 				: "0 selected"

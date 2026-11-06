@@ -425,4 +425,76 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 			fs.rmSync(tmpRepo, { recursive: true, force: true });
 		}
 	});
+
+	it("installs Skills and Subagents across all selected AI IDEs simultaneously via comma or repeated -t flags (Issue #170)", () => {
+		const tmpRepo = fs.mkdtempSync(
+			path.join(os.tmpdir(), "skillops-multi-ide-install-"),
+		);
+		try {
+			const code = runCli([
+				"node",
+				"cli.js",
+				"add",
+				"mcp-architect",
+				"context-scout",
+				"--repo",
+				tmpRepo,
+				"--catalog",
+				CATALOG_ROOT,
+				"-t",
+				"cursor",
+				"-t",
+				"claude",
+				"--target",
+				"gemini",
+			]);
+			expect(code).toBe(ExitCode.SUCCESS);
+
+			// Verify all 3 selected AI IDEs received both the Skill and the Subagent
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".cursor", "rules", "skillops-mcp-architect.mdc"),
+				),
+			).toBe(true);
+			expect(
+				fs.existsSync(
+					path.join(
+						tmpRepo,
+						".cursor",
+						"rules",
+						"skillops-agent-context-scout.mdc",
+					),
+				),
+			).toBe(true);
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".claude", "skills", "mcp-architect", "SKILL.md"),
+				),
+			).toBe(true);
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".claude", "agents", "context-scout.md"),
+				),
+			).toBe(true);
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".gemini", "skills", "mcp-architect", "SKILL.md"),
+				),
+			).toBe(true);
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".gemini", "agents", "context-scout.md"),
+				),
+			).toBe(true);
+
+			const lockRaw = JSON.parse(
+				fs.readFileSync(path.join(tmpRepo, ".skillops-lock.json"), "utf-8"),
+			) as { targets: string[]; selected_skills: string[]; selected_subagents: string[] };
+			expect(lockRaw.targets).toEqual(["cursor", "claude", "gemini"]);
+			expect(lockRaw.selected_skills).toEqual(["mcp-architect"]);
+			expect(lockRaw.selected_subagents).toEqual(["context-scout"]);
+		} finally {
+			fs.rmSync(tmpRepo, { recursive: true, force: true });
+		}
+	});
 });

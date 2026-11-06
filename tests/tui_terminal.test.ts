@@ -258,6 +258,57 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine", () => {
 		expect(ideState.status).toBe("submitted");
 		expect([...ideState.selected]).toEqual(["antigravity"]);
 
+		// Multi-IDE selection in Step 1 (RN2 #170): selecting multiple IDEs with Space or [ALL]
+		let multiIdeState = createMultiSelectState(
+			[
+				{
+					value: "cursor",
+					label: "cursor",
+					kind: "ide",
+					tab: "skill",
+					hint: "Cursor AI IDE (.cursor/rules)",
+				},
+				{
+					value: "claude",
+					label: "claude",
+					kind: "ide",
+					tab: "skill",
+					hint: "Anthropic Claude Code (.claude/skills)",
+				},
+				{
+					value: "gemini",
+					label: "gemini",
+					kind: "ide",
+					tab: "skill",
+					hint: "Google Gemini CLI (.gemini/skills)",
+				},
+			],
+			{ showSelectAll: true },
+		);
+		expect(multiIdeState.options[0]?.label).toBe("[ALL] Select all AI IDEs");
+		// Move down to cursor, toggle Space, move down to claude, toggle Space
+		multiIdeState = applyMultiSelectKey(multiIdeState, "\x1b[B");
+		multiIdeState = applyMultiSelectKey(multiIdeState, " ");
+		multiIdeState = applyMultiSelectKey(multiIdeState, "\x1b[B");
+		multiIdeState = applyMultiSelectKey(multiIdeState, " ");
+		const multiIdeFrame = renderMultiSelectFrame(
+			"SkillOps — Step 1/2: Select Your AI IDE / Agent",
+			multiIdeState,
+			{
+				tabLabels: { skill: "AI IDEs & Agents", agent: "" },
+				submitActionLabel: "continue",
+				selectCursorOnEmptySubmit: true,
+				showSelectAll: true,
+				colorEnabled: false,
+			},
+		);
+		expect(multiIdeFrame).toContain("2 selected (cursor, claude) — Enter to continue");
+		multiIdeState = applyMultiSelectKey(multiIdeState, "\r", {
+			selectCursorOnEmptySubmit: true,
+		});
+		expect(multiIdeState.status).toBe("submitted");
+		expect([...multiIdeState.selected]).toEqual(["cursor", "claude"]);
+
 		// Select All option at the top of Skills & Agents tabs (showSelectAll: true)
 		let selectAllState = createMultiSelectState(
 			[
