@@ -442,7 +442,7 @@ export function renderMultiSelectFrame(
 	const isSinglePage = totalAgents === 0 || totalSkills === 0;
 
 	const header = renderPill(`◆ ${title}`, {
-		fg: CHARM_PALETTE.white,
+		fg: CHARM_PALETTE.inkDark,
 		bg: CHARM_PALETTE.indigo,
 		bold: true,
 		colorEnabled: c,
@@ -477,7 +477,7 @@ export function renderMultiSelectFrame(
 	const skillTabLabel =
 		state.activeTab === "skill"
 			? renderPill(`[ ◆ ${skillTabTitle} (${skillCountStr}) ]`, {
-					fg: CHARM_PALETTE.white,
+					fg: CHARM_PALETTE.inkDark,
 					bg: CHARM_PALETTE.indigo,
 					bold: true,
 					colorEnabled: c,
@@ -486,7 +486,7 @@ export function renderMultiSelectFrame(
 	const agentTabLabel =
 		state.activeTab === "agent"
 			? renderPill(`[ ◆ ${agentTabTitle} (${agentCountStr}) ]`, {
-					fg: CHARM_PALETTE.white,
+					fg: CHARM_PALETTE.inkDark,
 					bg: CHARM_PALETTE.hotPink,
 					bold: true,
 					colorEnabled: c,
@@ -653,7 +653,7 @@ export function renderMultiSelectFrame(
 	const styledCta =
 		state.selected.size > 0 || options.selectCursorOnEmptySubmit
 			? renderPill(ctaText, {
-					fg: CHARM_PALETTE.white,
+					fg: CHARM_PALETTE.inkDark,
 					bg:
 						submitVerb === "remove"
 							? CHARM_PALETTE.hotPink

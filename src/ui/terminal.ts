@@ -181,7 +181,7 @@ export function renderHeaderBanner(
 	const ver = options?.version ?? SKILLOPS_VERSION;
 	const c = options?.colorEnabled;
 	const brandPill = renderPill(`◆ SkillOps v${ver}`, {
-		fg: CHARM_PALETTE.white,
+		fg: CHARM_PALETTE.inkDark,
 		bg: CHARM_PALETTE.indigo,
 		bold: true,
 		colorEnabled: c,
@@ -303,15 +303,15 @@ export function formatBadge(
 			);
 		case "skill":
 			return renderPill(`[${customLabel ?? "SKILL"}]`, {
-				fg: CHARM_PALETTE.white,
+				fg: CHARM_PALETTE.inkDark,
 				bg: CHARM_PALETTE.indigo,
 				bold: true,
 				colorEnabled,
 			});
 		case "subagent":
 			return renderPill(`[${customLabel ?? "SUBAGENT"}]`, {
-				fg: CHARM_PALETTE.white,
-				bg: CHARM_PALETTE.hotPink,
+				fg: CHARM_PALETTE.indigo,
+				bg: CHARM_PALETTE.keycapBg,
 				bold: true,
 				colorEnabled,
 			});
@@ -328,28 +328,28 @@ export function formatActionBadge(
 	switch (action) {
 		case "created":
 			return renderPill(" + CREATED ", {
-				fg: CHARM_PALETTE.white,
+				fg: CHARM_PALETTE.inkDark,
 				bg: CHARM_PALETTE.mint,
 				bold: true,
 				colorEnabled,
 			});
 		case "updated":
 			return renderPill(" ~ UPDATED ", {
-				fg: CHARM_PALETTE.surface,
-				bg: CHARM_PALETTE.cyan,
+				fg: CHARM_PALETTE.indigo,
+				bg: CHARM_PALETTE.keycapBg,
 				bold: true,
 				colorEnabled,
 			});
 		case "removed":
 			return renderPill(" - REMOVED ", {
 				fg: CHARM_PALETTE.white,
-				bg: CHARM_PALETTE.hotPink,
+				bg: CHARM_PALETTE.keycapBg,
 				bold: true,
 				colorEnabled,
 			});
 		case "planned":
 			return renderPill(" * PLANNED ", {
-				fg: CHARM_PALETTE.surface,
+				fg: CHARM_PALETTE.inkDark,
 				bg: CHARM_PALETTE.amber,
 				bold: true,
 				colorEnabled,
@@ -381,7 +381,7 @@ export function renderCompletedStep(
 ): string {
 	const c = colorEnabled;
 	const checkPill = renderPill(" ✔ ", {
-		fg: CHARM_PALETTE.white,
+		fg: CHARM_PALETTE.inkDark,
 		bg: CHARM_PALETTE.mint,
 		bold: true,
 		colorEnabled: c,

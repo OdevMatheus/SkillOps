@@ -11,22 +11,23 @@ import { isColorEnabled, padVisible, visibleLength } from "./terminal.js";
 const ESC = String.fromCharCode(27);
 
 /**
- * Official Charmbracelet Lip Gloss / Huh / Bubbles inspired TrueColor palette.
+ * SkillOps Soot, Chalk & Electric Lime TrueColor palette (aligned with SkillOps-Web).
  */
 export const CHARM_PALETTE = {
-	indigo: "#7D56F4",
-	fuchsia: "#EE6FF8",
-	hotPink: "#F25D94",
-	mint: "#04B575",
-	amber: "#FFBD2E",
+	indigo: "#DAFA9C",
+	fuchsia: "#DAFA9C",
+	hotPink: "#DAFA9C",
+	mint: "#DAFA9C",
+	amber: "#E5C07B",
 	coral: "#FF5F56",
-	cyan: "#00D7FF",
-	lavender: "#B4A7D6",
-	white: "#FAFAFA",
+	cyan: "#FFFFFF",
+	lavender: "#A8A8A8",
+	white: "#FFFFFF",
 	muted: "#6C6C6C",
-	subtle: "#4A4A4A",
-	surface: "#2A2438",
-	keycapBg: "#302B3F",
+	subtle: "#454545",
+	surface: "#1A1A1A",
+	keycapBg: "#242424",
+	inkDark: "#0F0F0F",
 } as const;
 
 export type CharmColorKey = keyof typeof CHARM_PALETTE;
@@ -95,8 +96,10 @@ export function renderPill(text: string, options?: PillOptions): string {
 	if (!useColor || text.length === 0) {
 		return text;
 	}
-	const fg = options?.fg ?? CHARM_PALETTE.white;
 	const bg = options?.bg ?? CHARM_PALETTE.indigo;
+	const isLimeBg = bg.toUpperCase() === CHARM_PALETTE.indigo;
+	const fg =
+		options?.fg ?? (isLimeBg ? CHARM_PALETTE.inkDark : CHARM_PALETTE.white);
 	const bold = options?.bold ?? true;
 	let styled = fgHex(fg, text, true);
 	styled = bgHex(bg, styled, true);
