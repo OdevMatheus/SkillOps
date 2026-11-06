@@ -305,26 +305,26 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine", () => {
 	});
 
 	it("renders Charmbracelet Lip Gloss TrueColor (24-bit RGB) pills, paginator dots, keycaps, and horizontal layouts", () => {
-		expect(hexToRgb("#7D56F4")).toEqual([125, 86, 244]);
+		expect(hexToRgb("#DAFA9C")).toEqual([218, 250, 156]);
 		expect(hexToRgb("#F0A")).toEqual([255, 0, 170]);
 
 		const fgStyled = fgHex(CHARM_PALETTE.indigo, "Charm", true);
-		expect(fgStyled).toContain("\x1b[38;2;125;86;244mCharm\x1b[39m");
+		expect(fgStyled).toContain("\x1b[38;2;218;250;156mCharm\x1b[39m");
 		expect(stripAnsi(fgStyled)).toBe("Charm");
 		expect(visibleLength(fgStyled)).toBe(5);
 
 		const bgStyled = bgHex(CHARM_PALETTE.hotPink, "Bubble", true);
-		expect(bgStyled).toContain("\x1b[48;2;242;93;148mBubble\x1b[49m");
+		expect(bgStyled).toContain("\x1b[48;2;218;250;156mBubble\x1b[49m");
 		expect(stripAnsi(bgStyled)).toBe("Bubble");
 
 		const pill = renderPill("[ ◆ Skills (10) ]", {
-			fg: CHARM_PALETTE.white,
+			fg: CHARM_PALETTE.inkDark,
 			bg: CHARM_PALETTE.indigo,
 			bold: true,
 			colorEnabled: true,
 		});
-		expect(pill).toContain("\x1b[48;2;125;86;244m");
-		expect(pill).toContain("\x1b[38;2;250;250;250m");
+		expect(pill).toContain("\x1b[48;2;218;250;156m");
+		expect(pill).toContain("\x1b[38;2;15;15;15m");
 		expect(stripAnsi(pill)).toBe("[ ◆ Skills (10) ]");
 		expect(visibleLength(pill)).toBe(17);
 
@@ -352,7 +352,7 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine", () => {
 			manyState,
 			{ maxVisible: 6, colorEnabled: true },
 		);
-		expect(colorFrame).toContain("\x1b[48;2;125;86;244m");
+		expect(colorFrame).toContain("\x1b[48;2;218;250;156m");
 		expect(stripAnsi(colorFrame)).toContain("• ◦ ◦");
 		for (const line of colorFrame.split("\n")) {
 			expect(visibleLength(line)).toBeLessThanOrEqual(78);
