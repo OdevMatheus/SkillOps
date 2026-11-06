@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.10] - 2026-11-06
+
+### Changed
+- **Unified Soot, Chalk & Electric Lime TUI Palette (`PR #164`):**
+  - Updated [`src/ui/lipgloss.ts`](./src/ui/lipgloss.ts), [`src/ui/terminal.ts`](./src/ui/terminal.ts), [`src/ui/prompt.ts`](./src/ui/prompt.ts), and [`src/ui/help.ts`](./src/ui/help.ts) so all TrueColor (24-bit RGB) pills, badges, and interactive multi-select prompts match the official **SkillOps** Soot (`#0F0F0F`), Chalk (`#FFFFFF`), and Electric Lime (`#DAFA9C`) visual identity.
+
+---
+
 ## [1.3.4] - 2026-11-04
 
 ### Added
