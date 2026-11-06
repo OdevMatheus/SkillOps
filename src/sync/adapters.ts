@@ -73,6 +73,85 @@ interface PlannedFile {
 	readonly content: string;
 }
 
+interface SkippedTargetItem {
+	readonly target: RuntimeTarget;
+	readonly itemName: string;
+	readonly relativePath: string;
+	readonly sha256: string;
+}
+
+/**
+ * Check whether a Skill or Subagent already exists on disk in a given target AI CLI / IDE directory.
+ * Returns the relative path of the existing artifact if found, or `null` if not yet present.
+ */
+export function findExistingItemPathInTarget(
+	resolvedRepo: string,
+	itemName: string,
+	kind: "skill" | "subagent",
+	target: RuntimeTarget,
+	plannedForTarget: readonly PlannedFile[] = [],
+): string | null {
+	for (const pf of plannedForTarget) {
+		const fullPlanned = path.join(resolvedRepo, pf.relativePath);
+		if (fs.existsSync(fullPlanned) && fs.statSync(fullPlanned).isFile()) {
+			return pf.relativePath;
+		}
+	}
+
+	const spec = RUNTIME_HARNESS_SPECS[target];
+	const candidates: string[] =
+		kind === "skill"
+			? [
+					`${spec.skillsDir}/${itemName}/SKILL.md`,
+					`${spec.skillsDir}/${itemName}/RULE.md`,
+					`${spec.skillsDir}/skillops-${itemName}.mdc`,
+					`${spec.skillsDir}/${itemName}.mdc`,
+					`${spec.skillsDir}/skillops-${itemName}.md`,
+					`${spec.skillsDir}/${itemName}.md`,
+					`${spec.skillsDir}/skillops-${itemName}.instructions.md`,
+					`${spec.skillsDir}/${itemName}.instructions.md`,
+				]
+			: [
+					`${spec.subagentsDir}/${itemName}.md`,
+					`${spec.subagentsDir}/skillops-agent-${itemName}.md`,
+					`${spec.subagentsDir}/${itemName}.agent.md`,
+					`${spec.subagentsDir}/skillops-agent-${itemName}.mdc`,
+					`${spec.subagentsDir}/${itemName}.mdc`,
+					`${spec.subagentsDir}/skillops-agent-${itemName}.prompt`,
+					`${spec.subagentsDir}/${itemName}.prompt`,
+					`${spec.subagentsDir}/skillops-agent-${itemName}.toml`,
+					`${spec.subagentsDir}/${itemName}.toml`,
+					`${spec.subagentsDir}/skillops-agent-${itemName}.json`,
+					`${spec.subagentsDir}/${itemName}.json`,
+				];
+
+	for (const relCandidate of candidates) {
+		const fullCandidate = path.join(resolvedRepo, relCandidate);
+		if (fs.existsSync(fullCandidate) && fs.statSync(fullCandidate).isFile()) {
+			return relCandidate;
+		}
+	}
+
+	if (kind === "skill") {
+		const skillFolderRel = `${spec.skillsDir}/${itemName}`;
+		const skillFolderFull = path.join(resolvedRepo, skillFolderRel);
+		if (
+			fs.existsSync(skillFolderFull) &&
+			fs.statSync(skillFolderFull).isDirectory()
+		) {
+			const entries = fs.readdirSync(skillFolderFull);
+			const firstFile = entries.find((entry) =>
+				fs.statSync(path.join(skillFolderFull, entry)).isFile(),
+			);
+			if (firstFile) {
+				return `${skillFolderRel}/${firstFile}`;
+			}
+		}
+	}
+
+	return null;
+}
+
 const CODEX_MARKER_START = "<!-- SKILLOPS:START -->";
 const CODEX_MARKER_END = "<!-- SKILLOPS:END -->";
 
@@ -478,6 +557,7 @@ function applyPlannedFiles(
 		dryRun: boolean;
 		force: boolean;
 		preserveUnlistedLockEntries: boolean;
+		skippedTargetItems?: readonly SkippedTargetItem[];
 		addedSkillName?: string;
 		addedSubagentName?: string;
 	},
@@ -490,52 +570,46 @@ function applyPlannedFiles(
 			: {};
 
 	const artifacts: SyncedArtifact[] = [];
+	const skippedExisting: string[] = [];
 	const driftConflicts: string[] = [];
+
+	for (const skipped of options.skippedTargetItems ?? []) {
+		skippedExisting.push(skipped.relativePath);
+		artifacts.push({
+			target: skipped.target,
+			skill_name: skipped.itemName,
+			relative_path: skipped.relativePath,
+			sha256: skipped.sha256,
+			action: "skipped",
+		});
+		const previousEntry = existingLock?.artifacts[skipped.relativePath];
+		if (previousEntry) {
+			newLockArtifacts[skipped.relativePath] = previousEntry;
+		}
+	}
 
 	for (const pf of plannedFiles) {
 		const fullPath = path.join(resolvedRepo, pf.relativePath);
 		const desiredSha = computeSha256(pf.content);
-		const previousEntry = existingLock?.artifacts[pf.relativePath];
 		const fileExists =
 			fs.existsSync(fullPath) && fs.statSync(fullPath).isFile();
 
 		if (fileExists) {
-			const currentDiskText = fs.readFileSync(fullPath, "utf-8");
-			const currentDiskSha = computeSha256(currentDiskText);
-
-			// Drift check: if file was previously managed by SkillOps and disk SHA differs from lockfile SHA
-			if (
-				previousEntry &&
-				currentDiskSha !== previousEntry.sha256 &&
-				currentDiskSha !== desiredSha &&
-				!options.force
-			) {
-				driftConflicts.push(pf.relativePath);
+			if (!options.force) {
+				const currentDiskText = fs.readFileSync(fullPath, "utf-8");
+				const currentDiskSha = computeSha256(currentDiskText);
+				skippedExisting.push(pf.relativePath);
 				artifacts.push({
 					target: pf.target,
 					skill_name: pf.itemName,
 					relative_path: pf.relativePath,
 					sha256: currentDiskSha,
-					action: "conflict",
+					action: "skipped",
 				});
-				newLockArtifacts[pf.relativePath] = previousEntry;
-				continue;
-			}
-
-			if (currentDiskSha === desiredSha) {
-				artifacts.push({
-					target: pf.target,
-					skill_name: pf.itemName,
-					relative_path: pf.relativePath,
-					sha256: desiredSha,
-					action: "unchanged",
-				});
-				newLockArtifacts[pf.relativePath] = {
-					target: pf.target,
-					skill_name: pf.itemName,
-					relative_path: pf.relativePath,
-					sha256: desiredSha,
-				};
+				const previousEntry = existingLock?.artifacts[pf.relativePath];
+				if (previousEntry) {
+					newLockArtifacts[pf.relativePath] = previousEntry;
+				}
 				continue;
 			}
 
@@ -577,24 +651,39 @@ function applyPlannedFiles(
 		}
 	}
 
-	// Write updated lockfile if not dry-run and no drift conflicts
-	if (!options.dryRun && driftConflicts.length === 0) {
+	const hasWrittenArtifacts = artifacts.some(
+		(a) => a.action === "created" || a.action === "updated",
+	);
+
+	// Write updated lockfile if not dry-run, no drift conflicts, and at least one file was created/updated (or lockfile already exists)
+	if (
+		!options.dryRun &&
+		driftConflicts.length === 0 &&
+		(hasWrittenArtifacts || existingLock !== null)
+	) {
+		const activeTargetsForItem = artifacts
+			.filter((a) => a.action === "created" || a.action === "updated")
+			.map((a) => a.target);
 		const mergedTargets = [
 			...new Set<RuntimeTarget>([
 				...(existingLock?.targets ?? []),
-				...targets,
+				...activeTargetsForItem,
 			]),
 		];
 		const mergedSkills = [
 			...new Set<string>([
 				...(existingLock?.selected_skills ?? []),
-				...(options.addedSkillName ? [options.addedSkillName] : []),
+				...(hasWrittenArtifacts && options.addedSkillName
+					? [options.addedSkillName]
+					: []),
 			]),
 		];
 		const mergedSubagents = [
 			...new Set<string>([
 				...(existingLock?.selected_subagents ?? []),
-				...(options.addedSubagentName ? [options.addedSubagentName] : []),
+				...(hasWrittenArtifacts && options.addedSubagentName
+					? [options.addedSubagentName]
+					: []),
 			]),
 		];
 
@@ -621,6 +710,7 @@ function applyPlannedFiles(
 		dry_run: options.dryRun,
 		force: options.force,
 		artifacts,
+		skipped_existing: skippedExisting,
 		drift_conflicts: driftConflicts,
 		lockfile_path: lockfilePath.replace(/\\/g, "/"),
 		passed: driftConflicts.length === 0,
@@ -680,15 +770,39 @@ export function addSkillOrSubagent(
 	}
 
 	const plannedFiles: PlannedFile[] = [];
+	const skippedTargetItems: SkippedTargetItem[] = [];
+	const itemKind: "skill" | "subagent" = matchedSkill ? "skill" : "subagent";
+
 	for (const target of targets) {
-		if (matchedSkill) {
-			plannedFiles.push(...renderSkillFilesForRuntime(matchedSkill, target));
-		}
-		if (matchedSubagent) {
-			plannedFiles.push(
-				...renderSubagentFilesForRuntime(matchedSubagent, target),
+		const targetPlanned = matchedSkill
+			? renderSkillFilesForRuntime(matchedSkill, target)
+			: renderSubagentFilesForRuntime(matchedSubagent!, target);
+
+		if (!force) {
+			const existingRelPath = findExistingItemPathInTarget(
+				resolvedRepo,
+				itemName,
+				itemKind,
+				target,
+				targetPlanned,
 			);
+			if (existingRelPath !== null) {
+				const existingFull = path.join(resolvedRepo, existingRelPath);
+				const diskSha =
+					fs.existsSync(existingFull) && fs.statSync(existingFull).isFile()
+						? computeSha256(fs.readFileSync(existingFull, "utf-8"))
+						: computeSha256("");
+				skippedTargetItems.push({
+					target,
+					itemName,
+					relativePath: existingRelPath,
+					sha256: diskSha,
+				});
+				continue;
+			}
 		}
+
+		plannedFiles.push(...targetPlanned);
 	}
 
 	return applyPlannedFiles(
@@ -700,6 +814,7 @@ export function addSkillOrSubagent(
 			dryRun,
 			force,
 			preserveUnlistedLockEntries: true,
+			skippedTargetItems,
 			addedSkillName: matchedSkill?.manifest.name,
 			addedSubagentName: matchedSubagent?.manifest.name,
 		},
@@ -972,6 +1087,7 @@ export function formatSyncReport(
 			"",
 			`- **Targets**: ${report.targets.map((t) => `\`${t}\``).join(", ")}`,
 			`- **Artifacts Synced**: \`${report.artifacts.length}\``,
+			`- **Skipped (Already Exists)**: \`${report.skipped_existing.length}\``,
 			`- **Drift Conflicts**: \`${report.drift_conflicts.length}\``,
 			`- **Status**: **${report.passed ? "PASS" : "CONFLICT"}**`,
 			"",
@@ -996,13 +1112,18 @@ export function formatSyncReport(
 	const isRemoval =
 		report.artifacts.length > 0 &&
 		report.artifacts.every((a) => a.action === "removed");
+	const isAllSkipped =
+		report.artifacts.length > 0 &&
+		report.artifacts.every((a) => a.action === "skipped");
 	const subtitle = !report.passed
 		? "Drift Conflict Detected"
 		: report.dry_run
 			? "Dry-Run Sync Preview"
 			: isRemoval
 				? "Skills & Subagents Removed"
-				: "Skills & Subagents Installed";
+				: isAllSkipped
+					? "Skills & Subagents Skipped (Already Installed)"
+					: "Skills & Subagents Installed";
 
 	const banner = renderHeaderBanner(subtitle, { colorEnabled: c });
 
@@ -1011,6 +1132,7 @@ export function formatSyncReport(
 		updated: 0,
 		removed: 0,
 		unchanged: 0,
+		skipped: 0,
 		planned: 0,
 		conflict: 0,
 	};
@@ -1020,6 +1142,7 @@ export function formatSyncReport(
 	const countParts: string[] = [];
 	if (counts.created > 0) countParts.push(`${counts.created} created`);
 	if (counts.updated > 0) countParts.push(`${counts.updated} updated`);
+	if (counts.skipped > 0) countParts.push(`${counts.skipped} skipped`);
 	if (counts.removed > 0) countParts.push(`${counts.removed} removed`);
 	if (counts.planned > 0) countParts.push(`${counts.planned} planned`);
 	if (counts.unchanged > 0) countParts.push(`${counts.unchanged} kept`);
@@ -1070,7 +1193,7 @@ export function formatSyncReport(
 			const styledPath =
 				a.action === "conflict"
 					? fgHex(CHARM_PALETTE.coral, shortPath, c)
-					: a.action === "removed"
+					: a.action === "removed" || a.action === "skipped"
 						? fgHex(CHARM_PALETTE.lavender, shortPath, c)
 						: fgHex(CHARM_PALETTE.white, shortPath, c);
 			artifactLines.push(`${bar}  ${badge} ${targetCol} ${styledPath}`);
@@ -1080,6 +1203,31 @@ export function formatSyncReport(
 				`${bar}  ${fgHex(CHARM_PALETTE.lavender, `… and ${hiddenCount} more runtime file(s) across ${report.targets.length} AI IDEs`, c)}`,
 			);
 		}
+	}
+
+	const skippedArtifacts = report.artifacts.filter(
+		(a) => a.action === "skipped",
+	);
+	const skippedLines: string[] = [];
+	if (skippedArtifacts.length > 0) {
+		skippedLines.push(
+			renderSectionHeader(
+				`Skipped — Already Exists (${skippedArtifacts.length})`,
+				c,
+			),
+		);
+		for (const sItem of skippedArtifacts) {
+			const shortRel =
+				sItem.relative_path.length > 48
+					? `…${sItem.relative_path.slice(-47)}`
+					: sItem.relative_path;
+			skippedLines.push(
+				`${bar}  ${formatBadge("warn", "SKIPPED", c)} ${fgHex(CHARM_PALETTE.cyan, style.bold(`(${sItem.target})`, c), c)} ${fgHex(CHARM_PALETTE.white, sItem.skill_name, c)} ${style.dim(`already exists at ${shortRel}`, c)}`,
+			);
+		}
+		skippedLines.push(
+			`${bar}  ${fgHex(CHARM_PALETTE.lavender, "Existing files were preserved and not overwritten. Pass --force to replace them.", c)}`,
+		);
 	}
 
 	const conflictLines: string[] = [];
@@ -1136,6 +1284,7 @@ export function formatSyncReport(
 		statusLine,
 		targetsLine,
 		...artifactLines,
+		...skippedLines,
 		...conflictLines,
 		usageBox,
 		nextSteps,

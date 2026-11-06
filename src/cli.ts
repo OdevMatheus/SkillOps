@@ -410,6 +410,9 @@ export function runCli(argv: readonly string[]): number {
 					: {
 							...firstReport,
 							artifacts: reports.flatMap((r) => r.artifacts),
+							skipped_existing: [
+								...new Set(reports.flatMap((r) => r.skipped_existing)),
+							],
 							drift_conflicts: [
 								...new Set(reports.flatMap((r) => r.drift_conflicts)),
 							],
@@ -489,6 +492,9 @@ export function runCli(argv: readonly string[]): number {
 					: {
 							...firstReport,
 							artifacts: reports.flatMap((r) => r.artifacts),
+							skipped_existing: [
+								...new Set(reports.flatMap((r) => r.skipped_existing)),
+							],
 							drift_conflicts: [
 								...new Set(reports.flatMap((r) => r.drift_conflicts)),
 							],
