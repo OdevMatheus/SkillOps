@@ -285,8 +285,8 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 		expect(targetOptions[3]?.value).toBe("antigravity");
 
 		const catalogOptions = buildInteractiveCatalogOptions(CATALOG_ROOT);
-		expect(catalogOptions.length).toBe(2);
-		expect(catalogOptions.filter((o) => o.kind === "skill").length).toBe(1);
+		expect(catalogOptions.length).toBe(3);
+		expect(catalogOptions.filter((o) => o.kind === "skill").length).toBe(2);
 		expect(catalogOptions.filter((o) => o.kind === "agent").length).toBe(1);
 
 		const tmpRepo = fs.mkdtempSync(
@@ -334,12 +334,14 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 				tmpRepo,
 				CATALOG_ROOT,
 			);
-			expect(installedOpts.length).toBe(2);
+			expect(installedOpts.length).toBe(3);
 			expect(installedOpts[0]?.value).toBe("mcp-architect");
 			expect(installedOpts[0]?.kind).toBe("skill");
 			expect(installedOpts[0]?.hint).toContain("[cursor, gemini]");
-			expect(installedOpts[1]?.value).toBe("context-scout");
-			expect(installedOpts[1]?.kind).toBe("agent");
+			expect(installedOpts[1]?.value).toBe("env-secrets-guard");
+			expect(installedOpts[1]?.kind).toBe("skill");
+			expect(installedOpts[2]?.value).toBe("context-scout");
+			expect(installedOpts[2]?.kind).toBe("agent");
 
 			expect(
 				runCli([
