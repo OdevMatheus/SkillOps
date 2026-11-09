@@ -37,7 +37,7 @@ npm test
 
 ## 3. Track A: Contributing a New Skill or Subagent (No Issue Needed)
 
-Every item in [`catalog/`](./catalog) must comply with [`SKILL_CONTRACT.md`](./SKILL_CONTRACT.md) (`INV-SKILL-01` through `INV-SKILL-04`):
+Every item in [`catalog/`](./catalog) must comply with [`SKILL_CONTRACT.md`](./SKILL_CONTRACT.md) (`INV-SKILL-01` through `INV-SKILL-06`):
 
 ### 3.1 Adding a Hybrid Skill (`SKILL.md`)
 1. Create a folder under `catalog/<track>/<skill-slug>/` (e.g., `ai-engineering`, `python-backend`, `arch-quality`):
@@ -48,9 +48,10 @@ Every item in [`catalog/`](./catalog) must comply with [`SKILL_CONTRACT.md`](./S
    │   └── <tool_name>.py
    └── references/               # Optional deep reference docs loaded on demand
    ```
-2. **Contract checklist for `SKILL.md`:**
+2. **Contract checklist for `SKILL.md` & `scripts/`:**
    - `description` must start with `"Use when..."` and contain **`40–110` words** (`<= 160` tokens), including explicit `Do not trigger for...` negative triggers.
    - Markdown body must stay **`<= 250` lines** (`<= 1,800` tokens).
+   - **Security Invariant (`INV-SKILL-06`):** Scripts must be 100% offline/stdlib-only (`auditCatalogSecurity` in [`src/auditor/security.ts`](./src/auditor/security.ts)). Outbound network clients (`urllib.request`, `http.client`, `socket`, `requests`, `curl | sh`), dynamic execution (`eval`, `exec`, `pickle`, `ctypes`), unsafe shell execution (`os.system`, `shell=True`), Trojan-Source hidden Unicode, symbolic links, and binary/archive files (`.exe`, `.dll`, `.so`, `.pyc`, `.zip`, `.tar.gz`) are automatically blocked by CI.
 
 ### 3.2 Adding a Context-Isolated Subagent (`SUBAGENT.md`)
 1. Create a folder under `catalog/subagents/<subagent-slug>/`:
@@ -108,3 +109,5 @@ All Pull Requests are automatically checked by [`.github/workflows/pr-governance
    - **No Absolute Machine Paths:** Never commit `C:\Users\...`, `/Users/...`, or `/home/...` in any tracked file. Use relative paths (`./...`).
    - **No Environment or Corporate Metadata:** Never expose OS usernames, local hostnames, or private domains.
    - **No Secrets or API Keys:** Never commit `.env` files or AI provider keys (`sk-proj-...`, `sk-ant-...`, `AIzaSy...`, `hf_...`).
+4. **Mandatory `CODEOWNERS` Security Review & Automated Gates:**
+   - Every Pull Request targeting `main`—especially additions or edits under `catalog/`—must pass all automated CI gates (`pr-governance.yml`, `ai-ci.yml` AST/Trojan-Source security scanner, and `codeql.yml` SAST for Python & TypeScript) **and** receive an explicit manual line-by-line review and approval from `@OdevMatheus` via [`.github/CODEOWNERS`](./.github/CODEOWNERS). Stale approvals are automatically dismissed whenever new commits are pushed.
