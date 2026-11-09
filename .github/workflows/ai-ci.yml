@@ -58,6 +58,51 @@ jobs:
             echo "OK — Catalog directory not yet populated (pre-development readiness phase)."
           fi
 
+      - name: Audit Catalog Python Scripts via AST Security Gate
+        run: |
+          python3 - <<'PY'
+          import ast, pathlib, sys
+
+          FORBIDDEN_IMPORTS = {
+              "urllib", "urllib2", "urllib3", "http", "httplib", "socket",
+              "socketserver", "requests", "httpx", "aiohttp", "ftplib",
+              "smtplib", "telnetlib", "xmlrpc", "webbrowser", "paramiko",
+              "websocket", "websockets", "pickle", "cPickle", "marshal",
+              "shelve", "ctypes", "cffi", "pty", "commands",
+          }
+          FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__"}
+          FORBIDDEN_OS_ATTRS = {"system", "popen", "spawnl", "spawnle", "spawnlp", "spawnlpe", "spawnv", "spawnve", "spawnvp", "spawnvpe", "execl", "execle", "execlp", "execlpe", "execv", "execve", "execvp", "execvpe"}
+
+          errors = []
+          for py_file in sorted(pathlib.Path("catalog").rglob("*.py")):
+              source = py_file.read_text(encoding="utf-8")
+              tree = ast.parse(source, filename=py_file.as_posix())
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Import):
+                      for alias in node.names:
+                          root = alias.name.split(".")[0]
+                          if root in FORBIDDEN_IMPORTS:
+                              errors.append(f"{py_file.as_posix()}:{node.lineno}: forbidden import '{root}'")
+                  elif isinstance(node, ast.ImportFrom) and node.module:
+                      root = node.module.split(".")[0]
+                      if root in FORBIDDEN_IMPORTS:
+                          errors.append(f"{py_file.as_posix()}:{node.lineno}: forbidden from-import '{root}'")
+                  elif isinstance(node, ast.Call):
+                      if isinstance(node.func, ast.Name) and node.func.id in FORBIDDEN_CALLS:
+                          errors.append(f"{py_file.as_posix()}:{node.lineno}: forbidden dynamic call '{node.func.id}()'")
+                      elif isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name) and node.func.value.id == "os" and node.func.attr in FORBIDDEN_OS_ATTRS:
+                          errors.append(f"{py_file.as_posix()}:{node.lineno}: forbidden shell call 'os.{node.func.attr}()'")
+                      for kw in node.keywords:
+                          if kw.arg == "shell" and isinstance(kw.value, ast.Constant) and kw.value.value is True:
+                              errors.append(f"{py_file.as_posix()}:{node.lineno}: forbidden 'shell=True' in subprocess call")
+
+          if errors:
+              for err in errors:
+                  print(f"::error::{err}")
+              sys.exit(1)
+          print("OK — All catalog Python scripts passed AST security audit.")
+          PY
+
   npx-engine-qa:
     name: Node.js ${{ matrix.node-version }} NPX Engine & TypeScript QA Gate
     runs-on: ubuntu-latest
