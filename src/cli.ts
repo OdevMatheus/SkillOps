@@ -26,6 +26,7 @@ import {
 import {
 	addSkillOrSubagent,
 	cleanSyncedArtifacts,
+	detectExistingTargetsForItem,
 	formatSyncReport,
 	removeSkillOrSubagent,
 } from "./sync/index.js";
@@ -200,22 +201,62 @@ export function buildInteractiveTargetOptions(): MultiSelectOption[] {
 	});
 }
 
+export interface BuildCatalogOptionsContext {
+	readonly repoPath?: string;
+	readonly targets?: readonly RuntimeTarget[];
+}
+
+function formatCatalogOptionHint(
+	baseDescription: string,
+	existingTargets: readonly RuntimeTarget[],
+	candidateTargets: readonly RuntimeTarget[],
+): string {
+	if (candidateTargets.length === 0 || existingTargets.length === 0) {
+		return baseDescription;
+	}
+	if (existingTargets.length >= candidateTargets.length) {
+		return `[installed] · ${baseDescription}`;
+	}
+	const listLabel =
+		existingTargets.length <= 2
+			? existingTargets.join(", ")
+			: `${existingTargets.slice(0, 2).join(", ")}, +${existingTargets.length - 2}`;
+	return `[installed: ${listLabel}] · ${baseDescription}`;
+}
+
 export function buildInteractiveCatalogOptions(
 	catalogDir: string,
+	context?: BuildCatalogOptionsContext,
 ): MultiSelectOption[] {
 	const options: MultiSelectOption[] = [];
 	const seen = new Set<string>();
+	const repoPath = context?.repoPath;
+	const candidateTargets = context?.targets ?? [];
+	const shouldCheckDisk = Boolean(repoPath && candidateTargets.length > 0);
 
 	for (const skillDir of discoverSkillDirectories(catalogDir)) {
 		try {
 			const parsed = parseSkillDirectory(skillDir, { requireLayout: false });
 			if (!seen.has(parsed.manifest.name)) {
 				seen.add(parsed.manifest.name);
+				const existingTargets =
+					shouldCheckDisk && repoPath
+						? detectExistingTargetsForItem(
+								repoPath,
+								parsed.manifest.name,
+								"skill",
+								candidateTargets,
+							)
+						: [];
 				options.push({
 					value: parsed.manifest.name,
 					label: parsed.manifest.name,
 					kind: "skill",
-					hint: parsed.manifest.description,
+					hint: formatCatalogOptionHint(
+						parsed.manifest.description,
+						existingTargets,
+						candidateTargets,
+					),
 				});
 			}
 		} catch {
@@ -228,11 +269,24 @@ export function buildInteractiveCatalogOptions(
 			const parsed = parseSubagentFile(saPath);
 			if (!seen.has(parsed.manifest.name)) {
 				seen.add(parsed.manifest.name);
+				const existingTargets =
+					shouldCheckDisk && repoPath
+						? detectExistingTargetsForItem(
+								repoPath,
+								parsed.manifest.name,
+								"subagent",
+								candidateTargets,
+							)
+						: [];
 				options.push({
 					value: parsed.manifest.name,
 					label: parsed.manifest.name,
 					kind: "agent",
-					hint: parsed.manifest.description,
+					hint: formatCatalogOptionHint(
+						parsed.manifest.description,
+						existingTargets,
+						candidateTargets,
+					),
 				});
 			}
 		} catch {
@@ -610,7 +664,10 @@ export async function runCliInteractive(
 
 		// Step 2: Select Skills & Agents when no names or --all were passed
 		if (needsCatalogPrompt) {
-			const options = buildInteractiveCatalogOptions(catalogDir);
+			const options = buildInteractiveCatalogOptions(catalogDir, {
+				repoPath,
+				targets,
+			});
 			const step2Title = !explicitTargetsArg
 				? "SkillOps — Step 2/2: Select Skills & Agents to Import"
 				: "SkillOps — Select Skills & Agents to Import";

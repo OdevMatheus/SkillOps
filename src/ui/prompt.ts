@@ -616,15 +616,22 @@ export function renderMultiSelectFrame(
 				rawHint.length > maxHintCols
 					? `${rawHint.slice(0, maxHintCols - 1)}…`
 					: rawHint;
-			const hintPart = shortHint
-				? ` ${
-						isCurrent
-							? fgHex(CHARM_PALETTE.lavender, shortHint, c)
-							: isChecked
-								? fgHex(CHARM_PALETTE.cyan, shortHint, c)
-								: style.dim(shortHint, c)
-					}`
-				: "";
+			const styleHintText = (text: string): string =>
+				isCurrent
+					? fgHex(CHARM_PALETTE.lavender, text, c)
+					: isChecked
+						? fgHex(CHARM_PALETTE.cyan, text, c)
+						: style.dim(text, c);
+			let styledShortHint = styleHintText(shortHint);
+			if (shortHint.startsWith("[installed")) {
+				const closeBracketIdx = shortHint.indexOf("]");
+				if (closeBracketIdx !== -1) {
+					const badgeText = shortHint.slice(0, closeBracketIdx + 1);
+					const restText = shortHint.slice(closeBracketIdx + 1);
+					styledShortHint = `${fgHex(CHARM_PALETTE.mint, style.bold(badgeText, c), c)}${restText ? styleHintText(restText) : ""}`;
+				}
+			}
+			const hintPart = shortHint ? ` ${styledShortHint}` : "";
 
 			lines.push(`${bar}  ${pointer} ${checkbox} ${styledLabel}${hintPart}`);
 		}
