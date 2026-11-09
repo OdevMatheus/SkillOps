@@ -42,6 +42,10 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 				description: "Target repository directory (default: current directory)",
 			},
 			{
+				flags: "-g, --global",
+				description: "Target user home directory (~) instead of current project",
+			},
+			{
 				flags: "-t, --target <list|auto|all>",
 				description: "Target AI harnesses (cursor,claude,copilot,all...)",
 			},
@@ -82,6 +86,10 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 			{
 				flags: "-p, --project <dir>",
 				description: "Target repository directory (default: current directory)",
+			},
+			{
+				flags: "-g, --global",
+				description: "Target user home directory (~) instead of current project",
 			},
 			{
 				flags: "-t, --target <list>",
@@ -180,6 +188,7 @@ export function renderGlobalHelp(
 		renderSectionHeader("Options", c),
 		`${bar}  ${padVisible(style.bold(style.cyan("-t, --target <ide>", c), c), 22, "left")}${fgHex(CHARM_PALETTE.lavender, "AI IDE (cursor, claude, copilot, antigravity...)", c)}`,
 		`${bar}  ${padVisible(style.bold(style.cyan("-p, --project <dir>", c), c), 22, "left")}${fgHex(CHARM_PALETTE.lavender, "Project folder (default: current directory)", c)}`,
+		`${bar}  ${padVisible(style.bold(style.cyan("-g, --global", c), c), 22, "left")}${fgHex(CHARM_PALETTE.lavender, "Install or remove globally in user home (~)", c)}`,
 		`${bar}  ${padVisible(style.bold(style.cyan("--all", c), c), 22, "left")}${fgHex(CHARM_PALETTE.lavender, "Install or remove all Skills & Agents", c)}`,
 		renderSectionHeader("Examples", c),
 		`${bar}  ${fgHex(CHARM_PALETTE.hotPink, "$", c)} ${style.bold(style.green("skillops add", c), c)}                                  ${style.dim("—", c)} ${fgHex(CHARM_PALETTE.lavender, "Interactive install", c)}`,

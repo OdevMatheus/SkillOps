@@ -8,6 +8,8 @@ import {
 	buildInteractiveInstalledOptions,
 	buildInteractiveInstalledTargetOptions,
 	buildInteractiveTargetOptions,
+	isGlobalFlag,
+	resolveTargetRepoPath,
 	runCli,
 } from "../src/cli.js";
 import {
@@ -1173,6 +1175,115 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 			).toBe(false);
 		} finally {
 			fs.rmSync(tmpWorkspace, { recursive: true, force: true });
+		}
+	});
+
+	it("supports --global / -g flag to install and remove Skills and Subagents in user home directory (Issue #176)", () => {
+		const tmpHome = fs.mkdtempSync(
+			path.join(os.tmpdir(), "skillops-global-home-"),
+		);
+		const prevGlobalHome = process.env.SKILLOPS_GLOBAL_HOME;
+		process.env.SKILLOPS_GLOBAL_HOME = tmpHome;
+
+		const outChunks: string[] = [];
+		const stdoutSpy = vi
+			.spyOn(process.stdout, "write")
+			.mockImplementation((chunk) => {
+				outChunks.push(String(chunk));
+				return true;
+			});
+
+		try {
+			expect(isGlobalFlag(["add", "--global"])).toBe(true);
+			expect(isGlobalFlag(["remove", "-g"])).toBe(true);
+			expect(isGlobalFlag(["add", "mcp-architect"])).toBe(false);
+			expect(resolveTargetRepoPath(["add", "--global"])).toBe(
+				path.resolve(tmpHome),
+			);
+			expect(resolveTargetRepoPath(["remove", "-g"])).toBe(
+				path.resolve(tmpHome),
+			);
+
+			// 1. Install mcp-architect and context-scout globally via --global / -g
+			expect(
+				runCli([
+					"node",
+					"cli.js",
+					"add",
+					"mcp-architect",
+					"context-scout",
+					"--global",
+					"--catalog",
+					CATALOG_ROOT,
+					"-t",
+					"claude,cursor",
+				]),
+			).toBe(ExitCode.SUCCESS);
+
+			const installOutput = stripAnsi(outChunks.join(""));
+			expect(installOutput).toContain("[Global: ~]");
+			outChunks.length = 0;
+
+			expect(
+				fs.existsSync(
+					path.join(tmpHome, ".claude", "skills", "mcp-architect", "SKILL.md"),
+				),
+			).toBe(true);
+			expect(
+				fs.existsSync(
+					path.join(tmpHome, ".claude", "agents", "context-scout.md"),
+				),
+			).toBe(true);
+			expect(
+				fs.existsSync(
+					path.join(tmpHome, ".cursor", "rules", "skillops-mcp-architect.mdc"),
+				),
+			).toBe(true);
+			expect(fs.existsSync(path.join(tmpHome, ".skillops-lock.json"))).toBe(
+				true,
+			);
+
+			// 2. Remove mcp-architect globally via -g
+			expect(
+				runCli([
+					"node",
+					"cli.js",
+					"remove",
+					"mcp-architect",
+					"-g",
+					"--catalog",
+					CATALOG_ROOT,
+				]),
+			).toBe(ExitCode.SUCCESS);
+
+			const removeOutput = stripAnsi(outChunks.join(""));
+			expect(removeOutput).toContain("[Global: ~]");
+			outChunks.length = 0;
+
+			expect(
+				fs.existsSync(
+					path.join(tmpHome, ".claude", "skills", "mcp-architect"),
+				),
+			).toBe(false);
+			expect(
+				fs.existsSync(
+					path.join(tmpHome, ".cursor", "rules", "skillops-mcp-architect.mdc"),
+				),
+			).toBe(false);
+			// Subagent remains in global home
+			expect(
+				fs.existsSync(
+					path.join(tmpHome, ".claude", "agents", "context-scout.md"),
+				),
+			).toBe(true);
+		} finally {
+			stdoutSpy.mockRestore();
+			if (prevGlobalHome === undefined) {
+				delete process.env.SKILLOPS_GLOBAL_HOME;
+			} else {
+				process.env.SKILLOPS_GLOBAL_HOME = prevGlobalHome;
+			}
+			fs.rmSync(tmpHome, { recursive: true, force: true });
 		}
 	});
 });

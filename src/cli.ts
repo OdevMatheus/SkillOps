@@ -3,6 +3,7 @@
  */
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -102,6 +103,29 @@ function getPositionalArgs(args: readonly string[]): string[] {
 		positionals.push(arg);
 	}
 	return positionals;
+}
+
+export function isGlobalFlag(args: readonly string[]): boolean {
+	return args.includes("--global") || args.includes("-g");
+}
+
+export function resolveGlobalHomeDir(): string {
+	const envOverride = process.env.SKILLOPS_GLOBAL_HOME?.trim();
+	if (envOverride) {
+		return path.resolve(envOverride);
+	}
+	return os.homedir();
+}
+
+export function resolveTargetRepoPath(args: readonly string[]): string {
+	const explicitRepo = getFlagValue(args, "--repo", "--project", "-p");
+	if (explicitRepo) {
+		return explicitRepo;
+	}
+	if (isGlobalFlag(args)) {
+		return resolveGlobalHomeDir();
+	}
+	return process.cwd();
 }
 
 function resolveTargetsArg(args: readonly string[]): string | undefined {
@@ -476,8 +500,7 @@ export function runCli(argv: readonly string[]): number {
 
 	if (command === "add" || command === "install" || command === "i") {
 		const positionals = getPositionalArgs(args);
-		const repoPath =
-			getFlagValue(args, "--repo", "--project", "-p") ?? process.cwd();
+		const repoPath = resolveTargetRepoPath(args);
 		const cfgRes = loadSkillOpsConfig(repoPath);
 		if (cfgRes.error) {
 			process.stderr.write(
@@ -555,8 +578,7 @@ export function runCli(argv: readonly string[]): number {
 	if (command === "remove" || command === "uninstall" || command === "rm") {
 		const positionals = getPositionalArgs(args);
 		const removeAll = args.includes("--all");
-		const repoPath =
-			getFlagValue(args, "--repo", "--project", "-p") ?? process.cwd();
+		const repoPath = resolveTargetRepoPath(args);
 		const cfgRes = loadSkillOpsConfig(repoPath);
 		if (cfgRes.error) {
 			process.stderr.write(
@@ -656,8 +678,8 @@ export async function runCliInteractive(
 		process.stdin.isTTY &&
 		process.stdout.isTTY
 	) {
-		const repoPath =
-			getFlagValue(args, "--repo", "--project", "-p") ?? process.cwd();
+		const repoPath = resolveTargetRepoPath(args);
+		const globalTag = isGlobalFlag(args) ? " [Global: ~]" : "";
 		const cfgRes = loadSkillOpsConfig(repoPath);
 		if (cfgRes.error) {
 			process.stderr.write(
@@ -676,9 +698,11 @@ export async function runCliInteractive(
 		// Step 1: Explicitly select AI IDE / Agent when -t / --target is not passed
 		if (!resolvedTargetsArg) {
 			const targetOptions = buildInteractiveTargetOptions(repoPath);
-			const step1Title = needsCatalogPrompt
-				? "SkillOps — Step 1/2: Select Your AI IDE / Agent"
-				: "SkillOps — Select Your AI IDE / Agent";
+			const step1Title = `${
+				needsCatalogPrompt
+					? "SkillOps — Step 1/2: Select Your AI IDE / Agent"
+					: "SkillOps — Select Your AI IDE / Agent"
+			}${globalTag}`;
 			const selectedTargets = await runMultiSelectPrompt(
 				step1Title,
 				targetOptions,
@@ -725,9 +749,11 @@ export async function runCliInteractive(
 				repoPath,
 				targets,
 			});
-			const step2Title = !explicitTargetsArg
-				? "SkillOps — Step 2/2: Select Skills & Agents to Import"
-				: "SkillOps — Select Skills & Agents to Import";
+			const step2Title = `${
+				!explicitTargetsArg
+					? "SkillOps — Step 2/2: Select Skills & Agents to Import"
+					: "SkillOps — Select Skills & Agents to Import"
+			}${globalTag}`;
 			const selected = await runMultiSelectPrompt(step2Title, options, {
 				subtitle: "Switch tabs with ←/→ · Press Space to select · Enter to install",
 				targetHint: targets.join(", "),
@@ -760,8 +786,8 @@ export async function runCliInteractive(
 		process.stdout.isTTY
 	) {
 		const positionals = getPositionalArgs(args);
-		const repoPath =
-			getFlagValue(args, "--repo", "--project", "-p") ?? process.cwd();
+		const repoPath = resolveTargetRepoPath(args);
+		const globalTag = isGlobalFlag(args) ? " [Global: ~]" : "";
 		const cfgRes = loadSkillOpsConfig(repoPath);
 		if (cfgRes.error) {
 			process.stderr.write(
@@ -800,9 +826,11 @@ export async function runCliInteractive(
 
 			if (installedTargetOptions.length > 1) {
 				promptedForTargets = true;
-				const step1Title = needsItemsPrompt
-					? "SkillOps — Step 1/2: Select AI IDE(s) to Remove From"
-					: "SkillOps — Select AI IDE(s) to Remove From";
+				const step1Title = `${
+					needsItemsPrompt
+						? "SkillOps — Step 1/2: Select AI IDE(s) to Remove From"
+						: "SkillOps — Select AI IDE(s) to Remove From"
+				}${globalTag}`;
 				const selectedTargets = await runMultiSelectPrompt(
 					step1Title,
 					installedTargetOptions,
@@ -851,9 +879,11 @@ export async function runCliInteractive(
 				return ExitCode.SUCCESS;
 			}
 
-			const step2Title = promptedForTargets
-				? "SkillOps — Step 2/2: Select Installed Skills & Agents to Remove"
-				: "SkillOps — Select Installed Skills & Agents to Remove";
+			const step2Title = `${
+				promptedForTargets
+					? "SkillOps — Step 2/2: Select Installed Skills & Agents to Remove"
+					: "SkillOps — Select Installed Skills & Agents to Remove"
+			}${globalTag}`;
 			const selected = await runMultiSelectPrompt(step2Title, installedOptions, {
 				subtitle: "Select installed items with Space · Press Enter to remove",
 				submitActionLabel: "remove",

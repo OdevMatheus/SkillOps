@@ -14,6 +14,7 @@
 
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import YAML from "yaml";
 import {
@@ -1567,17 +1568,37 @@ export function cleanSyncedArtifacts(
 	});
 }
 
+function isGlobalHomePath(repoPath: string): boolean {
+	try {
+		const normalizedRepo = path
+			.resolve(repoPath)
+			.replace(/\\/g, "/")
+			.replace(/\/+$/, "");
+		const envHome = process.env.SKILLOPS_GLOBAL_HOME?.trim();
+		const homeDir = envHome ? path.resolve(envHome) : os.homedir();
+		const normalizedHome = path
+			.resolve(homeDir)
+			.replace(/\\/g, "/")
+			.replace(/\/+$/, "");
+		return normalizedRepo === normalizedHome;
+	} catch {
+		return false;
+	}
+}
+
 export function formatSyncReport(
 	report: SyncReport,
 	format: "table" | "json" | "markdown" = "table",
 	colorEnabled?: boolean,
 ): string {
+	const isGlobal = isGlobalHomePath(report.repo_path);
+	const globalBadge = isGlobal ? " [Global: ~]" : "";
 	if (format === "json") {
 		return `${JSON.stringify(report, null, 2)}\n`;
 	}
 	if (format === "markdown") {
 		return [
-			"## SkillOps Multi-Runtime Sync Report",
+			`## SkillOps Multi-Runtime Sync Report${globalBadge}`,
 			"",
 			`- **Targets**: ${report.targets.map((t) => `\`${t}\``).join(", ")}`,
 			`- **Artifacts Synced**: \`${report.artifacts.length}\``,
@@ -1609,7 +1630,7 @@ export function formatSyncReport(
 	const isAllSkipped =
 		report.artifacts.length > 0 &&
 		report.artifacts.every((a) => a.action === "skipped");
-	const subtitle = !report.passed
+	const baseSubtitle = !report.passed
 		? "Drift Conflict Detected"
 		: report.dry_run
 			? "Dry-Run Sync Preview"
@@ -1618,6 +1639,7 @@ export function formatSyncReport(
 				: isAllSkipped
 					? "Skills & Subagents Skipped (Already Installed)"
 					: "Skills & Subagents Installed";
+	const subtitle = `${baseSubtitle}${globalBadge}`;
 
 	const banner = renderHeaderBanner(subtitle, { colorEnabled: c });
 
