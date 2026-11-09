@@ -3,10 +3,10 @@ name: SkillOps AI Engine & Catalog CI
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 
 permissions:
   contents: read

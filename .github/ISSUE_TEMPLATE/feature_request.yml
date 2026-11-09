@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         > 💡 **Adding a new Skill (`SKILL.md`) or Subagent (`SUBAGENT.md`) to `catalog/`?**
-        > You do **not** need to open an Issue! Follow [`CONTRIBUTING.md`](https://github.com/OdevMatheus/SkillOps/blob/master/CONTRIBUTING.md) (**Track A**) and open a Pull Request directly.
+        > You do **not** need to open an Issue! Follow [`CONTRIBUTING.md`](https://github.com/OdevMatheus/SkillOps/blob/main/CONTRIBUTING.md) (**Track A**) and open a Pull Request directly.
         >
         > Use this template for **Track B (Core Solution)** changes (`src/`, `.github/`, new AI IDE adapters, or TUI improvements).
   - type: dropdown

@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Step 2 TUI Installed Status Indicator (`#171`):** Added `detectExistingTargetsForItem()` in [`src/sync/adapters.ts`](./src/sync/adapters.ts) and target-aware hint formatting in [`src/cli.ts`](./src/cli.ts) and [`src/ui/prompt.ts`](./src/ui/prompt.ts) so Step 2 of `npx skillops-cli add` displays `[installed]` (when present in all selected IDEs) or `[installed: <targets>]` (when present in a subset of selected IDEs).
 - **`env-secrets-guard` skill (`arch-quality`):** Detects hardcoded credentials, `.env` files tracked by git, and `.env` files missing from `.gitignore` through the stdlib-only [`scan_secrets.py`](./catalog/arch-quality/env-secrets-guard/scripts/scan_secrets.py) (`--json`, exit codes `0`/`1`/`2`, secrets redacted in output).
 
+### Changed
+- **CI/CD & CodeQL Default Branch Alignment (`#188`):** Updated [`.github/workflows/ai-ci.yml`](./.github/workflows/ai-ci.yml), [`.github/workflows/codeql.yml`](./.github/workflows/codeql.yml), [`.github/workflows/release-drafter.yml`](./.github/workflows/release-drafter.yml), [`.github/ISSUE_TEMPLATE/feature_request.yml`](./.github/ISSUE_TEMPLATE/feature_request.yml), [`AGENTS.md`](./AGENTS.md), and [`CONTRIBUTING.md`](./CONTRIBUTING.md) to trigger and reference `main` instead of `master`.
+
 ### Removed
 - **Outdated `docs/BENCHMARKS.md` (`#179`):** Removed legacy `v1.0.0` benchmark document referencing removed CLI commands (`tokens`, `audit`, `eval`) and retired catalog entries, and dropped `"docs/BENCHMARKS.md"` from `package.json` `files`.
 
