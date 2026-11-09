@@ -1348,6 +1348,12 @@ export function removeSkillOrSubagent(
 		const remainingForSkill = Object.values(newLockArtifacts).some(
 			(e) => e.skill_name === itemName,
 		);
+		const remainingTargetSet = new Set<RuntimeTarget>(
+			Object.values(newLockArtifacts).map((e) => e.target),
+		);
+		const updatedTargets = existingLock.targets.filter((t) =>
+			remainingTargetSet.has(t),
+		);
 		const updatedSkills = remainingForSkill
 			? existingLock.selected_skills
 			: existingLock.selected_skills.filter((s) => s !== itemName);
@@ -1358,6 +1364,7 @@ export function removeSkillOrSubagent(
 		const lockData: SyncLockfile = SyncLockfileSchema.parse({
 			...existingLock,
 			skillops_version: SKILLOPS_VERSION,
+			targets: updatedTargets,
 			selected_skills: updatedSkills,
 			selected_subagents: updatedSubagents,
 			artifacts: newLockArtifacts,

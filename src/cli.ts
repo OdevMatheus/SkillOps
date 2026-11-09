@@ -297,6 +297,61 @@ export function buildInteractiveCatalogOptions(
 	return options;
 }
 
+export function buildInteractiveInstalledTargetOptions(
+	repoPath: string,
+	catalogDir: string,
+	itemFilter?: readonly string[],
+): MultiSelectOption[] {
+	const discovered = discoverInstalledArtifactsOnDisk(repoPath, catalogDir);
+	if (discovered.length === 0) {
+		return [];
+	}
+
+	const itemSet =
+		itemFilter && itemFilter.length > 0 ? new Set(itemFilter) : null;
+	const itemsByTarget = new Map<RuntimeTarget, Set<string>>();
+
+	for (const entry of discovered) {
+		if (itemSet && !itemSet.has(entry.itemName)) {
+			continue;
+		}
+		let targetItems = itemsByTarget.get(entry.target);
+		if (!targetItems) {
+			targetItems = new Set<string>();
+			itemsByTarget.set(entry.target, targetItems);
+		}
+		targetItems.add(entry.itemName);
+	}
+
+	if (itemsByTarget.size === 0) {
+		return [];
+	}
+
+	const popularSet = new Set<RuntimeTarget>(POPULAR_AI_ORDER);
+	const orderedTargets: RuntimeTarget[] = [
+		...POPULAR_AI_ORDER,
+		...ALL_RUNTIME_TARGETS.filter((t) => !popularSet.has(t)),
+	].filter((t) => itemsByTarget.has(t));
+
+	return orderedTargets.map((targetId) => {
+		const spec = RUNTIME_HARNESS_SPECS[targetId];
+		const items = [...(itemsByTarget.get(targetId) ?? [])];
+		const countLabel =
+			items.length === 1 ? "1 item" : `${items.length} items`;
+		const preview =
+			items.length <= 2
+				? items.join(", ")
+				: `${items.slice(0, 2).join(", ")}, +${items.length - 2}`;
+		return {
+			value: spec.id,
+			label: spec.id,
+			kind: "ide",
+			tab: "skill",
+			hint: `${spec.displayName} (${countLabel}: ${preview})`,
+		};
+	});
+}
+
 export function buildInteractiveInstalledOptions(
 	repoPath: string,
 	catalogDir: string,
@@ -690,29 +745,85 @@ export async function runCliInteractive(
 		process.stdout.isTTY
 	) {
 		const positionals = getPositionalArgs(args);
-		if (positionals.length === 0) {
-			const repoPath =
-				getFlagValue(args, "--repo", "--project", "-p") ?? process.cwd();
-			const cfgRes = loadSkillOpsConfig(repoPath);
-			if (cfgRes.error) {
-				process.stderr.write(
-					`Invalid .skillops.yml at ${cfgRes.configPath}: ${cfgRes.error}\n`,
-				);
+		const repoPath =
+			getFlagValue(args, "--repo", "--project", "-p") ?? process.cwd();
+		const cfgRes = loadSkillOpsConfig(repoPath);
+		if (cfgRes.error) {
+			process.stderr.write(
+				`Invalid .skillops.yml at ${cfgRes.configPath}: ${cfgRes.error}\n`,
+			);
+			return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+		}
+		const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
+		const explicitTargetsArg = resolveTargetsArg(args);
+		const needsItemsPrompt = positionals.length === 0;
+
+		let targets: RuntimeTarget[] | undefined;
+		let promptedForTargets = false;
+		const extraArgs: string[] = [];
+
+		if (explicitTargetsArg) {
+			try {
+				targets = resolveRuntimeTargets(explicitTargetsArg, repoPath);
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : String(err);
+				process.stderr.write(`Invalid --targets: ${msg}\n`);
 				return ExitCode.BUDGET_OR_CONTRACT_ERROR;
 			}
-			const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
-			const explicitTargetsArg = resolveTargetsArg(args);
-			let targets: RuntimeTarget[] | undefined;
-			if (explicitTargetsArg) {
-				try {
-					targets = resolveRuntimeTargets(explicitTargetsArg, repoPath);
-				} catch (err) {
-					const msg = err instanceof Error ? err.message : String(err);
-					process.stderr.write(`Invalid --targets: ${msg}\n`);
-					return ExitCode.BUDGET_OR_CONTRACT_ERROR;
-				}
+		} else {
+			const installedTargetOptions = buildInteractiveInstalledTargetOptions(
+				repoPath,
+				catalogDir,
+				positionals.length > 0 ? positionals : undefined,
+			);
+			if (installedTargetOptions.length === 0 && needsItemsPrompt) {
+				process.stdout.write(
+					`${renderCancelledStep("No imported Skills or Agents found in this project.")}\n`,
+				);
+				return ExitCode.SUCCESS;
 			}
 
+			if (installedTargetOptions.length > 1) {
+				promptedForTargets = true;
+				const step1Title = needsItemsPrompt
+					? "SkillOps — Step 1/2: Select AI IDE(s) to Remove From"
+					: "SkillOps — Select AI IDE(s) to Remove From";
+				const selectedTargets = await runMultiSelectPrompt(
+					step1Title,
+					installedTargetOptions,
+					{
+						subtitle:
+							"Select one or more AI IDEs with Space · Enter to continue",
+						tabLabels: {
+							skill: "Installed AI IDEs",
+							agent: "",
+						},
+						submitActionLabel: "continue",
+						selectCursorOnEmptySubmit: true,
+						showSelectAll: true,
+					},
+				);
+
+				if (!selectedTargets || selectedTargets.length === 0) {
+					process.stdout.write(
+						`${renderCancelledStep("No AI IDE selected for removal.")}\n`,
+					);
+					return ExitCode.SUCCESS;
+				}
+				targets = resolveRuntimeTargets(selectedTargets.join(","), repoPath);
+				process.stdout.write(
+					`${renderCompletedStep(needsItemsPrompt ? "Step 1/2 · AI IDE(s)" : "AI IDE(s)", targets.join(", "))}\n`,
+				);
+				extraArgs.push("-t", targets.join(","));
+			} else if (installedTargetOptions.length === 1) {
+				const singleTarget = installedTargetOptions[0]?.value;
+				if (singleTarget) {
+					targets = resolveRuntimeTargets(singleTarget, repoPath);
+				}
+			}
+		}
+
+		if (needsItemsPrompt) {
 			const installedOptions = buildInteractiveInstalledOptions(
 				repoPath,
 				catalogDir,
@@ -725,16 +836,15 @@ export async function runCliInteractive(
 				return ExitCode.SUCCESS;
 			}
 
-			const selected = await runMultiSelectPrompt(
-				"SkillOps — Select Installed Skills & Agents to Remove",
-				installedOptions,
-				{
-					subtitle: "Select installed items with Space · Press Enter to remove",
-					submitActionLabel: "remove",
-					targetHint: targets ? targets.join(", ") : undefined,
-					showSelectAll: true,
-				},
-			);
+			const step2Title = promptedForTargets
+				? "SkillOps — Step 2/2: Select Installed Skills & Agents to Remove"
+				: "SkillOps — Select Installed Skills & Agents to Remove";
+			const selected = await runMultiSelectPrompt(step2Title, installedOptions, {
+				subtitle: "Select installed items with Space · Press Enter to remove",
+				submitActionLabel: "remove",
+				targetHint: targets ? targets.join(", ") : undefined,
+				showSelectAll: true,
+			});
 
 			if (!selected || selected.length === 0) {
 				process.stdout.write(
@@ -744,10 +854,15 @@ export async function runCliInteractive(
 			}
 
 			process.stdout.write(
-				`${renderCompletedStep("Selected to remove", selected.join(", "))}\n\n`,
+				`${renderCompletedStep(promptedForTargets ? "Step 2/2 · Selected to remove" : "Selected to remove", selected.join(", "))}\n\n`,
 			);
+			extraArgs.push(...selected);
+		} else if (promptedForTargets) {
+			process.stdout.write("\n");
+		}
 
-			return runCli([...argv, ...selected]);
+		if (extraArgs.length > 0) {
+			return runCli([...argv, ...extraArgs]);
 		}
 	}
 
