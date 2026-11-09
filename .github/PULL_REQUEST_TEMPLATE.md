@@ -19,5 +19,10 @@ Closes #
   - [ ] `SKILL.md` description (`40–110` words, `<= 160` tokens) starts with `"Use when..."` and body is `<= 250` lines (`INV-SKILL-01`).
   - [ ] `SUBAGENT.md` forbids wildcard `["*"]` tools and sets `max-output-tokens <= 400` (`INV-SKILL-04`).
   - [ ] Verified dry-run transpilation across all 28 targets (`node dist/cli.js add <name> --targets all --dry-run`).
+- [ ] **Security & Supply-Chain Gate (`INV-SKILL-06` & `CODEOWNERS`):**
+  - [ ] **Zero Network Exfiltration:** Bundled scripts do not import outbound network clients (`urllib.request`, `http.client`, `socket`, `requests`, `httpx`, `aiohttp`, `paramiko`) or pipe remote downloads into shells (`curl | sh`).
+  - [ ] **Zero Dynamic Exec & Unsafe Shell:** Bundled scripts do not call `eval()`, `exec()`, `__import__()`, `pickle`, `marshal`, `ctypes`, `os.system()`, `os.popen()`, or `subprocess(..., shell=True)`.
+  - [ ] **Zero Trojan-Source & Opaque Payloads:** No hidden bidirectional Unicode (`U+202A..U+202E`, `U+2066..U+2069`), LLM invisible Unicode Tags (`U+E0000..U+E007F`), symbolic links, or compiled binaries/archives (`.exe`, `.dll`, `.so`, `.pyc`, `.zip`, `.tar.gz`).
+  - [ ] **Mandatory Maintainer Code Review:** Reviewed line-by-line by `@OdevMatheus` via `.github/CODEOWNERS`.
 - [ ] **Verification Gates:** `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` pass locally.
 - [ ] **Sanitization:** Zero local machine paths (`C:\Users\...`, `/Users/...`), OS usernames, or leaked AI API keys (`sk-proj-...`, `sk-ant-...`, `AIzaSy...`).
