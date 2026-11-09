@@ -1,0 +1,78 @@
+{
+  "skill_name": "env-secrets-guard",
+  "schema_version": "1.0",
+  "evals": [
+    {
+      "id": "eval-01-hardcoded-api-key",
+      "name": "Replace a hardcoded provider API key with an environment variable",
+      "prompt": "Our `client.py` creates the API client with a literal key string. Review it and fix the way the credential is loaded.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-scan-secrets-script",
+          "type": "tool_call_contains",
+          "target": "scan_secrets.py",
+          "description": "Agent executed the deterministic secrets scanner."
+        },
+        {
+          "id": "assert-reads-from-environment",
+          "type": "regex_match",
+          "target": "(os\\.environ|os\\.getenv|process\\.env)",
+          "description": "Credential is read from the environment instead of a literal."
+        },
+        {
+          "id": "assert-advises-rotation",
+          "type": "regex_match",
+          "target": "(?i)rotat",
+          "description": "Agent tells the user that an exposed key must be rotated."
+        }
+      ]
+    },
+    {
+      "id": "eval-02-env-file-not-ignored",
+      "name": "Ignore .env files and provide a safe .env.example template",
+      "prompt": "I just created a `.env` with my database password for local development. Make sure it is safe to commit this project.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-scan-secrets-script",
+          "type": "tool_call_contains",
+          "target": "scan_secrets.py",
+          "description": "Agent executed the deterministic secrets scanner."
+        },
+        {
+          "id": "assert-gitignore-covers-env",
+          "type": "regex_match",
+          "target": "\\.env",
+          "description": "Agent adds .env patterns to .gitignore."
+        },
+        {
+          "id": "assert-creates-env-example",
+          "type": "regex_match",
+          "target": "\\.env\\.example",
+          "description": "Agent provides a .env.example template with placeholder values."
+        }
+      ]
+    },
+    {
+      "id": "eval-03-tracked-env-file",
+      "name": "Untrack a committed .env file without printing its secrets",
+      "prompt": "Check why our repository leaks credentials. There is a `.env` that was committed by mistake.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-removes-from-index",
+          "type": "regex_match",
+          "target": "git rm --cached",
+          "description": "Agent removes the tracked env file from the git index."
+        },
+        {
+          "id": "assert-advises-rotation",
+          "type": "regex_match",
+          "target": "(?i)rotat",
+          "description": "Agent warns that secrets already in git history must be rotated."
+        }
+      ]
+    }
+  ]
+}

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+- **`env-secrets-guard` skill (`arch-quality`):** Detects hardcoded credentials, `.env` files tracked by git, and `.env` files missing from `.gitignore` through the stdlib-only [`scan_secrets.py`](./catalog/arch-quality/env-secrets-guard/scripts/scan_secrets.py) (`--json`, exit codes `0`/`1`/`2`, secrets redacted in output).
+
+---
+
 ## [1.3.10] - 2026-11-06
 
 ### Changed

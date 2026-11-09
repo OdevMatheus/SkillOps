@@ -146,7 +146,7 @@ describe("SkillOps Core Models & Subagent Contracts", () => {
 
 	it("discovers and parses real repository catalog skills and subagents", () => {
 		const skillDirs = discoverSkillDirectories(CATALOG_ROOT);
-		expect(skillDirs.length).toBe(1);
+		expect(skillDirs.length).toBe(2);
 
 		const skillNames: string[] = [];
 		for (const dir of skillDirs) {
@@ -157,7 +157,7 @@ describe("SkillOps Core Models & Subagent Contracts", () => {
 			expect(parsed.declaredScripts.length).toBeGreaterThanOrEqual(1);
 		}
 
-		expect(skillNames).toEqual(["mcp-architect"]);
+		expect(skillNames.sort()).toEqual(["env-secrets-guard", "mcp-architect"]);
 
 		const subagentFiles = discoverSubagentFiles(CATALOG_ROOT);
 		expect(subagentFiles.length).toBe(1);
