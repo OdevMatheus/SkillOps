@@ -24,6 +24,7 @@ export interface ParsedSkillDirectory {
 	readonly missingDeclaredScripts: string[];
 	readonly extraScripts: string[];
 	readonly referenceFiles: string[];
+	readonly allFiles: string[];
 	readonly evalsPath: string | null;
 }
 
@@ -60,6 +61,50 @@ function walkForFilesNamed(rootDir: string, targetFilename: string): string[] {
 		}
 	}
 	return results.sort();
+}
+
+const IGNORED_SKILL_DIRS = new Set([
+	".git",
+	"__pycache__",
+	"node_modules",
+	".pytest_cache",
+	".ruff_cache",
+	".mypy_cache",
+]);
+
+const IGNORED_SKILL_FILES = new Set([".DS_Store", "Thumbs.db", "desktop.ini"]);
+
+function walkAllSkillFiles(
+	rootSkillDir: string,
+	currentDir: string = rootSkillDir,
+): string[] {
+	if (!fs.existsSync(currentDir) || !fs.statSync(currentDir).isDirectory()) {
+		return [];
+	}
+	const results: string[] = [];
+	const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+	for (const entry of entries) {
+		const fullPath = path.join(currentDir, entry.name);
+		if (entry.isDirectory()) {
+			if (IGNORED_SKILL_DIRS.has(entry.name)) {
+				continue;
+			}
+			results.push(...walkAllSkillFiles(rootSkillDir, fullPath));
+		} else if (entry.isFile()) {
+			if (
+				IGNORED_SKILL_FILES.has(entry.name) ||
+				entry.name.endsWith(".pyc")
+			) {
+				continue;
+			}
+			results.push(path.relative(rootSkillDir, fullPath).replace(/\\/g, "/"));
+		}
+	}
+	return results.sort((a, b) => {
+		if (a === "SKILL.md") return -1;
+		if (b === "SKILL.md") return 1;
+		return a.localeCompare(b);
+	});
 }
 
 /**
@@ -159,6 +204,8 @@ export function parseSkillDirectory(
 		);
 	}
 
+	const allFiles = walkAllSkillFiles(skillDir);
+
 	return {
 		skillDir,
 		skillMdPath,
@@ -170,6 +217,7 @@ export function parseSkillDirectory(
 		missingDeclaredScripts: missingDeclaredScripts.sort(),
 		extraScripts: extraScripts.sort(),
 		referenceFiles: referenceFiles.sort(),
+		allFiles,
 		evalsPath,
 	};
 }

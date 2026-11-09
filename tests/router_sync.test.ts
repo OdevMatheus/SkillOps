@@ -425,7 +425,7 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 			).toBe("created");
 
 			const tableOut = stripAnsi(formatSyncReport(report, "table", false));
-			expect(tableOut).toContain("1 created, 1 skipped");
+			expect(tableOut).toContain("4 created, 1 skipped");
 			expect(tableOut).toContain("Skipped — Already Exists (1)");
 			expect(tableOut).toContain(
 				"(claude) mcp-architect already exists at .claude/skills/mcp-architect/SKILL.md",
@@ -973,6 +973,206 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 			).toBe(false);
 		} finally {
 			fs.rmSync(tmpRepo, { recursive: true, force: true });
+		}
+	});
+
+	it("bundles and copies all files and nested subdirectories inside a Skill folder across both directory-based and rule-based targets and cleans them up on remove (Issue #175)", () => {
+		const tmpWorkspace = fs.mkdtempSync(
+			path.join(os.tmpdir(), "skillops-bundle-all-files-"),
+		);
+		const tmpCatalog = path.join(tmpWorkspace, "catalog");
+		const tmpRepo = path.join(tmpWorkspace, "repo");
+		fs.mkdirSync(tmpRepo, { recursive: true });
+
+		try {
+			const skillDir = path.join(
+				tmpCatalog,
+				"arch-quality",
+				"polyglot-bundler",
+			);
+			fs.mkdirSync(path.join(skillDir, "scripts", "helpers"), {
+				recursive: true,
+			});
+			fs.mkdirSync(path.join(skillDir, "references"), { recursive: true });
+			fs.mkdirSync(path.join(skillDir, "assets", "templates"), {
+				recursive: true,
+			});
+			fs.mkdirSync(path.join(skillDir, "evals"), { recursive: true });
+
+			const skillMdContent = [
+				"---",
+				'name: "polyglot-bundler"',
+				'description: "Use when verifying that a hybrid executable skill bundles and installs every companion file, script, configuration template, shell helper, JSON schema, YAML ruleset, and nested subdirectory across all twenty-eight target AI coding IDEs and CLIs without dropping non-Python or non-Markdown assets during repository synchronization. Do not trigger for unrelated frontend styling tasks."',
+				'version: "1.0.0"',
+				'track: "arch-quality"',
+				"tags:",
+				'  - "bundling"',
+				'  - "multi-runtime"',
+				"routing_signals:",
+				'  languages: ["python", "typescript"]',
+				'  files_any: ["package.json"]',
+				"  dependencies_any: []",
+				"  negative_triggers:",
+				'    - "Do not trigger for unrelated tasks."',
+				"entrypoints:",
+				"  scripts:",
+				'    - path: "scripts/audit.py"',
+				'      description: "Primary Python audit entrypoint."',
+				"---",
+				"",
+				"# Polyglot Bundler (`polyglot-bundler`)",
+				"",
+				"Run `python catalog/arch-quality/polyglot-bundler/scripts/audit.py` or `bash catalog/arch-quality/polyglot-bundler/scripts/bootstrap.sh`.",
+				"",
+			].join("\n");
+
+			fs.writeFileSync(path.join(skillDir, "SKILL.md"), skillMdContent, "utf-8");
+			fs.writeFileSync(
+				path.join(skillDir, "scripts", "audit.py"),
+				'print("ok")\n',
+				"utf-8",
+			);
+			fs.writeFileSync(
+				path.join(skillDir, "scripts", "bootstrap.sh"),
+				"#!/usr/bin/env bash\necho ok\n",
+				"utf-8",
+			);
+			fs.writeFileSync(
+				path.join(skillDir, "scripts", "helpers", "formatter.mjs"),
+				"export const fmt = (x) => String(x);\n",
+				"utf-8",
+			);
+			fs.writeFileSync(
+				path.join(skillDir, "references", "checklist.md"),
+				"# Checklist\n",
+				"utf-8",
+			);
+			fs.writeFileSync(
+				path.join(skillDir, "references", "rules.yaml"),
+				"strict: true\n",
+				"utf-8",
+			);
+			fs.writeFileSync(
+				path.join(skillDir, "assets", "schema.json"),
+				'{"type":"object"}\n',
+				"utf-8",
+			);
+			fs.writeFileSync(
+				path.join(skillDir, "assets", "templates", "prompt.txt"),
+				"Template body\n",
+				"utf-8",
+			);
+			fs.writeFileSync(
+				path.join(skillDir, "evals", "evals.json"),
+				'{"skill_name":"polyglot-bundler","cases":[]}\n',
+				"utf-8",
+			);
+			// OS junk files that must be ignored
+			fs.writeFileSync(path.join(skillDir, ".DS_Store"), "junk", "utf-8");
+
+			const expectedCompanionRelPaths = [
+				"assets/schema.json",
+				"assets/templates/prompt.txt",
+				"evals/evals.json",
+				"references/checklist.md",
+				"references/rules.yaml",
+				"scripts/audit.py",
+				"scripts/bootstrap.sh",
+				"scripts/helpers/formatter.mjs",
+			];
+
+			const report = addSkillOrSubagent(
+				tmpRepo,
+				tmpCatalog,
+				"polyglot-bundler",
+				{
+					targets: ["claude", "antigravity", "cursor", "copilot", "windsurf"],
+				},
+			);
+			expect(report.passed).toBe(true);
+
+			// 1. Verify progressive-skill-dir targets (claude, antigravity) receive SKILL.md + all companion files
+			for (const base of [
+				path.join(tmpRepo, ".claude", "skills", "polyglot-bundler"),
+				path.join(tmpRepo, ".agent", "skills", "polyglot-bundler"),
+			]) {
+				expect(fs.existsSync(path.join(base, "SKILL.md"))).toBe(true);
+				expect(fs.existsSync(path.join(base, ".DS_Store"))).toBe(false);
+				for (const rel of expectedCompanionRelPaths) {
+					expect(fs.existsSync(path.join(base, rel))).toBe(true);
+				}
+			}
+
+			// 2. Verify rule-based targets (cursor, copilot, windsurf) receive native rule file + all companion files + localized paths
+			const cursorRulePath = path.join(
+				tmpRepo,
+				".cursor",
+				"rules",
+				"skillops-polyglot-bundler.mdc",
+			);
+			expect(fs.existsSync(cursorRulePath)).toBe(true);
+			expect(fs.readFileSync(cursorRulePath, "utf-8")).toContain(
+				".cursor/rules/polyglot-bundler/scripts/audit.py",
+			);
+			for (const rel of expectedCompanionRelPaths) {
+				expect(
+					fs.existsSync(
+						path.join(tmpRepo, ".cursor", "rules", "polyglot-bundler", rel),
+					),
+				).toBe(true);
+				expect(
+					fs.existsSync(
+						path.join(
+							tmpRepo,
+							".github",
+							"instructions",
+							"polyglot-bundler",
+							rel,
+						),
+					),
+				).toBe(true);
+				expect(
+					fs.existsSync(
+						path.join(tmpRepo, ".windsurf", "rules", "polyglot-bundler", rel),
+					),
+				).toBe(true);
+			}
+
+			// 3. Verify removeSkillOrSubagent removes the rule files AND all companion files/folders across all targets
+			const rmReport = removeSkillOrSubagent(
+				tmpRepo,
+				tmpCatalog,
+				"polyglot-bundler",
+			);
+			expect(rmReport.passed).toBe(true);
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".claude", "skills", "polyglot-bundler"),
+				),
+			).toBe(false);
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".cursor", "rules", "polyglot-bundler"),
+				),
+			).toBe(false);
+			expect(fs.existsSync(cursorRulePath)).toBe(false);
+			expect(
+				fs.existsSync(
+					path.join(
+						tmpRepo,
+						".github",
+						"instructions",
+						"polyglot-bundler",
+					),
+				),
+			).toBe(false);
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".windsurf", "rules", "polyglot-bundler"),
+				),
+			).toBe(false);
+		} finally {
+			fs.rmSync(tmpWorkspace, { recursive: true, force: true });
 		}
 	});
 });
