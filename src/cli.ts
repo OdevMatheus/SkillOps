@@ -21,12 +21,12 @@ import {
 	resolveRuntimeTargets,
 	SKILLOPS_VERSION,
 	type SkillOpsConfig,
-	SyncLockfileSchema,
 } from "./models.js";
 import {
 	addSkillOrSubagent,
 	cleanSyncedArtifacts,
 	detectExistingTargetsForItem,
+	discoverInstalledArtifactsOnDisk,
 	formatSyncReport,
 	removeSkillOrSubagent,
 } from "./sync/index.js";
@@ -302,40 +302,28 @@ export function buildInteractiveInstalledOptions(
 	catalogDir: string,
 	targetFilter?: readonly RuntimeTarget[],
 ): MultiSelectOption[] {
-	const lockfilePath = path.join(path.resolve(repoPath), ".skillops-lock.json");
-	if (!fs.existsSync(lockfilePath)) {
+	const discovered = discoverInstalledArtifactsOnDisk(
+		repoPath,
+		catalogDir,
+		targetFilter,
+	);
+	if (discovered.length === 0) {
 		return [];
 	}
 
-	let parsedLock: ReturnType<typeof SyncLockfileSchema.safeParse>;
-	try {
-		const raw = JSON.parse(fs.readFileSync(lockfilePath, "utf-8")) as unknown;
-		parsedLock = SyncLockfileSchema.safeParse(raw);
-	} catch {
-		return [];
-	}
-	if (!parsedLock.success) {
-		return [];
-	}
-
-	const lock = parsedLock.data;
-	const targetSet =
-		targetFilter && targetFilter.length > 0 ? new Set(targetFilter) : null;
 	const targetsByItem = new Map<string, Set<RuntimeTarget>>();
+	const kindByItem = new Map<string, "skill" | "subagent">();
 
-	for (const entry of Object.values(lock.artifacts)) {
-		if (entry.skill_name === "codex-agents-index") {
-			continue;
-		}
-		if (targetSet && !targetSet.has(entry.target)) {
-			continue;
-		}
-		let itemTargets = targetsByItem.get(entry.skill_name);
+	for (const entry of discovered) {
+		let itemTargets = targetsByItem.get(entry.itemName);
 		if (!itemTargets) {
 			itemTargets = new Set<RuntimeTarget>();
-			targetsByItem.set(entry.skill_name, itemTargets);
+			targetsByItem.set(entry.itemName, itemTargets);
 		}
 		itemTargets.add(entry.target);
+		if (!kindByItem.has(entry.itemName)) {
+			kindByItem.set(entry.itemName, entry.kind);
+		}
 	}
 
 	if (targetsByItem.size === 0) {
@@ -344,7 +332,6 @@ export function buildInteractiveInstalledOptions(
 
 	const catalogOptions = buildInteractiveCatalogOptions(catalogDir);
 	const catalogMap = new Map(catalogOptions.map((o) => [o.value, o]));
-	const subagentSet = new Set(lock.selected_subagents);
 
 	const skills: MultiSelectOption[] = [];
 	const agents: MultiSelectOption[] = [];
@@ -353,7 +340,7 @@ export function buildInteractiveInstalledOptions(
 		const catalogOpt = catalogMap.get(itemName);
 		const isAgent = catalogOpt
 			? catalogOpt.kind === "agent"
-			: subagentSet.has(itemName);
+			: kindByItem.get(itemName) === "subagent";
 		const targetsLabel = [...itemTargets].join(", ");
 		const baseHint = catalogOpt?.hint ?? "Installed in project";
 		const option: MultiSelectOption = {

@@ -15,6 +15,7 @@ import {
 	cleanSyncedArtifacts,
 	createMultiSelectState,
 	detectExistingTargetsForItem,
+	discoverInstalledArtifactsOnDisk,
 	ExitCode,
 	formatSyncReport,
 	removeSkillOrSubagent,
@@ -599,6 +600,138 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 			for (const line of step2Frame.split("\n")) {
 				expect(visibleLength(line)).toBeLessThanOrEqual(78);
 			}
+		} finally {
+			fs.rmSync(tmpRepo, { recursive: true, force: true });
+		}
+	});
+
+	it("discovers and removes installed Skills and Subagents directly from IDE directories on disk when .skillops-lock.json is deleted (Issue #172)", () => {
+		const tmpRepo = fs.mkdtempSync(
+			path.join(os.tmpdir(), "skillops-lockless-remove-"),
+		);
+		try {
+			// Install mcp-architect, env-secrets-guard, and context-scout across claude, cursor, and copilot
+			addSkillOrSubagent(tmpRepo, CATALOG_ROOT, "mcp-architect", {
+				targets: ["claude", "cursor", "copilot"],
+			});
+			addSkillOrSubagent(tmpRepo, CATALOG_ROOT, "env-secrets-guard", {
+				targets: ["claude", "cursor"],
+			});
+			addSkillOrSubagent(tmpRepo, CATALOG_ROOT, "context-scout", {
+				targets: ["claude", "cursor", "copilot"],
+			});
+
+			// Delete .skillops-lock.json to simulate a gitignored or manually deleted lockfile
+			const lockPath = path.join(tmpRepo, ".skillops-lock.json");
+			expect(fs.existsSync(lockPath)).toBe(true);
+			fs.unlinkSync(lockPath);
+			expect(fs.existsSync(lockPath)).toBe(false);
+
+			// 1. Verify discoverInstalledArtifactsOnDisk & buildInteractiveInstalledOptions work without lockfile
+			const onDisk = discoverInstalledArtifactsOnDisk(tmpRepo, CATALOG_ROOT);
+			expect(onDisk.length).toBeGreaterThanOrEqual(8);
+			expect(onDisk.every((d) => d.fromLockfile === false)).toBe(true);
+
+			const installedOptions = buildInteractiveInstalledOptions(
+				tmpRepo,
+				CATALOG_ROOT,
+			);
+			expect(installedOptions.map((o) => o.value)).toEqual([
+				"env-secrets-guard",
+				"mcp-architect",
+				"context-scout",
+			]);
+			expect(
+				installedOptions.find((o) => o.value === "mcp-architect")?.hint,
+			).toContain("[claude, cursor, copilot]");
+			expect(
+				installedOptions.find((o) => o.value === "context-scout")?.kind,
+			).toBe("agent");
+
+			// 2. Surgically remove mcp-architect via CLI without .skillops-lock.json
+			expect(
+				runCli([
+					"node",
+					"cli.js",
+					"remove",
+					"mcp-architect",
+					"--repo",
+					tmpRepo,
+					"--catalog",
+					CATALOG_ROOT,
+				]),
+			).toBe(ExitCode.SUCCESS);
+
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".claude", "skills", "mcp-architect"),
+				),
+			).toBe(false);
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".cursor", "rules", "skillops-mcp-architect.mdc"),
+				),
+			).toBe(false);
+			expect(
+				fs.existsSync(
+					path.join(
+						tmpRepo,
+						".github",
+						"instructions",
+						"skillops-mcp-architect.instructions.md",
+					),
+				),
+			).toBe(false);
+			expect(
+				fs.existsSync(
+					path.join(
+						tmpRepo,
+						".github",
+						"prompts",
+						"skillops-mcp-architect.prompt.md",
+					),
+				),
+			).toBe(false);
+			expect(fs.existsSync(lockPath)).toBe(false);
+
+			// Remaining items are still intact
+			expect(
+				fs.existsSync(
+					path.join(
+						tmpRepo,
+						".claude",
+						"skills",
+						"env-secrets-guard",
+						"SKILL.md",
+					),
+				),
+			).toBe(true);
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".claude", "agents", "context-scout.md"),
+				),
+			).toBe(true);
+
+			// 3. Remove all remaining installed items via remove --all without lockfile
+			expect(
+				runCli([
+					"node",
+					"cli.js",
+					"remove",
+					"--all",
+					"--repo",
+					tmpRepo,
+					"--catalog",
+					CATALOG_ROOT,
+				]),
+			).toBe(ExitCode.SUCCESS);
+
+			expect(buildInteractiveInstalledOptions(tmpRepo, CATALOG_ROOT)).toEqual(
+				[],
+			);
+			expect(fs.existsSync(path.join(tmpRepo, ".claude"))).toBe(false);
+			expect(fs.existsSync(path.join(tmpRepo, ".cursor"))).toBe(false);
+			expect(fs.existsSync(path.join(tmpRepo, ".github"))).toBe(false);
 		} finally {
 			fs.rmSync(tmpRepo, { recursive: true, force: true });
 		}

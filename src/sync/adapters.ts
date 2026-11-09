@@ -66,6 +66,15 @@ export interface CleanOptions {
 	readonly force?: boolean;
 }
 
+export interface DiscoveredInstalledArtifact {
+	readonly target: RuntimeTarget;
+	readonly itemName: string;
+	readonly kind: "skill" | "subagent";
+	readonly relativePath: string;
+	readonly sha256: string;
+	readonly fromLockfile: boolean;
+}
+
 interface PlannedFile {
 	readonly target: RuntimeTarget;
 	readonly itemName: string;
@@ -570,6 +579,335 @@ function loadExistingLockfile(lockfilePath: string): SyncLockfile | null {
 	}
 }
 
+function collectFilesRecursively(
+	dirFullPath: string,
+	resolvedRepo: string,
+): string[] {
+	if (!fs.existsSync(dirFullPath) || !fs.statSync(dirFullPath).isDirectory()) {
+		return [];
+	}
+	const results: string[] = [];
+	const entries = fs.readdirSync(dirFullPath, { withFileTypes: true });
+	for (const entry of entries) {
+		if (entry.isFile()) {
+			const fullEntry = path.join(dirFullPath, entry.name);
+			results.push(path.relative(resolvedRepo, fullEntry).replace(/\\/g, "/"));
+		}
+	}
+	for (const entry of entries) {
+		if (entry.isDirectory()) {
+			const fullEntry = path.join(dirFullPath, entry.name);
+			results.push(...collectFilesRecursively(fullEntry, resolvedRepo));
+		}
+	}
+	return results;
+}
+
+function removeEmptyDirsRecursively(dirFullPath: string): void {
+	if (!fs.existsSync(dirFullPath) || !fs.statSync(dirFullPath).isDirectory()) {
+		return;
+	}
+	for (const entry of fs.readdirSync(dirFullPath, { withFileTypes: true })) {
+		if (entry.isDirectory()) {
+			removeEmptyDirsRecursively(path.join(dirFullPath, entry.name));
+		}
+	}
+	try {
+		if (fs.readdirSync(dirFullPath).length === 0) {
+			fs.rmdirSync(dirFullPath);
+		}
+	} catch {
+		// Ignore
+	}
+}
+
+/**
+ * Inspect the 28 supported `RUNTIME_HARNESS_SPECS` directories on disk in `repoPath`
+ * and merge discovered Skills and Subagents with any entries tracked in `.skillops-lock.json`.
+ */
+export function discoverInstalledArtifactsOnDisk(
+	repoPath: string,
+	catalogDir: string,
+	targetFilter?: readonly RuntimeTarget[],
+): DiscoveredInstalledArtifact[] {
+	const resolvedRepo = path.resolve(repoPath);
+	const resolvedCatalog = path.resolve(catalogDir);
+	const candidateTargets: readonly RuntimeTarget[] =
+		targetFilter && targetFilter.length > 0
+			? targetFilter
+			: ALL_RUNTIME_TARGETS;
+	const targetSet = new Set<RuntimeTarget>(candidateTargets);
+
+	const knownSkills = new Set<string>();
+	const knownSubagents = new Set<string>();
+
+	if (fs.existsSync(resolvedCatalog)) {
+		for (const skillDir of discoverSkillDirectories(resolvedCatalog)) {
+			try {
+				const parsed = parseSkillDirectory(skillDir, { requireLayout: false });
+				knownSkills.add(parsed.manifest.name);
+			} catch {
+				// Ignore
+			}
+		}
+		for (const saPath of discoverSubagentFiles(resolvedCatalog)) {
+			try {
+				const parsed = parseSubagentFile(saPath);
+				knownSubagents.add(parsed.manifest.name);
+			} catch {
+				// Ignore
+			}
+		}
+	}
+
+	const lockfilePath = path.join(resolvedRepo, ".skillops-lock.json");
+	const existingLock = loadExistingLockfile(lockfilePath);
+	for (const s of existingLock?.selected_skills ?? []) {
+		knownSkills.add(s);
+	}
+	for (const sa of existingLock?.selected_subagents ?? []) {
+		knownSubagents.add(sa);
+	}
+
+	const byRelPath = new Map<string, DiscoveredInstalledArtifact>();
+
+	const inferLockKind = (
+		itemName: string,
+		relPath: string,
+	): "skill" | "subagent" => {
+		if (knownSubagents.has(itemName)) {
+			return "subagent";
+		}
+		if (knownSkills.has(itemName)) {
+			return "skill";
+		}
+		if (
+			relPath.includes("/agents/") ||
+			relPath.includes("/droids/") ||
+			relPath.includes("/cli-agents/") ||
+			relPath.includes("skillops-agent-") ||
+			relPath.endsWith(".agent.md") ||
+			relPath.endsWith(".prompt")
+		) {
+			return "subagent";
+		}
+		return "skill";
+	};
+
+	if (existingLock) {
+		for (const [relPath, entry] of Object.entries(existingLock.artifacts)) {
+			if (entry.skill_name === "codex-agents-index") {
+				continue;
+			}
+			if (!targetSet.has(entry.target)) {
+				continue;
+			}
+			const normalizedRel = relPath.replace(/\\/g, "/");
+			byRelPath.set(normalizedRel, {
+				target: entry.target,
+				itemName: entry.skill_name,
+				kind: inferLockKind(entry.skill_name, normalizedRel),
+				relativePath: normalizedRel,
+				sha256: entry.sha256,
+				fromLockfile: true,
+			});
+		}
+	}
+
+	const addDiskFile = (
+		target: RuntimeTarget,
+		itemName: string,
+		kind: "skill" | "subagent",
+		relPath: string,
+	): void => {
+		const normalizedRel = relPath.replace(/\\/g, "/");
+		if (byRelPath.has(normalizedRel)) {
+			return;
+		}
+		const fullPath = path.join(resolvedRepo, normalizedRel);
+		if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
+			return;
+		}
+		const sha256 = computeSha256(fs.readFileSync(fullPath, "utf-8"));
+		byRelPath.set(normalizedRel, {
+			target,
+			itemName,
+			kind,
+			relativePath: normalizedRel,
+			sha256,
+			fromLockfile: false,
+		});
+	};
+
+	for (const target of candidateTargets) {
+		const spec = RUNTIME_HARNESS_SPECS[target];
+
+		// 1. Scan skills directory for this target
+		const skillsDirFull = path.join(resolvedRepo, spec.skillsDir);
+		if (
+			fs.existsSync(skillsDirFull) &&
+			fs.statSync(skillsDirFull).isDirectory()
+		) {
+			const entries = fs.readdirSync(skillsDirFull, { withFileTypes: true });
+			for (const entry of entries) {
+				const entryFull = path.join(skillsDirFull, entry.name);
+				if (entry.isDirectory()) {
+					// Ignore subagent subdirectories when skillsDir is a parent of subagentsDir (e.g. .clinerules/workflows)
+					const relDir = path
+						.relative(resolvedRepo, entryFull)
+						.replace(/\\/g, "/");
+					if (relDir === spec.subagentsDir) {
+						continue;
+					}
+					const nestedFiles = collectFilesRecursively(entryFull, resolvedRepo);
+					for (const nf of nestedFiles) {
+						addDiskFile(target, entry.name, "skill", nf);
+					}
+					continue;
+				}
+				if (!entry.isFile()) {
+					continue;
+				}
+				const fileName = entry.name;
+				const relFile = path
+					.relative(resolvedRepo, entryFull)
+					.replace(/\\/g, "/");
+
+				if (target === "copilot") {
+					const copilotMatch =
+						/^skillops-(.+)\.instructions\.md$/.exec(fileName) ??
+						/^(.+)\.instructions\.md$/.exec(fileName);
+					if (copilotMatch?.[1]) {
+						const itemName = copilotMatch[1];
+						if (
+							fileName.startsWith("skillops-") ||
+							knownSkills.has(itemName)
+						) {
+							addDiskFile(target, itemName, "skill", relFile);
+						}
+					}
+					continue;
+				}
+
+				if (target === "cursor") {
+					const cursorAgentMatch = /^skillops-agent-(.+)\.mdc$/.exec(fileName);
+					if (cursorAgentMatch?.[1]) {
+						addDiskFile(target, cursorAgentMatch[1], "subagent", relFile);
+						continue;
+					}
+					const cursorSkillMatch = /^skillops-(.+)\.mdc$/.exec(fileName);
+					if (cursorSkillMatch?.[1]) {
+						addDiskFile(target, cursorSkillMatch[1], "skill", relFile);
+						continue;
+					}
+					const plainMdc = /^(.+)\.mdc$/.exec(fileName);
+					if (plainMdc?.[1]) {
+						if (knownSkills.has(plainMdc[1])) {
+							addDiskFile(target, plainMdc[1], "skill", relFile);
+						} else if (knownSubagents.has(plainMdc[1])) {
+							addDiskFile(target, plainMdc[1], "subagent", relFile);
+						}
+					}
+					continue;
+				}
+
+				const mdAgentMatch = /^skillops-agent-(.+)\.md$/.exec(fileName);
+				if (mdAgentMatch?.[1]) {
+					addDiskFile(target, mdAgentMatch[1], "subagent", relFile);
+					continue;
+				}
+				const mdSkillMatch = /^skillops-(.+)\.md$/.exec(fileName);
+				if (mdSkillMatch?.[1]) {
+					addDiskFile(target, mdSkillMatch[1], "skill", relFile);
+					continue;
+				}
+				const plainMd = /^(.+)\.md$/.exec(fileName);
+				if (plainMd?.[1]) {
+					if (knownSkills.has(plainMd[1])) {
+						addDiskFile(target, plainMd[1], "skill", relFile);
+					} else if (
+						spec.subagentsDir === spec.skillsDir &&
+						knownSubagents.has(plainMd[1])
+					) {
+						addDiskFile(target, plainMd[1], "subagent", relFile);
+					}
+				}
+			}
+		}
+
+		// Copilot also writes .github/prompts/skillops-<name>.prompt.md for skills
+		if (target === "copilot") {
+			const copilotPromptsDir = path.join(resolvedRepo, ".github", "prompts");
+			if (
+				fs.existsSync(copilotPromptsDir) &&
+				fs.statSync(copilotPromptsDir).isDirectory()
+			) {
+				for (const entry of fs.readdirSync(copilotPromptsDir, {
+					withFileTypes: true,
+				})) {
+					if (!entry.isFile()) continue;
+					const m =
+						/^skillops-(.+)\.prompt\.md$/.exec(entry.name) ??
+						/^(.+)\.prompt\.md$/.exec(entry.name);
+					if (
+						m?.[1] &&
+						(entry.name.startsWith("skillops-") || knownSkills.has(m[1]))
+					) {
+						const relFile = `.github/prompts/${entry.name}`;
+						addDiskFile(target, m[1], "skill", relFile);
+					}
+				}
+			}
+		}
+
+		// 2. Scan subagents directory for this target
+		const subagentsDirFull = path.join(resolvedRepo, spec.subagentsDir);
+		if (
+			fs.existsSync(subagentsDirFull) &&
+			fs.statSync(subagentsDirFull).isDirectory()
+		) {
+			const entries = fs.readdirSync(subagentsDirFull, { withFileTypes: true });
+			for (const entry of entries) {
+				if (!entry.isFile()) {
+					continue;
+				}
+				const fileName = entry.name;
+				const relFile = path
+					.relative(resolvedRepo, path.join(subagentsDirFull, fileName))
+					.replace(/\\/g, "/");
+
+				const prefixedMatch =
+					/^skillops-agent-(.+)\.(md|mdc|prompt|toml|json)$/.exec(fileName);
+				if (prefixedMatch?.[1]) {
+					addDiskFile(target, prefixedMatch[1], "subagent", relFile);
+					continue;
+				}
+
+				const copilotAgentMatch = /^(.+)\.agent\.md$/.exec(fileName);
+				if (copilotAgentMatch?.[1]) {
+					addDiskFile(target, copilotAgentMatch[1], "subagent", relFile);
+					continue;
+				}
+
+				if (spec.subagentsDir !== spec.skillsDir) {
+					const directMatch = /^(.+)\.(md|mdc|prompt|toml|json)$/.exec(
+						fileName,
+					);
+					if (
+						directMatch?.[1] &&
+						!fileName.startsWith("skillops-") &&
+						fileName.toLowerCase() !== "readme.md"
+					) {
+						addDiskFile(target, directMatch[1], "subagent", relFile);
+					}
+				}
+			}
+		}
+	}
+
+	return [...byRelPath.values()];
+}
+
 function applyPlannedFiles(
 	resolvedRepo: string,
 	resolvedCatalog: string,
@@ -848,9 +1186,12 @@ function pruneEmptyParentDirs(filePath: string, stopAtRepoRoot: string): void {
 	let currentDir = path.dirname(path.resolve(filePath));
 	while (
 		currentDir.startsWith(normalizedStop) &&
-		currentDir !== normalizedStop &&
-		fs.existsSync(currentDir)
+		currentDir !== normalizedStop
 	) {
+		if (!fs.existsSync(currentDir)) {
+			currentDir = path.dirname(currentDir);
+			continue;
+		}
 		try {
 			const entries = fs.readdirSync(currentDir);
 			if (entries.length > 0) {
@@ -883,6 +1224,7 @@ export function stripCodexAgentsBlock(existingContent: string): string {
 
 /**
  * Surgically remove a single synced Skill or Subagent by name across target runtimes.
+ * Works both with `.skillops-lock.json` and by scanning AI IDE/CLI folders on disk directly.
  */
 export function removeSkillOrSubagent(
 	repoPath: string,
@@ -900,42 +1242,78 @@ export function removeSkillOrSubagent(
 
 	const lockfilePath = path.join(resolvedRepo, ".skillops-lock.json");
 	const existingLock = loadExistingLockfile(lockfilePath);
-	if (!existingLock) {
-		throw new Error(
-			`No .skillops-lock.json found in '${resolvedRepo.replace(/\\/g, "/")}'. Run 'add' first.`,
-		);
+
+	const discovered = discoverInstalledArtifactsOnDisk(
+		resolvedRepo,
+		resolvedCatalog,
+		options.targets,
+	);
+	const matchingMap = new Map<string, DiscoveredInstalledArtifact>();
+	for (const d of discovered) {
+		if (d.itemName === itemName) {
+			matchingMap.set(d.relativePath, d);
+		}
 	}
 
-	const matchingEntries = Object.entries(existingLock.artifacts).filter(
-		([, entry]) =>
-			entry.skill_name === itemName &&
-			(!targetFilter || targetFilter.has(entry.target)),
-	);
+	// Fallback check via findExistingItemPathInTarget for custom/unindexed file names matching itemName
+	const candidateTargets: readonly RuntimeTarget[] = options.targets?.length
+		? options.targets
+		: ALL_RUNTIME_TARGETS;
+	for (const target of candidateTargets) {
+		for (const kind of ["skill", "subagent"] as const) {
+			const foundRel = findExistingItemPathInTarget(
+				resolvedRepo,
+				itemName,
+				kind,
+				target,
+			);
+			if (foundRel) {
+				const normalizedRel = foundRel.replace(/\\/g, "/");
+				if (!matchingMap.has(normalizedRel)) {
+					const fullFound = path.join(resolvedRepo, normalizedRel);
+					if (fs.existsSync(fullFound) && fs.statSync(fullFound).isFile()) {
+						const sha256 = computeSha256(fs.readFileSync(fullFound, "utf-8"));
+						matchingMap.set(normalizedRel, {
+							target,
+							itemName,
+							kind,
+							relativePath: normalizedRel,
+							sha256,
+							fromLockfile: false,
+						});
+					}
+				}
+			}
+		}
+	}
+
+	const matchingEntries = [...matchingMap.values()];
 
 	if (matchingEntries.length === 0) {
 		throw new Error(
-			`No synced artifacts found for '${itemName}' in .skillops-lock.json.`,
+			`No installed artifacts found for '${itemName}' in '${resolvedRepo.replace(/\\/g, "/")}'.`,
 		);
 	}
 
 	const newLockArtifacts: Record<string, SyncLockEntry> = {
-		...existingLock.artifacts,
+		...(existingLock?.artifacts ?? {}),
 	};
 	const artifacts: SyncedArtifact[] = [];
 	const driftConflicts: string[] = [];
 
-	for (const [relPath, entry] of matchingEntries) {
+	for (const entry of matchingEntries) {
+		const relPath = entry.relativePath;
 		const fullPath = path.join(resolvedRepo, relPath);
 		const fileExists =
 			fs.existsSync(fullPath) && fs.statSync(fullPath).isFile();
 
 		if (fileExists) {
 			const currentDiskSha = computeSha256(fs.readFileSync(fullPath, "utf-8"));
-			if (currentDiskSha !== entry.sha256 && !force) {
+			if (entry.fromLockfile && currentDiskSha !== entry.sha256 && !force) {
 				driftConflicts.push(relPath);
 				artifacts.push({
 					target: entry.target,
-					skill_name: entry.skill_name,
+					skill_name: entry.itemName,
 					relative_path: relPath,
 					sha256: currentDiskSha,
 					action: "conflict",
@@ -945,13 +1323,20 @@ export function removeSkillOrSubagent(
 
 			if (!dryRun) {
 				fs.unlinkSync(fullPath);
+				const spec = RUNTIME_HARNESS_SPECS[entry.target];
+				const skillFolderFull = path.join(
+					resolvedRepo,
+					spec.skillsDir,
+					entry.itemName,
+				);
+				removeEmptyDirsRecursively(skillFolderFull);
 				pruneEmptyParentDirs(fullPath, resolvedRepo);
 			}
 		}
 
 		artifacts.push({
 			target: entry.target,
-			skill_name: entry.skill_name,
+			skill_name: entry.itemName,
 			relative_path: relPath,
 			sha256: entry.sha256,
 			action: dryRun ? "planned" : "removed",
@@ -959,11 +1344,10 @@ export function removeSkillOrSubagent(
 		delete newLockArtifacts[relPath];
 	}
 
-	const remainingForSkill = Object.values(newLockArtifacts).some(
-		(e) => e.skill_name === itemName,
-	);
-
-	if (!dryRun && driftConflicts.length === 0) {
+	if (existingLock && !dryRun && driftConflicts.length === 0) {
+		const remainingForSkill = Object.values(newLockArtifacts).some(
+			(e) => e.skill_name === itemName,
+		);
 		const updatedSkills = remainingForSkill
 			? existingLock.selected_skills
 			: existingLock.selected_skills.filter((s) => s !== itemName);
@@ -985,10 +1369,24 @@ export function removeSkillOrSubagent(
 		);
 	}
 
+	const affectedTargets = [
+		...new Set<RuntimeTarget>(matchingEntries.map((e) => e.target)),
+	];
+	const reportTargets = targetFilter
+		? [...targetFilter]
+		: existingLock
+			? [
+					...new Set<RuntimeTarget>([
+						...existingLock.targets,
+						...affectedTargets,
+					]),
+				]
+			: affectedTargets;
+
 	return SyncReportSchema.parse({
 		repo_path: resolvedRepo.replace(/\\/g, "/"),
 		catalog_path: resolvedCatalog.replace(/\\/g, "/"),
-		targets: targetFilter ? [...targetFilter] : existingLock.targets,
+		targets: reportTargets,
 		dry_run: dryRun,
 		force,
 		artifacts,
@@ -999,7 +1397,7 @@ export function removeSkillOrSubagent(
 }
 
 /**
- * Clean all SkillOps-managed runtime artifacts tracked in `.skillops-lock.json`.
+ * Clean all SkillOps-managed runtime artifacts tracked in `.skillops-lock.json` or present on disk.
  */
 export function cleanSyncedArtifacts(
 	repoPath: string,
@@ -1013,8 +1411,12 @@ export function cleanSyncedArtifacts(
 
 	const lockfilePath = path.join(resolvedRepo, ".skillops-lock.json");
 	const existingLock = loadExistingLockfile(lockfilePath);
+	const discovered = discoverInstalledArtifactsOnDisk(
+		resolvedRepo,
+		resolvedCatalog,
+	);
 
-	if (!existingLock) {
+	if (!existingLock && discovered.length === 0) {
 		return SyncReportSchema.parse({
 			repo_path: resolvedRepo.replace(/\\/g, "/"),
 			catalog_path: resolvedCatalog.replace(/\\/g, "/"),
@@ -1031,7 +1433,44 @@ export function cleanSyncedArtifacts(
 	const artifacts: SyncedArtifact[] = [];
 	const driftConflicts: string[] = [];
 
-	for (const [relPath, entry] of Object.entries(existingLock.artifacts)) {
+	// Handle codex AGENTS.md block if tracked in lockfile
+	const codexIndexEntry = existingLock?.artifacts["AGENTS.md"];
+	if (codexIndexEntry && codexIndexEntry.skill_name === "codex-agents-index") {
+		const fullAgentsMd = path.join(resolvedRepo, "AGENTS.md");
+		if (fs.existsSync(fullAgentsMd) && fs.statSync(fullAgentsMd).isFile()) {
+			const diskText = fs.readFileSync(fullAgentsMd, "utf-8");
+			const currentDiskSha = computeSha256(diskText);
+			if (currentDiskSha !== codexIndexEntry.sha256 && !force) {
+				driftConflicts.push("AGENTS.md");
+				artifacts.push({
+					target: codexIndexEntry.target,
+					skill_name: codexIndexEntry.skill_name,
+					relative_path: "AGENTS.md",
+					sha256: currentDiskSha,
+					action: "conflict",
+				});
+			} else {
+				if (!dryRun) {
+					const stripped = stripCodexAgentsBlock(diskText);
+					if (stripped) {
+						fs.writeFileSync(fullAgentsMd, stripped, "utf-8");
+					} else {
+						fs.unlinkSync(fullAgentsMd);
+					}
+				}
+				artifacts.push({
+					target: codexIndexEntry.target,
+					skill_name: codexIndexEntry.skill_name,
+					relative_path: "AGENTS.md",
+					sha256: codexIndexEntry.sha256,
+					action: dryRun ? "planned" : "removed",
+				});
+			}
+		}
+	}
+
+	for (const entry of discovered) {
+		const relPath = entry.relativePath;
 		const fullPath = path.join(resolvedRepo, relPath);
 		const fileExists =
 			fs.existsSync(fullPath) && fs.statSync(fullPath).isFile();
@@ -1039,11 +1478,11 @@ export function cleanSyncedArtifacts(
 		if (fileExists) {
 			const diskText = fs.readFileSync(fullPath, "utf-8");
 			const currentDiskSha = computeSha256(diskText);
-			if (currentDiskSha !== entry.sha256 && !force) {
+			if (entry.fromLockfile && currentDiskSha !== entry.sha256 && !force) {
 				driftConflicts.push(relPath);
 				artifacts.push({
 					target: entry.target,
-					skill_name: entry.skill_name,
+					skill_name: entry.itemName,
 					relative_path: relPath,
 					sha256: currentDiskSha,
 					action: "conflict",
@@ -1052,26 +1491,21 @@ export function cleanSyncedArtifacts(
 			}
 
 			if (!dryRun) {
-				if (
-					relPath === "AGENTS.md" &&
-					entry.skill_name === "codex-agents-index"
-				) {
-					const stripped = stripCodexAgentsBlock(diskText);
-					if (stripped) {
-						fs.writeFileSync(fullPath, stripped, "utf-8");
-					} else {
-						fs.unlinkSync(fullPath);
-					}
-				} else {
-					fs.unlinkSync(fullPath);
-					pruneEmptyParentDirs(fullPath, resolvedRepo);
-				}
+				fs.unlinkSync(fullPath);
+				const spec = RUNTIME_HARNESS_SPECS[entry.target];
+				const skillFolderFull = path.join(
+					resolvedRepo,
+					spec.skillsDir,
+					entry.itemName,
+				);
+				removeEmptyDirsRecursively(skillFolderFull);
+				pruneEmptyParentDirs(fullPath, resolvedRepo);
 			}
 		}
 
 		artifacts.push({
 			target: entry.target,
-			skill_name: entry.skill_name,
+			skill_name: entry.itemName,
 			relative_path: relPath,
 			sha256: entry.sha256,
 			action: dryRun ? "planned" : "removed",
@@ -1082,10 +1516,19 @@ export function cleanSyncedArtifacts(
 		fs.unlinkSync(lockfilePath);
 	}
 
+	const affectedTargets = [
+		...new Set<RuntimeTarget>(discovered.map((d) => d.target)),
+	];
+	const reportTargets = existingLock
+		? [...new Set<RuntimeTarget>([...existingLock.targets, ...affectedTargets])]
+		: affectedTargets.length > 0
+			? affectedTargets
+			: [...ALL_RUNTIME_TARGETS];
+
 	return SyncReportSchema.parse({
 		repo_path: resolvedRepo.replace(/\\/g, "/"),
 		catalog_path: resolvedCatalog.replace(/\\/g, "/"),
-		targets: existingLock.targets,
+		targets: reportTargets,
 		dry_run: dryRun,
 		force,
 		artifacts,
