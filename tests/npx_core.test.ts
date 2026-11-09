@@ -21,6 +21,7 @@ import {
 	parseSubagentFile,
 	RUNTIME_HARNESS_SPECS,
 	resolveRuntimeTargets,
+	resolveSafeRepoTargetPath,
 	SKILLOPS_VERSION,
 } from "../src/index.js";
 
@@ -353,6 +354,90 @@ describe("SkillOps Core Models & Subagent Contracts", () => {
 			expect(legitReport.findings).toEqual([]);
 		} finally {
 			fs.rmSync(legitSkill, { recursive: true, force: true });
+		}
+	});
+
+	it("blocks Trojan-Source hidden Unicode, forbidden binaries, symlinks, and path traversal (Issue #191)", () => {
+		const tmpDir = fs.mkdtempSync(
+			path.join(os.tmpdir(), "skillops-trojan-boundary-"),
+		);
+		try {
+			// 1. Trojan-Source Bidi Override (U+202E) in SKILL.md and Zero-Width Spoofing (U+200B) in script
+			const skillDir = path.join(tmpDir, "trojan-skill");
+			const scriptsDir = path.join(skillDir, "scripts");
+			fs.mkdirSync(scriptsDir, { recursive: true });
+			fs.writeFileSync(
+				path.join(skillDir, "SKILL.md"),
+				[
+					"---",
+					"name: trojan-skill",
+					`description: "${VALID_DESCRIPTION}"`,
+					"version: 1.0.0",
+					"domain: arch-quality",
+					"---",
+					"",
+					"# Trojan Skill \u202E hidden instruction",
+					"",
+				].join("\n"),
+				"utf-8",
+			);
+			fs.writeFileSync(
+				path.join(scriptsDir, "spoof.py"),
+				"def check\u200B_auth():\n    return True\n",
+				"utf-8",
+			);
+			fs.writeFileSync(
+				path.join(skillDir, "dropper.exe"),
+				"MZ-fake-binary",
+				"utf-8",
+			);
+			fs.writeFileSync(
+				path.join(skillDir, "payload.tar.gz"),
+				"fake-archive",
+				"utf-8",
+			);
+
+			expect(() =>
+				parseSkillDirectory(skillDir, { requireLayout: false }),
+			).toThrow(/Trojan-Source/i);
+
+			const secReport = auditSkillSecurity(skillDir);
+			expect(secReport.passed).toBe(false);
+			const rules = secReport.findings.map((f) => f.rule);
+			const symbols = secReport.findings.map((f) => f.symbol);
+			expect(rules).toContain("forbidden-trojan-unicode");
+			expect(rules).toContain("forbidden-binary-file");
+			expect(symbols).toContain("U+202E");
+			expect(symbols).toContain("U+200B");
+			expect(symbols).toContain(".exe");
+			expect(symbols).toContain(".tar.gz");
+
+			// 2. Subagent with LLM Invisible Unicode Tag character (U+E0061) is rejected
+			const subagentPath = path.join(tmpDir, "SUBAGENT.md");
+			fs.writeFileSync(
+				subagentPath,
+				`---\nname: bad-agent\ndescription: "Test agent"\n---\nSystem prompt \u{E0061} hidden\n`,
+				"utf-8",
+			);
+			expect(() => parseSubagentFile(subagentPath)).toThrow(/Trojan-Source/i);
+
+			// 3. Path traversal in resolveSafeRepoTargetPath is rejected
+			expect(() => resolveSafeRepoTargetPath(tmpDir, "../escape.md")).toThrow(
+				/escapes target repository boundary/i,
+			);
+			expect(() =>
+				resolveSafeRepoTargetPath(tmpDir, "/etc/passwd"),
+			).toThrow(/escapes target repository boundary/i);
+			expect(() =>
+				resolveSafeRepoTargetPath(tmpDir, ".claude/skills/bad\0file.md"),
+			).toThrow(/escapes target repository boundary/i);
+			const validResolved = resolveSafeRepoTargetPath(
+				tmpDir,
+				".claude/skills/mcp-architect/SKILL.md",
+			);
+			expect(validResolved.startsWith(path.resolve(tmpDir))).toBe(true);
+		} finally {
+			fs.rmSync(tmpDir, { recursive: true, force: true });
 		}
 	});
 });

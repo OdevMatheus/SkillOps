@@ -12,5 +12,6 @@ export {
 	type RemoveOptions,
 	removeSkillOrSubagent,
 	renderCodexAgentsIndex,
+	resolveSafeRepoTargetPath,
 	stripCodexAgentsBlock,
 } from "./adapters.js";

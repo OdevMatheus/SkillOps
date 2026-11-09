@@ -1,7 +1,7 @@
 /**
- * Deterministic Security Scanner for Hybrid Executable Skill Scripts (`src/auditor/security.ts`).
+ * Deterministic Security Scanner for Hybrid Executable Skills & Subagents (`src/auditor/security.ts`).
  *
- * Enforces Step 2 (Issue #190) with Zero False Positives on legitimate large Skills:
+ * Enforces Step 2 (Issue #190) and Step 3 (Issue #191) with Zero False Positives on legitimate large Skills:
  * - Blocks outbound network/exfiltration clients in Python (`urllib.request`, `urllib2`, `urllib3`,
  *   `http.client`, `httplib`, `socket`, `socketserver`, `requests`, `httpx`, `aiohttp`, `ftplib`,
  *   `smtplib`, `telnetlib`, `xmlrpc.client`, `paramiko`, `websocket`, `websockets`) while allowing
@@ -13,17 +13,25 @@
  * - Blocks unsafe shell execution (`os.system`, `os.popen`, `pty`, `subprocess` with `shell=True`,
  *   and shell pipe-to-interpreter / reverse-shell payloads in `.sh` scripts) while allowing safe
  *   array-based `subprocess.run([...])` (`shell=False`) and local `curl` healthchecks.
+ * - Blocks Trojan-Source (CVE-2021-42574) bidirectional control characters, LLM invisible Unicode Tag
+ *   prompt-injection characters (`U+E0000..U+E007F`), and zero-width script identifier spoofing.
+ * - Blocks symbolic links and opaque binary/archive payloads (`.exe`, `.dll`, `.so`, `.dylib`, `.bin`,
+ *   `.wasm`, `.pyc`, `.zip`, `.tar`, `.gz`, etc.) inside Skill directories.
  * - Supports explicit maintainer-reviewed inline overrides (`skillops-security: allow`).
  */
 
 import fs from "node:fs";
 import path from "node:path";
-import { discoverSkillDirectories } from "./parser.js";
+import { discoverSkillDirectories, discoverSubagentFiles } from "./parser.js";
 
 export type SkillSecurityRuleId =
 	| "forbidden-network-import"
 	| "forbidden-dynamic-exec"
-	| "forbidden-shell-execution";
+	| "forbidden-shell-execution"
+	| "forbidden-trojan-unicode"
+	| "forbidden-symlink"
+	| "forbidden-binary-file"
+	| "forbidden-path-traversal";
 
 export interface SkillSecurityFinding {
 	readonly file: string;
@@ -91,6 +99,145 @@ const IGNORED_SCAN_DIRS = new Set([
 	".ruff_cache",
 	".mypy_cache",
 ]);
+
+/**
+ * Opaque compiled binary and archive extensions forbidden inside curated Skill directories
+ * because they cannot be audited line-by-line in GitHub Pull Request diffs.
+ */
+export const FORBIDDEN_BINARY_AND_ARCHIVE_EXTENSIONS = new Set([
+	".exe",
+	".dll",
+	".so",
+	".dylib",
+	".bin",
+	".wasm",
+	".pyc",
+	".pyo",
+	".pyd",
+	".msi",
+	".scr",
+	".com",
+	".jar",
+	".class",
+	".zip",
+	".tar",
+	".gz",
+	".tgz",
+	".7z",
+	".rar",
+	".bz2",
+	".xz",
+]);
+
+const TEXT_SCAN_EXTENSIONS = new Set([
+	".md",
+	".mdc",
+	".py",
+	".sh",
+	".mjs",
+	".js",
+	".cjs",
+	".ts",
+	".tsx",
+	".json",
+	".yaml",
+	".yml",
+	".toml",
+	".txt",
+]);
+
+const EXECUTABLE_SCRIPT_EXTENSIONS = new Set([
+	".py",
+	".sh",
+	".mjs",
+	".js",
+	".cjs",
+	".ts",
+]);
+
+/**
+ * Trojan-Source (CVE-2021-42574) bidirectional control characters and LLM ASCII-smuggling
+ * Unicode Tag characters (`U+E0000..U+E007F`), forbidden across ALL text and Markdown files.
+ */
+const TROJAN_BIDI_OR_TAG_REGEX =
+	/[\u0000\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069\u{E0000}-\u{E007F}]/u;
+
+/**
+ * Zero-width characters forbidden inside executable scripts (`.py`, `.sh`, `.js`, `.mjs`, `.ts`)
+ * where they can spoof identifiers or hide payload boundaries.
+ */
+const SCRIPT_ZERO_WIDTH_REGEX = /[\u200B\u200C\u2060-\u2064\uFEFF]/u;
+
+export function hasForbiddenBinaryExtension(filename: string): string | null {
+	const lower = filename.toLowerCase();
+	if (lower.endsWith(".tar.gz")) {
+		return ".tar.gz";
+	}
+	const ext = path.extname(lower);
+	if (FORBIDDEN_BINARY_AND_ARCHIVE_EXTENSIONS.has(ext)) {
+		return ext;
+	}
+	return null;
+}
+
+/**
+ * Scan raw text content for Trojan-Source bidirectional overrides, LLM Unicode Tag smuggling,
+ * and (when `isExecutableScript` is true) zero-width identifier spoofing characters.
+ */
+export function scanTextForTrojanUnicode(
+	relFile: string,
+	rawContent: string,
+	isExecutableScript: boolean,
+): SkillSecurityFinding[] {
+	const findings: SkillSecurityFinding[] = [];
+	// Strip a leading UTF-8 BOM at index 0 if present; mid-file BOM in scripts is still inspected
+	const normalized = rawContent.startsWith("\uFEFF")
+		? rawContent.slice(1)
+		: rawContent;
+	const lines = normalized.split(/\r?\n/);
+
+	for (let idx = 0; idx < lines.length; idx++) {
+		const line = lines[idx] ?? "";
+		const lineNo = idx + 1;
+
+		const bidiMatch = TROJAN_BIDI_OR_TAG_REGEX.exec(line);
+		if (bidiMatch?.[0]) {
+			const cp = bidiMatch[0]
+				.codePointAt(0)!
+				.toString(16)
+				.toUpperCase()
+				.padStart(4, "0");
+			findings.push({
+				file: relFile,
+				line: lineNo,
+				rule: "forbidden-trojan-unicode",
+				symbol: `U+${cp}`,
+				message: `Forbidden Trojan-Source / invisible control character U+${cp} detected in '${relFile}'.`,
+			});
+			continue;
+		}
+
+		if (isExecutableScript) {
+			const zwMatch = SCRIPT_ZERO_WIDTH_REGEX.exec(line);
+			if (zwMatch?.[0]) {
+				const cp = zwMatch[0]
+					.codePointAt(0)!
+					.toString(16)
+					.toUpperCase()
+					.padStart(4, "0");
+				findings.push({
+					file: relFile,
+					line: lineNo,
+					rule: "forbidden-trojan-unicode",
+					symbol: `U+${cp}`,
+					message: `Forbidden zero-width character U+${cp} detected in executable script '${relFile}'.`,
+				});
+			}
+		}
+	}
+
+	return findings;
+}
 
 /**
  * Check whether a file or specific line carries a maintainer-reviewed override directive.
@@ -590,58 +737,128 @@ function scanShellScriptContent(
 	return findings;
 }
 
-function walkExecutableScripts(
+interface WalkedSecurityTree {
+	readonly textAndScriptFiles: string[];
+	readonly structuralFindings: SkillSecurityFinding[];
+}
+
+function walkSkillSecurityTree(
 	rootDir: string,
 	currentDir: string = rootDir,
-): string[] {
-	if (!fs.existsSync(currentDir) || !fs.statSync(currentDir).isDirectory()) {
-		return [];
+): WalkedSecurityTree {
+	if (!fs.existsSync(currentDir)) {
+		return { textAndScriptFiles: [], structuralFindings: [] };
 	}
-	const results: string[] = [];
+
+	const rootStat = fs.lstatSync(currentDir);
+	if (rootStat.isSymbolicLink()) {
+		const rel =
+			path.relative(rootDir, currentDir).replace(/\\/g, "/") || ".";
+		return {
+			textAndScriptFiles: [],
+			structuralFindings: [
+				{
+					file: rel,
+					line: 1,
+					rule: "forbidden-symlink",
+					symbol: "symlink",
+					message: `Forbidden symbolic link '${rel}' inside Skill directory.`,
+				},
+			],
+		};
+	}
+
+	if (!rootStat.isDirectory()) {
+		return { textAndScriptFiles: [], structuralFindings: [] };
+	}
+
+	const textAndScriptFiles: string[] = [];
+	const structuralFindings: SkillSecurityFinding[] = [];
 	const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+
 	for (const entry of entries) {
 		const fullPath = path.join(currentDir, entry.name);
-		if (entry.isDirectory()) {
+		const relFile = path.relative(rootDir, fullPath).replace(/\\/g, "/");
+		const entryLstat = fs.lstatSync(fullPath);
+
+		if (entry.isSymbolicLink() || entryLstat.isSymbolicLink()) {
+			structuralFindings.push({
+				file: relFile,
+				line: 1,
+				rule: "forbidden-symlink",
+				symbol: "symlink",
+				message: `Forbidden symbolic link '${relFile}' inside Skill directory.`,
+			});
+			continue;
+		}
+
+		if (entryLstat.isDirectory()) {
 			if (IGNORED_SCAN_DIRS.has(entry.name)) {
 				continue;
 			}
-			results.push(...walkExecutableScripts(rootDir, fullPath));
-		} else if (entry.isFile()) {
-			if (
-				entry.name.endsWith(".py") ||
-				entry.name.endsWith(".sh") ||
-				entry.name.endsWith(".mjs") ||
-				entry.name.endsWith(".js") ||
-				entry.name.endsWith(".ts")
-			) {
-				results.push(fullPath);
+			const child = walkSkillSecurityTree(rootDir, fullPath);
+			textAndScriptFiles.push(...child.textAndScriptFiles);
+			structuralFindings.push(...child.structuralFindings);
+			continue;
+		}
+
+		if (entryLstat.isFile()) {
+			const forbiddenExt = hasForbiddenBinaryExtension(entry.name);
+			if (forbiddenExt) {
+				structuralFindings.push({
+					file: relFile,
+					line: 1,
+					rule: "forbidden-binary-file",
+					symbol: forbiddenExt,
+					message: `Forbidden binary or archive file '${relFile}' (${forbiddenExt}) inside Skill directory.`,
+				});
+				continue;
+			}
+
+			const ext = path.extname(entry.name).toLowerCase();
+			if (TEXT_SCAN_EXTENSIONS.has(ext)) {
+				textAndScriptFiles.push(fullPath);
 			}
 		}
 	}
-	return results.sort();
+
+	return {
+		textAndScriptFiles: textAndScriptFiles.sort(),
+		structuralFindings,
+	};
 }
 
 /**
- * Audit all scripts inside a single Skill directory for forbidden network exfiltration,
- * dynamic code execution, or unsafe shell primitives.
+ * Audit a single Skill directory for forbidden network exfiltration, dynamic code execution,
+ * unsafe shell primitives, Trojan-Source hidden Unicode, symbolic links, and forbidden binary files.
  */
 export function auditSkillSecurity(skillDir: string): SkillSecurityAuditReport {
 	const resolvedSkillDir = path.resolve(skillDir);
-	const scriptFiles = walkExecutableScripts(resolvedSkillDir);
+	const { textAndScriptFiles, structuralFindings } =
+		walkSkillSecurityTree(resolvedSkillDir);
 	const scannedFiles: string[] = [];
-	const findings: SkillSecurityFinding[] = [];
+	const findings: SkillSecurityFinding[] = [...structuralFindings];
 
-	for (const fullPath of scriptFiles) {
+	for (const fullPath of textAndScriptFiles) {
 		const relFile = path
 			.relative(resolvedSkillDir, fullPath)
 			.replace(/\\/g, "/");
-		scannedFiles.push(relFile);
+		const ext = path.extname(fullPath).toLowerCase();
+		const isExecutableScript = EXECUTABLE_SCRIPT_EXTENSIONS.has(ext);
+		if (isExecutableScript) {
+			scannedFiles.push(relFile);
+		}
+
 		const rawContent = fs.readFileSync(fullPath, "utf-8");
-		if (fullPath.endsWith(".py")) {
+		findings.push(
+			...scanTextForTrojanUnicode(relFile, rawContent, isExecutableScript),
+		);
+
+		if (ext === ".py") {
 			findings.push(...scanPythonScriptContent(relFile, rawContent));
-		} else if (fullPath.endsWith(".sh")) {
+		} else if (ext === ".sh") {
 			findings.push(...scanShellScriptContent(relFile, rawContent));
-		} else {
+		} else if (isExecutableScript) {
 			findings.push(...scanJsOrTsScriptContent(relFile, rawContent));
 		}
 	}
@@ -655,7 +872,7 @@ export function auditSkillSecurity(skillDir: string): SkillSecurityAuditReport {
 }
 
 /**
- * Audit every Skill directory under `catalogDir` for forbidden script primitives.
+ * Audit every Skill directory and Subagent file under `catalogDir` for security violations.
  */
 export function auditCatalogSecurity(
 	catalogDir: string,
@@ -679,6 +896,26 @@ export function auditCatalogSecurity(
 				file: `${skillRelPrefix}/${f.file}`,
 			});
 		}
+	}
+
+	const subagentFiles = discoverSubagentFiles(resolvedCatalog);
+	for (const saFullPath of subagentFiles) {
+		const relFile = path
+			.relative(resolvedCatalog, saFullPath)
+			.replace(/\\/g, "/");
+		const lstat = fs.lstatSync(saFullPath);
+		if (lstat.isSymbolicLink()) {
+			findings.push({
+				file: relFile,
+				line: 1,
+				rule: "forbidden-symlink",
+				symbol: "symlink",
+				message: `Forbidden symbolic link '${relFile}' in Subagent definition.`,
+			});
+			continue;
+		}
+		const rawContent = fs.readFileSync(saFullPath, "utf-8");
+		findings.push(...scanTextForTrojanUnicode(relFile, rawContent, false));
 	}
 
 	return {
