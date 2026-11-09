@@ -13,7 +13,7 @@ import {
 } from "./auditor/index.js";
 import {
 	ALL_RUNTIME_TARGETS,
-	CORE_RUNTIME_TARGETS,
+	detectInstalledHarnesses,
 	ExitCode,
 	loadSkillOpsConfig,
 	RUNTIME_HARNESS_SPECS,
@@ -182,21 +182,36 @@ const POPULAR_AI_ORDER: readonly RuntimeTarget[] = [
 	"idx",
 ];
 
-export function buildInteractiveTargetOptions(): MultiSelectOption[] {
+export function buildInteractiveTargetOptions(
+	repoPath?: string,
+): MultiSelectOption[] {
 	const popularSet = new Set<RuntimeTarget>(POPULAR_AI_ORDER);
-	const orderedTargets: RuntimeTarget[] = [
+	const baseOrder: RuntimeTarget[] = [
 		...POPULAR_AI_ORDER,
 		...ALL_RUNTIME_TARGETS.filter((t) => !popularSet.has(t)),
 	];
+	const detectedSet = repoPath
+		? new Set<RuntimeTarget>(detectInstalledHarnesses(repoPath))
+		: new Set<RuntimeTarget>();
+	const orderedTargets: RuntimeTarget[] =
+		detectedSet.size > 0
+			? [
+					...baseOrder.filter((t) => detectedSet.has(t)),
+					...baseOrder.filter((t) => !detectedSet.has(t)),
+				]
+			: baseOrder;
 
 	return orderedTargets.map((targetId) => {
 		const spec = RUNTIME_HARNESS_SPECS[targetId];
+		const isDetected = detectedSet.has(targetId);
+		const baseHint = `${spec.displayName} (${spec.skillsDir})`;
 		return {
 			value: spec.id,
 			label: spec.id,
 			kind: "ide",
 			tab: "skill",
-			hint: `${spec.displayName} (${spec.skillsDir})`,
+			hint: isDetected ? `[detected] · ${baseHint}` : baseHint,
+			...(isDetected ? { initialSelected: true } : {}),
 		};
 	});
 }
@@ -476,7 +491,7 @@ export function runCli(argv: readonly string[]): number {
 		try {
 			targets = targetsArg
 				? resolveRuntimeTargets(targetsArg, repoPath)
-				: (cfgRes.config?.targets ?? [...CORE_RUNTIME_TARGETS]);
+				: (cfgRes.config?.targets ?? resolveRuntimeTargets("auto", repoPath));
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
 			process.stderr.write(`Invalid --targets: ${msg}\n`);
@@ -660,7 +675,7 @@ export async function runCliInteractive(
 
 		// Step 1: Explicitly select AI IDE / Agent when -t / --target is not passed
 		if (!resolvedTargetsArg) {
-			const targetOptions = buildInteractiveTargetOptions();
+			const targetOptions = buildInteractiveTargetOptions(repoPath);
 			const step1Title = needsCatalogPrompt
 				? "SkillOps — Step 1/2: Select Your AI IDE / Agent"
 				: "SkillOps — Select Your AI IDE / Agent";
