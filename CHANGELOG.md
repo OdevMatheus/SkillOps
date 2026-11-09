@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`env-secrets-guard` skill (`arch-quality`):** Detects hardcoded credentials, `.env` files tracked by git, and `.env` files missing from `.gitignore` through the stdlib-only [`scan_secrets.py`](./catalog/arch-quality/env-secrets-guard/scripts/scan_secrets.py) (`--json`, exit codes `0`/`1`/`2`, secrets redacted in output).
 
 ### Changed
+- **Mandatory `CODEOWNERS` Gate & Main Branch Ruleset Hardening (`#189`):** Expanded [`.github/CODEOWNERS`](./.github/CODEOWNERS) with a global `* @OdevMatheus` rule and hardened the `Protect main branch` GitHub Ruleset (`#26051946`) to enforce `require_code_owner_review: true`, `dismiss_stale_reviews_on_push: true`, and required CI/CodeQL status checks before merging.
 - **CI/CD & CodeQL Default Branch Alignment (`#188`):** Updated [`.github/workflows/ai-ci.yml`](./.github/workflows/ai-ci.yml), [`.github/workflows/codeql.yml`](./.github/workflows/codeql.yml), [`.github/workflows/release-drafter.yml`](./.github/workflows/release-drafter.yml), [`.github/ISSUE_TEMPLATE/feature_request.yml`](./.github/ISSUE_TEMPLATE/feature_request.yml), [`AGENTS.md`](./AGENTS.md), and [`CONTRIBUTING.md`](./CONTRIBUTING.md) to trigger and reference `main` instead of `master`.
 
 ### Removed
