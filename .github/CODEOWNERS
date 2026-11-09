@@ -1,6 +1,9 @@
 # CODEOWNERS — Auto-requests maintainer review on critical repository paths.
 # Last matching pattern wins.
 
+# Global default owner (every file and directory requires maintainer review)
+*                                 @OdevMatheus
+
 # Repository documentation & core governance
 /README*.md                       @OdevMatheus
 /.gitignore                       @OdevMatheus
