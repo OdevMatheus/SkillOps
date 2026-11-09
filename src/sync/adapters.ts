@@ -152,6 +152,28 @@ export function findExistingItemPathInTarget(
 	return null;
 }
 
+/**
+ * Check which of the candidate target AI IDEs/CLIs already have a given Skill or Subagent present on disk.
+ */
+export function detectExistingTargetsForItem(
+	repoPath: string,
+	itemName: string,
+	kind: "skill" | "subagent",
+	candidateTargets: readonly RuntimeTarget[],
+): RuntimeTarget[] {
+	const resolvedRepo = path.resolve(repoPath);
+	const existing: RuntimeTarget[] = [];
+	for (const target of candidateTargets) {
+		if (
+			findExistingItemPathInTarget(resolvedRepo, itemName, kind, target) !==
+			null
+		) {
+			existing.push(target);
+		}
+	}
+	return existing;
+}
+
 const CODEX_MARKER_START = "<!-- SKILLOPS:START -->";
 const CODEX_MARKER_END = "<!-- SKILLOPS:END -->";
 

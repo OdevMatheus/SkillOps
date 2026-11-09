@@ -13,10 +13,14 @@ import {
 	ALL_RUNTIME_TARGETS,
 	addSkillOrSubagent,
 	cleanSyncedArtifacts,
+	createMultiSelectState,
+	detectExistingTargetsForItem,
 	ExitCode,
 	formatSyncReport,
 	removeSkillOrSubagent,
+	renderMultiSelectFrame,
 	stripAnsi,
+	visibleLength,
 } from "../src/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -495,6 +499,106 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 			expect(lockRaw.targets).toEqual(["cursor", "claude", "gemini"]);
 			expect(lockRaw.selected_skills).toEqual(["mcp-architect"]);
 			expect(lockRaw.selected_subagents).toEqual(["context-scout"]);
+		} finally {
+			fs.rmSync(tmpRepo, { recursive: true, force: true });
+		}
+	});
+
+	it("shows installed status indicators in Step 2 catalog options across single and multiple selected targets (Issue #171)", () => {
+		const tmpRepo = fs.mkdtempSync(
+			path.join(os.tmpdir(), "skillops-step2-installed-status-"),
+		);
+		try {
+			// 1. Fresh repo: no items installed in any selected target -> clean descriptions without clutter
+			const cleanOpts = buildInteractiveCatalogOptions(CATALOG_ROOT, {
+				repoPath: tmpRepo,
+				targets: ["claude", "cursor"],
+			});
+			for (const opt of cleanOpts) {
+				expect(opt.hint).not.toContain("[installed");
+			}
+
+			// 2. Install mcp-architect in claude only, and context-scout in both claude and cursor
+			addSkillOrSubagent(tmpRepo, CATALOG_ROOT, "mcp-architect", {
+				targets: ["claude"],
+			});
+			addSkillOrSubagent(tmpRepo, CATALOG_ROOT, "context-scout", {
+				targets: ["claude", "cursor"],
+			});
+
+			expect(
+				detectExistingTargetsForItem(tmpRepo, "mcp-architect", "skill", [
+					"claude",
+					"cursor",
+				]),
+			).toEqual(["claude"]);
+			expect(
+				detectExistingTargetsForItem(tmpRepo, "env-secrets-guard", "skill", [
+					"claude",
+					"cursor",
+				]),
+			).toEqual([]);
+			expect(
+				detectExistingTargetsForItem(tmpRepo, "context-scout", "subagent", [
+					"claude",
+					"cursor",
+				]),
+			).toEqual(["claude", "cursor"]);
+
+			// 3. Single selected target (claude): mcp-architect and context-scout are installed in all selected targets ([installed])
+			const singleTargetOpts = buildInteractiveCatalogOptions(CATALOG_ROOT, {
+				repoPath: tmpRepo,
+				targets: ["claude"],
+			});
+			const singleMcp = singleTargetOpts.find(
+				(o) => o.value === "mcp-architect",
+			);
+			const singleSecrets = singleTargetOpts.find(
+				(o) => o.value === "env-secrets-guard",
+			);
+			const singleScout = singleTargetOpts.find(
+				(o) => o.value === "context-scout",
+			);
+			expect(singleMcp?.hint?.startsWith("[installed] · ")).toBe(true);
+			expect(singleSecrets?.hint?.startsWith("[installed")).toBe(false);
+			expect(singleScout?.hint?.startsWith("[installed] · ")).toBe(true);
+
+			// 4. Multiple selected targets (claude, cursor):
+			//    - mcp-architect exists only in claude -> [installed: claude]
+			//    - env-secrets-guard exists in neither -> clean description
+			//    - context-scout exists in both -> [installed]
+			const multiTargetOpts = buildInteractiveCatalogOptions(CATALOG_ROOT, {
+				repoPath: tmpRepo,
+				targets: ["claude", "cursor"],
+			});
+			const multiMcp = multiTargetOpts.find((o) => o.value === "mcp-architect");
+			const multiSecrets = multiTargetOpts.find(
+				(o) => o.value === "env-secrets-guard",
+			);
+			const multiScout = multiTargetOpts.find(
+				(o) => o.value === "context-scout",
+			);
+			expect(multiMcp?.hint?.startsWith("[installed: claude] · ")).toBe(true);
+			expect(multiSecrets?.hint?.startsWith("[installed")).toBe(false);
+			expect(multiScout?.hint?.startsWith("[installed] · ")).toBe(true);
+
+			// 5. Verify Step 2 TUI frame rendering with installed badges & <= 78 column budget
+			const step2State = createMultiSelectState(multiTargetOpts, {
+				showSelectAll: true,
+			});
+			const step2Frame = renderMultiSelectFrame(
+				"SkillOps — Step 2/2: Select Skills & Agents to Import",
+				step2State,
+				{
+					targetHint: "claude, cursor",
+					showSelectAll: true,
+					colorEnabled: true,
+				},
+			);
+			expect(stripAnsi(step2Frame)).toContain("[installed: claude]");
+			for (const line of step2Frame.split("\n")) {
+				expect(visibleLength(line)).toBeLessThanOrEqual(78);
+			}
 		} finally {
 			fs.rmSync(tmpRepo, { recursive: true, force: true });
 		}

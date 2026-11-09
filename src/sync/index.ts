@@ -4,6 +4,7 @@ export {
 	type CleanOptions,
 	cleanSyncedArtifacts,
 	computeSha256,
+	detectExistingTargetsForItem,
 	findExistingItemPathInTarget,
 	formatSyncReport,
 	type RemoveOptions,
