@@ -6,12 +6,14 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	buildInteractiveCatalogOptions,
 	buildInteractiveInstalledOptions,
+	buildInteractiveInstalledTargetOptions,
 	buildInteractiveTargetOptions,
 	runCli,
 } from "../src/cli.js";
 import {
 	ALL_RUNTIME_TARGETS,
 	addSkillOrSubagent,
+	applyMultiSelectKey,
 	cleanSyncedArtifacts,
 	createMultiSelectState,
 	detectExistingTargetsForItem,
@@ -732,6 +734,132 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 			expect(fs.existsSync(path.join(tmpRepo, ".claude"))).toBe(false);
 			expect(fs.existsSync(path.join(tmpRepo, ".cursor"))).toBe(false);
 			expect(fs.existsSync(path.join(tmpRepo, ".github"))).toBe(false);
+		} finally {
+			fs.rmSync(tmpRepo, { recursive: true, force: true });
+		}
+	});
+
+	it("supports selective per-IDE uninstallation in interactive TUI and CLI remove flows (Issue #173)", () => {
+		const tmpRepo = fs.mkdtempSync(
+			path.join(os.tmpdir(), "skillops-selective-remove-"),
+		);
+		try {
+			// Install mcp-architect in cursor and claude, and env-secrets-guard in claude only
+			addSkillOrSubagent(tmpRepo, CATALOG_ROOT, "mcp-architect", {
+				targets: ["cursor", "claude"],
+			});
+			addSkillOrSubagent(tmpRepo, CATALOG_ROOT, "env-secrets-guard", {
+				targets: ["claude"],
+			});
+
+			// 1. Verify Step 1/2 target options for interactive remove when 2+ IDEs have installed items
+			const targetOpts = buildInteractiveInstalledTargetOptions(
+				tmpRepo,
+				CATALOG_ROOT,
+			);
+			expect(targetOpts.map((o) => o.value)).toEqual(["cursor", "claude"]);
+			expect(targetOpts[0]?.hint).toContain("1 item: mcp-architect");
+			expect(targetOpts[1]?.hint).toContain("2 items:");
+
+			// Render Step 1/2 interactive target selector frame and select only 'cursor'
+			let step1State = createMultiSelectState(targetOpts, {
+				showSelectAll: true,
+			});
+			expect(step1State.options[0]?.label).toBe("[ALL] Select all AI IDEs");
+			// Move cursor down to 'cursor' and press Enter (selectCursorOnEmptySubmit)
+			step1State = applyMultiSelectKey(step1State, "\x1b[B");
+			const step1Frame = renderMultiSelectFrame(
+				"SkillOps — Step 1/2: Select AI IDE(s) to Remove From",
+				step1State,
+				{
+					tabLabels: { skill: "Installed AI IDEs", agent: "" },
+					submitActionLabel: "continue",
+					selectCursorOnEmptySubmit: true,
+					showSelectAll: true,
+					colorEnabled: false,
+				},
+			);
+			expect(step1Frame).toContain("[ ◆ Installed AI IDEs (2) ]");
+			expect(step1Frame).toContain("Target: cursor — Enter to continue");
+			step1State = applyMultiSelectKey(step1State, "\r", {
+				selectCursorOnEmptySubmit: true,
+			});
+			expect([...step1State.selected]).toEqual(["cursor"]);
+
+			// 2. Step 2/2 options filtered to 'cursor' only list mcp-architect (not env-secrets-guard)
+			const cursorInstalledOpts = buildInteractiveInstalledOptions(
+				tmpRepo,
+				CATALOG_ROOT,
+				["cursor"],
+			);
+			expect(cursorInstalledOpts.map((o) => o.value)).toEqual([
+				"mcp-architect",
+			]);
+			expect(cursorInstalledOpts[0]?.hint).toContain("[cursor]");
+
+			// 3. Remove mcp-architect ONLY from cursor via CLI (-t cursor)
+			expect(
+				runCli([
+					"node",
+					"cli.js",
+					"remove",
+					"mcp-architect",
+					"-p",
+					tmpRepo,
+					"--catalog",
+					CATALOG_ROOT,
+					"-t",
+					"cursor",
+				]),
+			).toBe(ExitCode.SUCCESS);
+
+			// Verify cursor copy was removed while claude installation & lockfile entries remain intact
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".cursor", "rules", "skillops-mcp-architect.mdc"),
+				),
+			).toBe(false);
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".claude", "skills", "mcp-architect", "SKILL.md"),
+				),
+			).toBe(true);
+			expect(
+				fs.existsSync(
+					path.join(
+						tmpRepo,
+						".claude",
+						"skills",
+						"env-secrets-guard",
+						"SKILL.md",
+					),
+				),
+			).toBe(true);
+
+			const lockAfterSelectiveRemove = JSON.parse(
+				fs.readFileSync(path.join(tmpRepo, ".skillops-lock.json"), "utf-8"),
+			) as {
+				targets: string[];
+				selected_skills: string[];
+				artifacts: Record<string, { target: string; skill_name: string }>;
+			};
+			expect(lockAfterSelectiveRemove.targets).toEqual(["claude"]);
+			expect(lockAfterSelectiveRemove.selected_skills).toEqual([
+				"mcp-architect",
+				"env-secrets-guard",
+			]);
+			expect(
+				Object.values(lockAfterSelectiveRemove.artifacts).every(
+					(a) => a.target === "claude",
+				),
+			).toBe(true);
+
+			// 4. Now only 1 IDE (claude) has installed artifacts
+			const remainingTargetOpts = buildInteractiveInstalledTargetOptions(
+				tmpRepo,
+				CATALOG_ROOT,
+			);
+			expect(remainingTargetOpts.map((o) => o.value)).toEqual(["claude"]);
 		} finally {
 			fs.rmSync(tmpRepo, { recursive: true, force: true });
 		}
