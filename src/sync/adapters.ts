@@ -190,52 +190,67 @@ export function computeSha256(content: string): string {
 	return crypto.createHash("sha256").update(content, "utf-8").digest("hex");
 }
 
+function rewriteBundledSkillPaths(
+	text: string,
+	parsed: ParsedSkillDirectory,
+	baseDir: string,
+): string {
+	const name = parsed.manifest.name;
+	const track = parsed.manifest.track;
+	const catalogPrefix = `catalog/${track}/${name}/`;
+	return text.split(catalogPrefix).join(`${baseDir}/`);
+}
+
+function appendCompanionSkillFiles(
+	files: PlannedFile[],
+	parsed: ParsedSkillDirectory,
+	target: RuntimeTarget,
+	baseDir: string,
+): void {
+	const name = parsed.manifest.name;
+	for (const relFile of parsed.allFiles) {
+		if (relFile === "SKILL.md") {
+			continue;
+		}
+		const fullFile = path.join(parsed.skillDir, relFile);
+		if (!fs.existsSync(fullFile) || !fs.statSync(fullFile).isFile()) {
+			continue;
+		}
+		files.push({
+			target,
+			itemName: name,
+			relativePath: `${baseDir}/${relFile}`,
+			content: fs.readFileSync(fullFile, "utf-8"),
+		});
+	}
+}
+
 export function renderSkillFilesForRuntime(
 	parsed: ParsedSkillDirectory,
 	target: RuntimeTarget,
 ): PlannedFile[] {
 	const name = parsed.manifest.name;
 	const spec = RUNTIME_HARNESS_SPECS[target];
+	const baseDir = `${spec.skillsDir}/${name}`;
 	const files: PlannedFile[] = [];
 	const globs =
 		parsed.manifest.routing_signals.files_any.length > 0
 			? parsed.manifest.routing_signals.files_any
 			: ["**/*"];
-	const body = parsed.markdownBody.trim();
+	const body = rewriteBundledSkillPaths(
+		parsed.markdownBody.trim(),
+		parsed,
+		baseDir,
+	);
 
 	if (spec.skillFormat === "progressive-skill-dir") {
-		const baseDir = `${spec.skillsDir}/${name}`;
-
 		files.push({
 			target,
 			itemName: name,
 			relativePath: `${baseDir}/SKILL.md`,
-			content: parsed.rawText,
+			content: rewriteBundledSkillPaths(parsed.rawText, parsed, baseDir),
 		});
-
-		for (const scriptFull of parsed.declaredScripts) {
-			const scriptRel = path
-				.relative(parsed.skillDir, scriptFull)
-				.replace(/\\/g, "/");
-			files.push({
-				target,
-				itemName: name,
-				relativePath: `${baseDir}/${scriptRel}`,
-				content: fs.readFileSync(scriptFull, "utf-8"),
-			});
-		}
-
-		for (const refFull of parsed.referenceFiles) {
-			const refRel = path
-				.relative(parsed.skillDir, refFull)
-				.replace(/\\/g, "/");
-			files.push({
-				target,
-				itemName: name,
-				relativePath: `${baseDir}/${refRel}`,
-				content: fs.readFileSync(refFull, "utf-8"),
-			});
-		}
+		appendCompanionSkillFiles(files, parsed, target, baseDir);
 		return files;
 	}
 
@@ -251,6 +266,7 @@ export function renderSkillFilesForRuntime(
 			relativePath: `.cursor/rules/skillops-${name}.mdc`,
 			content: `---\n${mdcFrontmatter}\n---\n\n${body}\n`,
 		});
+		appendCompanionSkillFiles(files, parsed, target, baseDir);
 		return files;
 	}
 
@@ -280,6 +296,7 @@ export function renderSkillFilesForRuntime(
 			relativePath: `.github/prompts/skillops-${name}.prompt.md`,
 			content: `---\n${promptFrontmatter}\n---\n\n${body}\n`,
 		});
+		appendCompanionSkillFiles(files, parsed, target, baseDir);
 		return files;
 	}
 
@@ -295,6 +312,7 @@ export function renderSkillFilesForRuntime(
 			relativePath: `.windsurf/rules/skillops-${name}.md`,
 			content: `---\n${wsFrontmatter}\n---\n\n${body}\n`,
 		});
+		appendCompanionSkillFiles(files, parsed, target, baseDir);
 		return files;
 	}
 
@@ -312,6 +330,7 @@ export function renderSkillFilesForRuntime(
 			relativePath: `.openhands/microagents/skillops-${name}.md`,
 			content: `---\n${ohFrontmatter}\n---\n\n${body}\n`,
 		});
+		appendCompanionSkillFiles(files, parsed, target, baseDir);
 		return files;
 	}
 
@@ -327,6 +346,7 @@ export function renderSkillFilesForRuntime(
 			relativePath: `.kiro/steering/skillops-${name}.md`,
 			content: `---\n${kiroFrontmatter}\n---\n\n${body}\n`,
 		});
+		appendCompanionSkillFiles(files, parsed, target, baseDir);
 		return files;
 	}
 
@@ -341,6 +361,7 @@ export function renderSkillFilesForRuntime(
 			relativePath: `.augment/rules/skillops-${name}.md`,
 			content: `---\n${augFrontmatter}\n---\n\n${body}\n`,
 		});
+		appendCompanionSkillFiles(files, parsed, target, baseDir);
 		return files;
 	}
 
@@ -359,6 +380,7 @@ export function renderSkillFilesForRuntime(
 		relativePath: `${spec.skillsDir}/skillops-${name}.md`,
 		content: `---\n${ruleFrontmatter}\n---\n\n${body}\n`,
 	});
+	appendCompanionSkillFiles(files, parsed, target, baseDir);
 
 	return files;
 }
