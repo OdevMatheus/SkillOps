@@ -12,6 +12,10 @@ import {
 	type SubagentManifest,
 	splitFrontmatter,
 } from "../models.js";
+import {
+	hasForbiddenBinaryExtension,
+	scanTextForTrojanUnicode,
+} from "./security.js";
 
 export interface ParsedSkillDirectory {
 	readonly skillDir: string;
@@ -85,19 +89,31 @@ function walkAllSkillFiles(
 	const entries = fs.readdirSync(currentDir, { withFileTypes: true });
 	for (const entry of entries) {
 		const fullPath = path.join(currentDir, entry.name);
-		if (entry.isDirectory()) {
+		const relPath = path.relative(rootSkillDir, fullPath).replace(/\\/g, "/");
+		const entryLstat = fs.lstatSync(fullPath);
+
+		if (entry.isSymbolicLink() || entryLstat.isSymbolicLink()) {
+			throw new Error(
+				`Security violation: Symbolic link '${relPath}' is forbidden inside Skill directories.`,
+			);
+		}
+
+		if (entryLstat.isDirectory()) {
 			if (IGNORED_SKILL_DIRS.has(entry.name)) {
 				continue;
 			}
 			results.push(...walkAllSkillFiles(rootSkillDir, fullPath));
-		} else if (entry.isFile()) {
-			if (
-				IGNORED_SKILL_FILES.has(entry.name) ||
-				entry.name.endsWith(".pyc")
-			) {
+		} else if (entryLstat.isFile()) {
+			if (IGNORED_SKILL_FILES.has(entry.name)) {
 				continue;
 			}
-			results.push(path.relative(rootSkillDir, fullPath).replace(/\\/g, "/"));
+			const forbiddenExt = hasForbiddenBinaryExtension(entry.name);
+			if (forbiddenExt) {
+				throw new Error(
+					`Security violation: Forbidden binary or archive file '${relPath}' (${forbiddenExt}) inside Skill directory.`,
+				);
+			}
+			results.push(relPath);
 		}
 	}
 	return results.sort((a, b) => {
@@ -123,12 +139,23 @@ export function parseSkillDirectory(
 	options: ParseSkillOptions = {},
 ): ParsedSkillDirectory {
 	const requireLayout = options.requireLayout ?? true;
+	const resolvedSkillDir = path.resolve(skillDir);
 	const skillMdPath = path.join(skillDir, "SKILL.md");
 	if (!fs.existsSync(skillMdPath)) {
 		throw new Error(`Missing SKILL.md in '${skillDir.replace(/\\/g, "/")}'.`);
 	}
+	if (fs.lstatSync(skillMdPath).isSymbolicLink()) {
+		throw new Error(
+			`Security violation: SKILL.md in '${skillDir.replace(/\\/g, "/")}' cannot be a symbolic link.`,
+		);
+	}
 
 	const rawText = fs.readFileSync(skillMdPath, "utf-8");
+	const trojanFindings = scanTextForTrojanUnicode("SKILL.md", rawText, false);
+	if (trojanFindings.length > 0) {
+		throw new Error(`Security violation: ${trojanFindings[0]!.message}`);
+	}
+
 	const lines = rawText.split(/\r?\n/);
 	const totalLines = rawText.endsWith("\n") ? lines.length - 1 : lines.length;
 	const [, markdownBody] = splitFrontmatter(
@@ -142,6 +169,22 @@ export function parseSkillDirectory(
 	const declaredRelSet = new Set<string>();
 
 	for (const scriptEntry of manifest.entrypoints.scripts) {
+		if (
+			scriptEntry.path.includes("\0") ||
+			path.isAbsolute(scriptEntry.path)
+		) {
+			throw new Error(
+				`Security violation: Declared script path '${scriptEntry.path}' must be a relative path inside the Skill directory.`,
+			);
+		}
+		const resolvedScriptPath = path.resolve(resolvedSkillDir, scriptEntry.path);
+		const relToSkill = path.relative(resolvedSkillDir, resolvedScriptPath);
+		if (relToSkill.startsWith("..") || path.isAbsolute(relToSkill)) {
+			throw new Error(
+				`Security violation: Declared script path '${scriptEntry.path}' escapes Skill directory boundary.`,
+			);
+		}
+
 		declaredRelSet.add(scriptEntry.path);
 		const fullScriptPath = path.join(skillDir, scriptEntry.path);
 		if (fs.existsSync(fullScriptPath) && fs.statSync(fullScriptPath).isFile()) {
@@ -264,7 +307,20 @@ export function discoverSubagentFiles(repoOrCatalogRoot: string): string[] {
  * Parse and validate a Subagent definition file.
  */
 export function parseSubagentFile(filePath: string): ParsedSubagentFile {
+	if (fs.existsSync(filePath) && fs.lstatSync(filePath).isSymbolicLink()) {
+		throw new Error(
+			`Security violation: Subagent file '${filePath.replace(/\\/g, "/")}' cannot be a symbolic link.`,
+		);
+	}
 	const rawText = fs.readFileSync(filePath, "utf-8");
+	const trojanFindings = scanTextForTrojanUnicode(
+		path.basename(filePath),
+		rawText,
+		false,
+	);
+	if (trojanFindings.length > 0) {
+		throw new Error(`Security violation: ${trojanFindings[0]!.message}`);
+	}
 	const { manifest, systemPromptBody } = parseSubagentMdFile(filePath);
 	return {
 		filePath,

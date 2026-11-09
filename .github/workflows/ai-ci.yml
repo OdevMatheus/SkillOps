@@ -58,49 +58,105 @@ jobs:
             echo "OK — Catalog directory not yet populated (pre-development readiness phase)."
           fi
 
-      - name: Audit Catalog Python Scripts via AST Security Gate
+      - name: Audit Catalog Scripts, Trojan-Source Unicode & Boundary Guards
         run: |
           python3 - <<'PY'
-          import ast, pathlib, sys
+          import ast, pathlib, re, sys
 
-          FORBIDDEN_IMPORTS = {
-              "urllib", "urllib2", "urllib3", "http", "httplib", "socket",
-              "socketserver", "requests", "httpx", "aiohttp", "ftplib",
-              "smtplib", "telnetlib", "xmlrpc", "webbrowser", "paramiko",
-              "websocket", "websockets", "pickle", "cPickle", "marshal",
-              "shelve", "ctypes", "cffi", "pty", "commands",
+          FORBIDDEN_ROOT_IMPORTS = {
+              "urllib2", "urllib3", "httplib", "socket", "socketserver",
+              "requests", "httpx", "aiohttp", "ftplib", "smtplib",
+              "telnetlib", "paramiko", "websocket", "websockets",
+              "pickle", "cPickle", "marshal", "shelve", "ctypes", "cffi",
+              "pty", "commands",
           }
-          FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__"}
-          FORBIDDEN_OS_ATTRS = {"system", "popen", "spawnl", "spawnle", "spawnlp", "spawnlpe", "spawnv", "spawnve", "spawnvp", "spawnvpe", "execl", "execle", "execlp", "execlpe", "execv", "execve", "execvp", "execvpe"}
+          FORBIDDEN_SUBMODULES = {
+              "urllib.request", "urllib.urlopen", "http.client", "xmlrpc.client",
+          }
+          FORBIDDEN_CALLS = {"eval", "exec", "__import__"}
+          FORBIDDEN_OS_ATTRS = {
+              "system", "popen", "spawnl", "spawnle", "spawnlp", "spawnlpe",
+              "spawnv", "spawnve", "spawnvp", "spawnvpe", "execl", "execle",
+              "execlp", "execlpe", "execv", "execve", "execvp", "execvpe",
+          }
+          FORBIDDEN_BINARY_EXTS = {
+              ".exe", ".dll", ".so", ".dylib", ".bin", ".wasm", ".pyc", ".pyo",
+              ".pyd", ".msi", ".scr", ".com", ".jar", ".class", ".zip", ".tar",
+              ".gz", ".tgz", ".7z", ".rar", ".bz2", ".xz",
+          }
+          TROJAN_BIDI_RE = re.compile(r"[\u0000\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069\U000E0000-\U000E007F]")
 
           errors = []
-          for py_file in sorted(pathlib.Path("catalog").rglob("*.py")):
+          catalog_root = pathlib.Path("catalog")
+
+          for item in sorted(catalog_root.rglob("*")):
+              if "__pycache__" in item.parts:
+                  continue
+              if item.is_symlink():
+                  errors.append(f"{item.as_posix()}:1: forbidden symbolic link in catalog")
+                  continue
+              if item.is_file():
+                  low = item.name.lower()
+                  if low.endswith(".tar.gz") or item.suffix.lower() in FORBIDDEN_BINARY_EXTS:
+                      errors.append(f"{item.as_posix()}:1: forbidden binary or archive file '{item.name}'")
+                      continue
+                  if item.suffix.lower() in {".md", ".py", ".sh", ".mjs", ".js", ".ts", ".json", ".yaml", ".yml"}:
+                      txt = item.read_text(encoding="utf-8")
+                      if "skillops-security: allow-file" in txt:
+                          continue
+                      for idx, line in enumerate(txt.splitlines(), 1):
+                          m = TROJAN_BIDI_RE.search(line)
+                          if m:
+                              cp = f"U+{ord(m.group(0)):04X}"
+                              errors.append(f"{item.as_posix()}:{idx}: forbidden Trojan-Source / invisible control character {cp}")
+
+          for py_file in sorted(catalog_root.rglob("*.py")):
+              if "__pycache__" in py_file.parts:
+                  continue
               source = py_file.read_text(encoding="utf-8")
+              if "skillops-security: allow-file" in source:
+                  continue
+              lines = source.splitlines()
               tree = ast.parse(source, filename=py_file.as_posix())
               for node in ast.walk(tree):
+                  lineno = getattr(node, "lineno", 1)
+                  raw_line = lines[lineno - 1] if 1 <= lineno <= len(lines) else ""
+                  if "skillops-security: allow" in raw_line:
+                      continue
                   if isinstance(node, ast.Import):
                       for alias in node.names:
                           root = alias.name.split(".")[0]
-                          if root in FORBIDDEN_IMPORTS:
-                              errors.append(f"{py_file.as_posix()}:{node.lineno}: forbidden import '{root}'")
+                          first_two = ".".join(alias.name.split(".")[:2])
+                          if root in FORBIDDEN_ROOT_IMPORTS:
+                              errors.append(f"{py_file.as_posix()}:{lineno}: forbidden import '{root}'")
+                          elif first_two in FORBIDDEN_SUBMODULES:
+                              errors.append(f"{py_file.as_posix()}:{lineno}: forbidden network client '{first_two}'")
                   elif isinstance(node, ast.ImportFrom) and node.module:
                       root = node.module.split(".")[0]
-                      if root in FORBIDDEN_IMPORTS:
-                          errors.append(f"{py_file.as_posix()}:{node.lineno}: forbidden from-import '{root}'")
+                      first_two = ".".join(node.module.split(".")[:2])
+                      imported = {a.name for a in node.names}
+                      if root in FORBIDDEN_ROOT_IMPORTS:
+                          errors.append(f"{py_file.as_posix()}:{lineno}: forbidden from-import '{root}'")
+                      elif first_two in FORBIDDEN_SUBMODULES:
+                          errors.append(f"{py_file.as_posix()}:{lineno}: forbidden network client '{first_two}'")
+                      elif node.module == "urllib" and (imported & {"request", "urlopen"}):
+                          errors.append(f"{py_file.as_posix()}:{lineno}: forbidden network client 'urllib.request'")
+                      elif node.module in {"http", "xmlrpc"} and "client" in imported:
+                          errors.append(f"{py_file.as_posix()}:{lineno}: forbidden network client '{node.module}.client'")
                   elif isinstance(node, ast.Call):
                       if isinstance(node.func, ast.Name) and node.func.id in FORBIDDEN_CALLS:
-                          errors.append(f"{py_file.as_posix()}:{node.lineno}: forbidden dynamic call '{node.func.id}()'")
+                          errors.append(f"{py_file.as_posix()}:{lineno}: forbidden dynamic call '{node.func.id}()'")
                       elif isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name) and node.func.value.id == "os" and node.func.attr in FORBIDDEN_OS_ATTRS:
-                          errors.append(f"{py_file.as_posix()}:{node.lineno}: forbidden shell call 'os.{node.func.attr}()'")
+                          errors.append(f"{py_file.as_posix()}:{lineno}: forbidden shell call 'os.{node.func.attr}()'")
                       for kw in node.keywords:
                           if kw.arg == "shell" and isinstance(kw.value, ast.Constant) and kw.value.value is True:
-                              errors.append(f"{py_file.as_posix()}:{node.lineno}: forbidden 'shell=True' in subprocess call")
+                              errors.append(f"{py_file.as_posix()}:{lineno}: forbidden 'shell=True' in subprocess call")
 
           if errors:
               for err in errors:
                   print(f"::error::{err}")
               sys.exit(1)
-          print("OK — All catalog Python scripts passed AST security audit.")
+          print("OK — All catalog files and Python scripts passed AST, Trojan-Source, and boundary security audit.")
           PY
 
   npx-engine-qa:

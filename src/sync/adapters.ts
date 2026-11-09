@@ -931,6 +931,39 @@ export function discoverInstalledArtifactsOnDisk(
 	return [...byRelPath.values()];
 }
 
+/**
+ * Resolve a repository-relative path and enforce strict containment inside `resolvedRepo`,
+ * rejecting null bytes, absolute paths, `..` traversal, and symbolic link targets.
+ */
+export function resolveSafeRepoTargetPath(
+	resolvedRepo: string,
+	relativePath: string,
+): string {
+	const cleanRoot = path.resolve(resolvedRepo);
+	if (
+		!relativePath ||
+		relativePath.includes("\0") ||
+		path.isAbsolute(relativePath)
+	) {
+		throw new Error(
+			`Security violation: Planned artifact path '${relativePath}' escapes target repository boundary '${cleanRoot.replace(/\\/g, "/")}'.`,
+		);
+	}
+	const fullPath = path.resolve(cleanRoot, relativePath);
+	const relToRepo = path.relative(cleanRoot, fullPath);
+	if (!relToRepo || relToRepo.startsWith("..") || path.isAbsolute(relToRepo)) {
+		throw new Error(
+			`Security violation: Planned artifact path '${relativePath}' escapes target repository boundary '${cleanRoot.replace(/\\/g, "/")}'.`,
+		);
+	}
+	if (fs.existsSync(fullPath) && fs.lstatSync(fullPath).isSymbolicLink()) {
+		throw new Error(
+			`Security violation: Refusing to write or remove symbolic link at '${relativePath}'.`,
+		);
+	}
+	return fullPath;
+}
+
 function applyPlannedFiles(
 	resolvedRepo: string,
 	resolvedCatalog: string,
@@ -972,7 +1005,7 @@ function applyPlannedFiles(
 	}
 
 	for (const pf of plannedFiles) {
-		const fullPath = path.join(resolvedRepo, pf.relativePath);
+		const fullPath = resolveSafeRepoTargetPath(resolvedRepo, pf.relativePath);
 		const desiredSha = computeSha256(pf.content);
 		const fileExists =
 			fs.existsSync(fullPath) && fs.statSync(fullPath).isFile();
@@ -1326,7 +1359,7 @@ export function removeSkillOrSubagent(
 
 	for (const entry of matchingEntries) {
 		const relPath = entry.relativePath;
-		const fullPath = path.join(resolvedRepo, relPath);
+		const fullPath = resolveSafeRepoTargetPath(resolvedRepo, relPath);
 		const fileExists =
 			fs.existsSync(fullPath) && fs.statSync(fullPath).isFile();
 
@@ -1501,7 +1534,7 @@ export function cleanSyncedArtifacts(
 
 	for (const entry of discovered) {
 		const relPath = entry.relativePath;
-		const fullPath = path.join(resolvedRepo, relPath);
+		const fullPath = resolveSafeRepoTargetPath(resolvedRepo, relPath);
 		const fileExists =
 			fs.existsSync(fullPath) && fs.statSync(fullPath).isFile();
 
