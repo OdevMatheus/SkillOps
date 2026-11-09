@@ -40,7 +40,7 @@ node dist/cli.js eval --catalog catalog --strict
 ## 3. Agile Governance (`1 Issue = 1 Branch = 1 PR`)
 
 1. **Sprints = GitHub Milestones:** Every Issue and PR must belong to an active Sprint Milestone and carry scope/type Labels (`🐍 core-engine`, `🧠 skill-catalog`, `⚙️ ci`, `📄 docs`, `✨ feat`, `🐛 fix`, etc.).
-2. **Branch Protection:** Never commit or push directly to `master`. Use `<type>/<short-kebab-slug>` (`feat/...`, `fix/...`, `docs/...`, `ci/...`, `refactor/...`, `test/...`).
+2. **Branch Protection:** Never commit or push directly to `main`. Use `<type>/<short-kebab-slug>` (`feat/...`, `fix/...`, `docs/...`, `ci/...`, `refactor/...`, `test/...`).
 3. **Conventional Commits (`en-US`):** Lowercase imperative (`feat(auditor): ...`, `ci(devops): ...`, `docs(contract): ...`). Update `CHANGELOG.md` (`## [Unreleased]`) for notable changes.
 
 ---

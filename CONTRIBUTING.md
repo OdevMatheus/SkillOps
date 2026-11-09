@@ -79,7 +79,7 @@ npm test
 If you want to fix a bug, improve the TUI design, update a runtime adapter in `src/sync/`, or propose an architectural change:
 
 1. **Open a GitHub Issue first** describing the problem, motivation, and proposed change.
-2. **Create a branch from `master`** following the required naming pattern (`1 Issue = 1 Branch = 1 PR` for core changes).
+2. **Create a branch from `main`** following the required naming pattern (`1 Issue = 1 Branch = 1 PR` for core changes).
 3. **Run the full verification suite locally:**
    ```bash
    npm run lint
