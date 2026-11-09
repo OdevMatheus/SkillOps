@@ -4,7 +4,8 @@
 
 <p>
   <a href="https://www.npmjs.com/package/skillops-cli"><img src="https://img.shields.io/badge/npm-v1.3.10-dafa9c?style=flat-square&logo=npm&logoColor=0f0f0f&labelColor=0f0f0f" alt="npm version"></a>
-  <a href="https://github.com/OdevMatheus/SkillOps/actions/workflows/ai-ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/OdevMatheus/SkillOps/ai-ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=dafa9c&labelColor=0f0f0f&color=1a1a1a&label=CI" alt="CI"></a>
+  <a href="https://github.com/OdevMatheus/SkillOps/actions/workflows/ai-ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/OdevMatheus/SkillOps/ai-ci.yml?branch=main&style=flat-square&logo=githubactions&logoColor=dafa9c&labelColor=0f0f0f&color=1a1a1a&label=CI" alt="CI"></a>
+  <a href="https://github.com/OdevMatheus/SkillOps/actions/workflows/codeql.yml"><img src="https://img.shields.io/github/actions/workflow/status/OdevMatheus/SkillOps/codeql.yml?branch=main&style=flat-square&logo=github&logoColor=dafa9c&labelColor=0f0f0f&color=1a1a1a&label=CodeQL%20SAST" alt="CodeQL SAST"></a>
   <a href="#supported-ai-ides--clis-28"><img src="https://img.shields.io/badge/AI%20IDEs%20%26%20CLIs-28-dafa9c?style=flat-square&labelColor=0f0f0f" alt="28 AI IDEs & CLIs"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-ffffff?style=flat-square&labelColor=0f0f0f" alt="License: MIT"></a>
 </p>
@@ -119,6 +120,20 @@ Every generated file is tracked in `.skillops-lock.json` with a cryptographic di
 
 ---
 
+## Security & Trust Model (5-Pillar Defense-in-Depth)
+
+Installing AI Skills and executable helper scripts into your IDE requires strict supply-chain guarantees. **SkillOps** enforces a **5-Pillar Security Architecture** ([`.github/SECURITY.md`](./.github/SECURITY.md) & `INV-SKILL-06` in [`SKILL_CONTRACT.md`](./SKILL_CONTRACT.md)) so no unreviewed or malicious skill can enter the catalog:
+
+| Pillar | Guarantee | How It Is Enforced |
+| :--- | :--- | :--- |
+| **1. 100% Curated & Maintainer-Reviewed Catalog** | Zero arbitrary remote URL fetching; every Skill and Subagent is reviewed line-by-line by a human maintainer before merge. | Protected `main` ruleset + [`.github/CODEOWNERS`](./.github/CODEOWNERS) (`require_code_owner_review: true` & automatic stale-review dismissal on new commits). |
+| **2. Deterministic AST & CodeQL Script Gate (`INV-SKILL-06`)** | Bundled scripts run offline using the standard library—never exfiltrating data or executing arbitrary shell strings. | [`src/auditor/security.ts`](./src/auditor/security.ts) + [`.github/workflows/ai-ci.yml`](./.github/workflows/ai-ci.yml) + **GitHub CodeQL SAST** block outbound network clients (`urllib.request`, `http.client`, `socket`, `requests`, `curl \| sh`), `eval()`/`exec()`/`pickle`, and `os.system()`/`shell=True`. |
+| **3. Anti-Trojan Unicode & Boundary Guards** | Protects PR reviewers and LLMs from invisible prompt injection, binary droppers, and path traversal. | Blocks CVE-2021-42574 bidirectional Unicode (`U+202A..U+202E`), LLM invisible Unicode Tags (`U+E0000..U+E007F`), symlinks, opaque binaries/archives (`.exe`, `.dll`, `.so`, `.pyc`, `.zip`), and `..` path escapes (`resolveSafeRepoTargetPath`). |
+| **4. Cryptographic NPM Provenance** | Every published `skillops-cli` release is cryptographically linked to its exact GitHub commit and CI build. | Published via GitHub Actions with `npm publish --provenance` (verifiable via `npm audit signatures`). |
+| **5. Local `--dry-run` & SHA-256 Lockfile** | Preview every planned file before writing to disk and detect unauthorized local modifications. | `npx skillops-cli add <name> --dry-run` + cryptographic SHA-256 digests in `.skillops-lock.json`. |
+
+---
+
 ## Contributing (Two-Track Open Source)
 
 SkillOps uses a two-track contribution workflow so the community can add new **Skills** and **Subagents** with zero friction:
@@ -128,6 +143,7 @@ SkillOps uses a two-track contribution workflow so the community can add new **S
 | **Track A — Library (`catalog/`)** | New or improved **Skills (`SKILL.md`)** and **Subagents (`SUBAGENT.md`)** | **No — Direct PR** | Add your folder under `catalog/<track>/<slug>/` or `catalog/subagents/<slug>/` and open a PR directly |
 | **Track B — Core CLI (`src/`)** | CLI commands, TUI components, 28-IDE transpiler, or schemas | **Yes — Issue First** | Open an Issue to align scope before submitting a Pull Request |
 
+- 🛡️ [**Security Policy & Trust Model (`.github/SECURITY.md`)**](./.github/SECURITY.md)
 - 📖 [**Contribution Guide (`CONTRIBUTING.md`)**](./CONTRIBUTING.md)
 - 📜 [**Skill & Subagent Contract (`SKILL_CONTRACT.md`)**](./SKILL_CONTRACT.md)
 - ⚖️ Licensed under the [**MIT License**](./LICENSE) — Built by [**@OdevMatheus**](https://github.com/OdevMatheus)
