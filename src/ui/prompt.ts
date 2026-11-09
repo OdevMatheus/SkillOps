@@ -623,7 +623,10 @@ export function renderMultiSelectFrame(
 						? fgHex(CHARM_PALETTE.cyan, text, c)
 						: style.dim(text, c);
 			let styledShortHint = styleHintText(shortHint);
-			if (shortHint.startsWith("[installed")) {
+			if (
+				shortHint.startsWith("[installed") ||
+				shortHint.startsWith("[detected")
+			) {
 				const closeBracketIdx = shortHint.indexOf("]");
 				if (closeBracketIdx !== -1) {
 					const badgeText = shortHint.slice(0, closeBracketIdx + 1);

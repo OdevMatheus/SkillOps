@@ -864,4 +864,115 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 			fs.rmSync(tmpRepo, { recursive: true, force: true });
 		}
 	});
+
+	it("auto-detects and pre-selects existing project AI IDEs at the top of Step 1 selector and in default CLI add (Issue #174)", () => {
+		const tmpRepo = fs.mkdtempSync(
+			path.join(os.tmpdir(), "skillops-step1-autodetect-"),
+		);
+		try {
+			// 1. Fresh repo with no AI IDE directories: standard popularity order, no [detected] badges or pre-selection
+			const cleanOpts = buildInteractiveTargetOptions(tmpRepo);
+			expect(cleanOpts[0]?.value).toBe("cursor");
+			expect(cleanOpts[1]?.value).toBe("claude");
+			expect(cleanOpts.every((o) => !o.initialSelected)).toBe(true);
+			expect(cleanOpts.every((o) => !o.hint?.startsWith("[detected]"))).toBe(
+				true,
+			);
+
+			// 2. Create existing IDE directories (.claude/ and .gemini/ plus .cursor/) in the repository
+			fs.mkdirSync(path.join(tmpRepo, ".claude"), { recursive: true });
+			fs.mkdirSync(path.join(tmpRepo, ".cursor"), { recursive: true });
+			fs.mkdirSync(path.join(tmpRepo, ".gemini"), { recursive: true });
+
+			const detectedOpts = buildInteractiveTargetOptions(tmpRepo);
+			expect(detectedOpts.length).toBe(ALL_RUNTIME_TARGETS.length);
+
+			// Detected targets appear at the very top of Step 1 with [detected] hints and initialSelected: true
+			expect(detectedOpts.slice(0, 3).map((o) => o.value)).toEqual([
+				"cursor",
+				"claude",
+				"gemini",
+			]);
+			for (const topOpt of detectedOpts.slice(0, 3)) {
+				expect(topOpt.initialSelected).toBe(true);
+				expect(topOpt.hint).toMatch(/^\[detected\] · /);
+			}
+			for (const restOpt of detectedOpts.slice(3)) {
+				expect(restOpt.initialSelected).toBeUndefined();
+				expect(restOpt.hint).not.toMatch(/^\[detected\]/);
+			}
+
+			// 3. Verify Step 1 multi-select state initializes with detected IDEs pre-selected and renders cleanly
+			const step1State = createMultiSelectState(detectedOpts, {
+				showSelectAll: true,
+			});
+			expect([...step1State.selected]).toEqual(["cursor", "claude", "gemini"]);
+
+			const frame = renderMultiSelectFrame(
+				"SkillOps — Step 1/2: Select Your AI IDE / Agent",
+				step1State,
+				{
+					colorEnabled: false,
+					subtitle:
+						"Select one or more AI coding assistants with Space · Enter to continue",
+					tabLabels: {
+						skill: "AI IDEs & Agents",
+						agent: "",
+					},
+					submitActionLabel: "continue",
+					selectCursorOnEmptySubmit: true,
+				},
+			);
+			expect(frame).toContain("[detected]");
+			expect(frame).toContain(
+				"3 selected (cursor, claude, gemini) — Enter to continue",
+			);
+			for (const line of frame.split("\n")) {
+				expect(visibleLength(line)).toBeLessThanOrEqual(78);
+			}
+
+			// 4. Verify non-interactive CLI add without -t automatically targets the detected repo harnesses
+			expect(
+				runCli([
+					"node",
+					"cli.js",
+					"add",
+					"mcp-architect",
+					"-p",
+					tmpRepo,
+					"--catalog",
+					CATALOG_ROOT,
+				]),
+			).toBe(ExitCode.SUCCESS);
+
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".cursor", "rules", "skillops-mcp-architect.mdc"),
+				),
+			).toBe(true);
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".claude", "skills", "mcp-architect", "SKILL.md"),
+				),
+			).toBe(true);
+			expect(
+				fs.existsSync(
+					path.join(tmpRepo, ".gemini", "skills", "mcp-architect", "SKILL.md"),
+				),
+			).toBe(true);
+			// Undetected core target (.github / copilot) is not created
+			expect(
+				fs.existsSync(
+					path.join(
+						tmpRepo,
+						".github",
+						"instructions",
+						"skillops-mcp-architect.instructions.md",
+					),
+				),
+			).toBe(false);
+		} finally {
+			fs.rmSync(tmpRepo, { recursive: true, force: true });
+		}
+	});
 });
