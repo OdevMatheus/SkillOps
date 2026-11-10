@@ -557,6 +557,9 @@ export function levenshteinDistance(a: string, b: string): number {
 export const DEFAULT_VALID_COMMANDS: readonly string[] = [
 	"add",
 	"install",
+	"status",
+	"list",
+	"ls",
 	"remove",
 	"uninstall",
 	"rm",

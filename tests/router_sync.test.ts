@@ -21,6 +21,7 @@ import {
 	detectExistingTargetsForItem,
 	discoverInstalledArtifactsOnDisk,
 	ExitCode,
+	formatProjectStatusReport,
 	formatSyncReport,
 	inspectProjectStatus,
 	removeSkillOrSubagent,
@@ -1381,6 +1382,75 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 			expect(byRelPath.get(".claude/skills/mcp-architect/SKILL.md")).toBe(
 				"update_available",
 			);
+
+			// Format table output and verify <= 78 visible cols per line (Issue #201)
+			const tableOut = formatProjectStatusReport(mixedStatus, "table", true);
+			expect(stripAnsi(tableOut)).toContain(
+				"Project Status & Installed Modules",
+			);
+			expect(stripAnsi(tableOut)).toContain("! DRIFT");
+			expect(stripAnsi(tableOut)).toContain("? MISSING");
+			expect(stripAnsi(tableOut)).toContain("+ UNTRACK");
+			expect(stripAnsi(tableOut)).toContain("~ OUTDATED");
+			for (const line of tableOut.split("\n")) {
+				expect(visibleLength(line)).toBeLessThanOrEqual(78);
+			}
+
+			// Format markdown output
+			const mdOut = formatProjectStatusReport(mixedStatus, "markdown", false);
+			expect(mdOut).toContain("## SkillOps Project Status Report");
+			expect(mdOut).toContain("`drift_modified`");
+
+			// CLI invocation: 'skillops status', 'skillops list -f json', and 'skillops ls -f md'
+			const outChunks: string[] = [];
+			const stdoutSpy = vi
+				.spyOn(process.stdout, "write")
+				.mockImplementation((chunk: string | Uint8Array) => {
+					outChunks.push(
+						typeof chunk === "string"
+							? chunk
+							: Buffer.from(chunk).toString("utf-8"),
+					);
+					return true;
+				});
+			try {
+				// Drifted repo returns ExitCode.ERROR on status
+				expect(
+					runCli([
+						"node",
+						"cli.js",
+						"status",
+						"--repo",
+						tmpRepo,
+						"--catalog",
+						tmpCatalog,
+					]),
+				).toBe(ExitCode.ERROR);
+				expect(stripAnsi(outChunks.join(""))).toContain("DRIFT DETECTED");
+				outChunks.length = 0;
+
+				expect(
+					runCli([
+						"node",
+						"cli.js",
+						"list",
+						"--repo",
+						tmpRepo,
+						"--catalog",
+						tmpCatalog,
+						"-f",
+						"json",
+					]),
+				).toBe(ExitCode.ERROR);
+				const parsedJson = JSON.parse(outChunks.join("")) as {
+					installed_skills: string[];
+					counts: { drift_modified: number };
+				};
+				expect(parsedJson.installed_skills).toContain("mcp-architect");
+				expect(parsedJson.counts.drift_modified).toBe(1);
+			} finally {
+				stdoutSpy.mockRestore();
+			}
 		} finally {
 			fs.rmSync(tmpRepo, { recursive: true, force: true });
 			fs.rmSync(tmpCatalog, { recursive: true, force: true });

@@ -123,6 +123,40 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 			},
 		],
 	},
+	{
+		name: "status",
+		aliases: ["list", "ls"],
+		summary: "Inspect installed Skills, Subagents, and SHA-256 file health",
+		usage: "npx skillops-cli status [options]",
+		options: [
+			{
+				flags: "-p, --project <dir>",
+				description: "Target repository directory (default: current directory)",
+			},
+			{
+				flags: "-g, --global",
+				description: "Inspect user home directory (~) instead of current project",
+			},
+			{
+				flags: "-t, --target <list>",
+				description: "Restrict status report to specific AI harnesses",
+			},
+			{
+				flags: "-f, --format <table|json|md>",
+				description: "Output format (default: table)",
+			},
+		],
+		examples: [
+			{
+				command: "skillops status",
+				description: "Inspect installed Skills, Subagents & file health",
+			},
+			{
+				command: "skillops list -f json",
+				description: "Export machine-readable status report as JSON",
+			},
+		],
+	},
 ];
 
 /**
@@ -165,6 +199,11 @@ export function renderGlobalHelp(
 			desc: "Install Skills or Agents (interactive if no name given)",
 		},
 		{
+			cmd: "status",
+			color: CHARM_PALETTE.cyan,
+			desc: "Inspect installed Skills, Agents & SHA-256 health",
+		},
+		{
 			cmd: "remove [name...]",
 			color: CHARM_PALETTE.hotPink,
 			desc: "Remove Skills or Agents (interactive if no name given)",
@@ -178,7 +217,7 @@ export function renderGlobalHelp(
 		)
 		.join("\n");
 
-	const usageLine = `${bar}  ${fgHex(CHARM_PALETTE.lavender, style.bold("Usage:", c), c)} ${style.bold(style.green("skillops", c), c)} ${fgHex(CHARM_PALETTE.cyan, "<add|remove>", c)} ${style.dim("[options]", c)}`;
+	const usageLine = `${bar}  ${fgHex(CHARM_PALETTE.lavender, style.bold("Usage:", c), c)} ${style.bold(style.green("skillops", c), c)} ${fgHex(CHARM_PALETTE.cyan, "<add|status|remove>", c)} ${style.dim("[options]", c)}`;
 
 	return [
 		banner,

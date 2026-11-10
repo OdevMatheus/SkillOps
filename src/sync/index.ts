@@ -9,6 +9,7 @@ export {
 	detectExistingTargetsForItem,
 	discoverInstalledArtifactsOnDisk,
 	findExistingItemPathInTarget,
+	formatProjectStatusReport,
 	formatSyncReport,
 	type InstalledArtifactStatus,
 	inspectProjectStatus,

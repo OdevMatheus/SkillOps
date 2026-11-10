@@ -28,7 +28,9 @@ import {
 	cleanSyncedArtifacts,
 	detectExistingTargetsForItem,
 	discoverInstalledArtifactsOnDisk,
+	formatProjectStatusReport,
 	formatSyncReport,
+	inspectProjectStatus,
 	removeSkillOrSubagent,
 } from "./sync/index.js";
 import {
@@ -650,6 +652,39 @@ export function runCli(argv: readonly string[]): number {
 						};
 			process.stdout.write(formatSyncReport(finalReport, format));
 			return finalReport.passed ? ExitCode.SUCCESS : ExitCode.ERROR;
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			process.stderr.write(`Error: ${msg}\n`);
+			return ExitCode.ERROR;
+		}
+	}
+
+	if (command === "status" || command === "list" || command === "ls") {
+		const repoPath = resolveTargetRepoPath(args);
+		const cfgRes = loadSkillOpsConfig(repoPath);
+		if (cfgRes.error) {
+			process.stderr.write(
+				`Invalid .skillops.yml at ${cfgRes.configPath}: ${cfgRes.error}\n`,
+			);
+			return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+		}
+		const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
+		const rawTargetsArg = resolveTargetsArg(args);
+		const rawFormat = getFlagValue(args, "--format", "-f") ?? "table";
+		const format: "table" | "json" | "markdown" =
+			rawFormat === "json"
+				? "json"
+				: rawFormat === "markdown" || rawFormat === "md"
+					? "markdown"
+					: "table";
+
+		try {
+			const targets = rawTargetsArg
+				? resolveRuntimeTargets(rawTargetsArg, repoPath)
+				: undefined;
+			const report = inspectProjectStatus(repoPath, catalogDir, { targets });
+			process.stdout.write(formatProjectStatusReport(report, format));
+			return report.passed ? ExitCode.SUCCESS : ExitCode.ERROR;
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
 			process.stderr.write(`Error: ${msg}\n`);
