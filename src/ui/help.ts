@@ -157,6 +157,49 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 			},
 		],
 	},
+	{
+		name: "update",
+		aliases: ["sync", "upgrade"],
+		summary: "Update installed Skills & Subagents while preserving local edits",
+		usage: "npx skillops-cli update [name...] [options]",
+		options: [
+			{
+				flags: "-p, --project <dir>",
+				description: "Target repository directory (default: current directory)",
+			},
+			{
+				flags: "-g, --global",
+				description: "Update user home directory (~) instead of current project",
+			},
+			{
+				flags: "-t, --target <list>",
+				description: "Restrict update to specific AI harnesses",
+			},
+			{
+				flags: "--dry-run",
+				description: "Preview planned updates without modifying disk",
+			},
+			{
+				flags: "--force",
+				description:
+					"Overwrite locally drifted files with latest catalog version",
+			},
+			{
+				flags: "-f, --format <table|json|md>",
+				description: "Output format (default: table)",
+			},
+		],
+		examples: [
+			{
+				command: "skillops update",
+				description: "Update all installed Skills & Subagents in project",
+			},
+			{
+				command: "skillops update mcp-architect --force",
+				description: "Force-refresh mcp-architect overwriting local edits",
+			},
+		],
+	},
 ];
 
 /**
@@ -204,6 +247,11 @@ export function renderGlobalHelp(
 			desc: "Inspect installed Skills, Agents & SHA-256 health",
 		},
 		{
+			cmd: "update [name...]",
+			color: CHARM_PALETTE.amber,
+			desc: "Update installed Skills & Agents (preserves local edits)",
+		},
+		{
 			cmd: "remove [name...]",
 			color: CHARM_PALETTE.hotPink,
 			desc: "Remove Skills or Agents (interactive if no name given)",
@@ -217,7 +265,7 @@ export function renderGlobalHelp(
 		)
 		.join("\n");
 
-	const usageLine = `${bar}  ${fgHex(CHARM_PALETTE.lavender, style.bold("Usage:", c), c)} ${style.bold(style.green("skillops", c), c)} ${fgHex(CHARM_PALETTE.cyan, "<add|status|remove>", c)} ${style.dim("[options]", c)}`;
+	const usageLine = `${bar}  ${fgHex(CHARM_PALETTE.lavender, style.bold("Usage:", c), c)} ${style.bold(style.green("skillops", c), c)} ${fgHex(CHARM_PALETTE.cyan, "<add|status|update|remove>", c)} ${style.dim("[options]", c)}`;
 
 	return [
 		banner,

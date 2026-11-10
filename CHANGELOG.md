@@ -9,7 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.5.1] - 2026-11-10
+
 ### Added
+- **Deterministic Project Update & Lockfile Sync (`#202`, `#203`):** Added `updateInstalledSkills()` in [`src/sync/adapters.ts`](./src/sync/adapters.ts) and the `skillops update [name...]` (aliases: `sync`, `upgrade`) CLI command in [`src/cli.ts`](./src/cli.ts) to refresh installed Skills and Subagents across all active AI harnesses to the latest catalog version while preserving local user edits via SHA-256 drift detection (with `--dry-run` and `--force` support).
+- **Project Status & SHA-256 Drift Diagnostics (`#200`, `#201`):** Added `inspectProjectStatus()` and `formatProjectStatusReport()` in [`src/sync/adapters.ts`](./src/sync/adapters.ts) and the `skillops status` (aliases: `list`, `ls`) CLI command in [`src/cli.ts`](./src/cli.ts) with 5-state SHA-256 artifact classification (`= HEALTHY`, `~ OUTDATED`, `! DRIFT`, `? MISSING`, `+ UNTRACK`) and `table`, `json`, and `markdown` outputs.
+- **Multilingual Documentation (`PT-BR` & `ES`):** Added full Portuguese ([`docs/README.pt-BR.md`](./docs/README.pt-BR.md)) and Spanish ([`docs/README.es.md`](./docs/README.es.md)) translations linked from the header of [`README.md`](./README.md).
 - **5-Pillar User Trust Model & Security Documentation (`#193`):** Documented the 5-Pillar Supply-Chain Security & User Trust Architecture (`CODEOWNERS` curated registry, `INV-SKILL-06` AST + CodeQL SAST script gate, Anti-Trojan Unicode/boundary guards, Sigstore NPM `--provenance`, and `--dry-run` + `.skillops-lock.json` SHA-256 verification) in [`README.md`](./README.md) and [`.github/SECURITY.md`](./.github/SECURITY.md).
 - **`INV-SKILL-06` Security Invariant & Mandatory PR Security Review Checklist (`#192`):** Codified `INV-SKILL-06` (*Zero-Network, Trojan-Free & Boundary-Safe Security Contract*) in [`SKILL_CONTRACT.md`](./SKILL_CONTRACT.md) and added a mandatory supply-chain security review checklist in [`.github/PULL_REQUEST_TEMPLATE.md`](./.github/PULL_REQUEST_TEMPLATE.md) and [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 - **Anti-Trojan Unicode, Symlink, Binary & Path Containment Guards (`#191`):** Extended [`src/auditor/security.ts`](./src/auditor/security.ts), [`src/auditor/parser.ts`](./src/auditor/parser.ts), and [`src/sync/adapters.ts`](./src/sync/adapters.ts) (`resolveSafeRepoTargetPath`) to block Trojan-Source (CVE-2021-42574) bidirectional control characters, LLM invisible Unicode Tag smuggling (`U+E0000..U+E007F`), zero-width script identifier spoofing, symbolic links, opaque compiled binary/archive payloads (`.exe`, `.dll`, `.so`, `.dylib`, `.bin`, `.wasm`, `.pyc`, `.zip`, `.tar.gz`), and repository boundary path traversal.

@@ -60,10 +60,10 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine", () => {
 
 	it("renders rounded Unicode panels, clean tree header banners, and multi-column aligned tables", () => {
 		const banner = renderHeaderBanner("Framework & Library", {
-			version: "1.3.10",
+			version: "1.5.1",
 			colorEnabled: false,
 		});
-		expect(banner).toContain("◆ SkillOps v1.3.10");
+		expect(banner).toContain("◆ SkillOps v1.5.1");
 		expect(banner).toContain("Framework & Library");
 		expect(banner).not.toContain("⚡");
 
@@ -117,7 +117,7 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine", () => {
 			expect(visibleLength(line)).toBeLessThanOrEqual(78);
 		}
 
-		const helpOut = renderGlobalHelp("1.3.10", false);
+		const helpOut = renderGlobalHelp("1.5.1", false);
 		expect(helpOut).not.toMatch(/(?:🚀|📚|🛠️|⚙️|🌐|💡|⚡|📦|🔍)/u);
 		expect(helpOut).toContain("add [name...]");
 		expect(helpOut).toContain("remove [name...]");
@@ -466,7 +466,7 @@ describe("Zero-Dependency ANSI TUI Aesthetic Engine", () => {
 			true,
 		);
 		expect(stripAnsi(syncReportOut)).toContain(
-			"◆ SkillOps v1.3.10 — Skills & Subagents Installed",
+			"◆ SkillOps v1.5.1 — Skills & Subagents Installed",
 		);
 		expect(stripAnsi(syncReportOut)).toContain("+ CREATED");
 		expect(stripAnsi(syncReportOut)).toContain("(cursor)");

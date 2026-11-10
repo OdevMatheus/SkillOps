@@ -32,6 +32,7 @@ import {
 	formatSyncReport,
 	inspectProjectStatus,
 	removeSkillOrSubagent,
+	updateInstalledSkills,
 } from "./sync/index.js";
 import {
 	findCommandHelpSpec,
@@ -684,6 +685,47 @@ export function runCli(argv: readonly string[]): number {
 				: undefined;
 			const report = inspectProjectStatus(repoPath, catalogDir, { targets });
 			process.stdout.write(formatProjectStatusReport(report, format));
+			return report.passed ? ExitCode.SUCCESS : ExitCode.ERROR;
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			process.stderr.write(`Error: ${msg}\n`);
+			return ExitCode.ERROR;
+		}
+	}
+
+	if (command === "update" || command === "sync" || command === "upgrade") {
+		const positionals = getPositionalArgs(args);
+		const repoPath = resolveTargetRepoPath(args);
+		const cfgRes = loadSkillOpsConfig(repoPath);
+		if (cfgRes.error) {
+			process.stderr.write(
+				`Invalid .skillops.yml at ${cfgRes.configPath}: ${cfgRes.error}\n`,
+			);
+			return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+		}
+		const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
+		const rawTargetsArg = resolveTargetsArg(args);
+		const dryRun = args.includes("--dry-run");
+		const force = args.includes("--force");
+		const rawFormat = getFlagValue(args, "--format", "-f") ?? "table";
+		const format: "table" | "json" | "markdown" =
+			rawFormat === "json"
+				? "json"
+				: rawFormat === "markdown" || rawFormat === "md"
+					? "markdown"
+					: "table";
+
+		try {
+			const targets = rawTargetsArg
+				? resolveRuntimeTargets(rawTargetsArg, repoPath)
+				: undefined;
+			const report = updateInstalledSkills(repoPath, catalogDir, {
+				targets,
+				names: positionals.length > 0 ? positionals : undefined,
+				dryRun,
+				force,
+			});
+			process.stdout.write(formatSyncReport(report, format));
 			return report.passed ? ExitCode.SUCCESS : ExitCode.ERROR;
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);

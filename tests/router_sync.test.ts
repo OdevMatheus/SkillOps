@@ -1570,6 +1570,55 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 					names: ["non-existent-module"],
 				}),
 			).toThrow(/No installed artifacts found for 'non-existent-module'/);
+
+			// 9. CLI invocation for 'skillops update', 'skillops sync', and 'skillops upgrade' (Issue #203)
+			fs.appendFileSync(
+				catalogSkillMd,
+				"\n<!-- upstream v3 cli update -->\n",
+				"utf-8",
+			);
+			fs.appendFileSync(cursorMdc, "\n<!-- local user edit v2 -->\n", "utf-8");
+
+			expect(
+				runCli([
+					"node",
+					"cli.js",
+					"update",
+					"mcp-architect",
+					"--repo",
+					tmpRepo,
+					"--catalog",
+					tmpCatalog,
+				]),
+			).toBe(ExitCode.ERROR);
+
+			expect(
+				runCli([
+					"node",
+					"cli.js",
+					"sync",
+					"mcp-architect",
+					"--repo",
+					tmpRepo,
+					"--catalog",
+					tmpCatalog,
+					"--force",
+				]),
+			).toBe(ExitCode.SUCCESS);
+
+			expect(
+				runCli([
+					"node",
+					"cli.js",
+					"upgrade",
+					"--repo",
+					tmpRepo,
+					"--catalog",
+					tmpCatalog,
+					"-f",
+					"json",
+				]),
+			).toBe(ExitCode.SUCCESS);
 		} finally {
 			fs.rmSync(tmpRepo, { recursive: true, force: true });
 			fs.rmSync(tmpCatalog, { recursive: true, force: true });

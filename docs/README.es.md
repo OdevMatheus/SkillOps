@@ -9,7 +9,7 @@
 </p>
 
 <p>
-  <a href="https://www.npmjs.com/package/skillops-cli"><img src="https://img.shields.io/badge/npm-v1.3.10-dafa9c?style=flat-square&logo=npm&logoColor=0f0f0f&labelColor=0f0f0f" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/skillops-cli"><img src="https://img.shields.io/badge/npm-v1.5.1-dafa9c?style=flat-square&logo=npm&logoColor=0f0f0f&labelColor=0f0f0f" alt="npm version"></a>
   <a href="https://github.com/OdevMatheus/SkillOps/actions/workflows/ai-ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/OdevMatheus/SkillOps/ai-ci.yml?branch=main&style=flat-square&logo=githubactions&logoColor=dafa9c&labelColor=0f0f0f&color=1a1a1a&label=CI" alt="CI"></a>
   <a href="https://github.com/OdevMatheus/SkillOps/actions/workflows/codeql.yml"><img src="https://img.shields.io/github/actions/workflow/status/OdevMatheus/SkillOps/codeql.yml?branch=main&style=flat-square&logo=github&logoColor=dafa9c&labelColor=0f0f0f&color=1a1a1a&label=CodeQL%20SAST" alt="CodeQL SAST"></a>
   <a href="#ides-y-clis-de-ia-compatibles-28"><img src="https://img.shields.io/badge/IDEs%20%26%20CLIs%20de%20IA-28-dafa9c?style=flat-square&labelColor=0f0f0f" alt="28 IDEs & CLIs de IA"></a>
@@ -50,6 +50,8 @@ Instálalo globalmente (`npm i -g skillops-cli`) o ejecútalo directamente con `
 | :--- | :--- |
 | `skillops add` | Abre la TUI interactiva (selecciona IDEs de IA de destino → selecciona Skills y Subagents) |
 | `skillops add <name...> -t cursor,claude` | Instalación no interactiva en destinos específicos (`-t all` para las 28 herramientas) |
+| `skillops status` (`list`, `ls`) | Inspecciona las Skills y Subagents instalados y la integridad SHA-256 en las IDEs |
+| `skillops update [name...]` (`sync`, `upgrade`) | Actualiza los módulos instalados a la versión más reciente del catálogo preservando ediciones locales |
 | `skillops remove [name...]` | Desinstala artefactos gestionados de forma interactiva o directa y actualiza `.skillops-lock.json` |
 
 > **Flags:** `--all` selecciona todos los elementos del catálogo, `--dry-run` previsualiza las rutas de destino sin escribir en disco y `--force` sobrescribe archivos modificados localmente.
