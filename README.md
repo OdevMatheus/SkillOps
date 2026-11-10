@@ -3,6 +3,12 @@
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f0f0f,55:1a1a1a,100:dafa9c&height=190&section=header&text=SkillOps&fontSize=56&fontColor=dafa9c&animation=fadeIn&fontAlignY=36&desc=Install+and+manage+AI+Skills+and+Subagents+across+28+coding+IDEs+and+CLIs&descAlignY=58&descSize=16" width="100%" alt="SkillOps" />
 
 <p>
+  <a href="./README.md"><img src="https://img.shields.io/badge/lang-English-dafa9c?style=flat-square&labelColor=0f0f0f" alt="English"></a>
+  <a href="./docs/README.pt-BR.md"><img src="https://img.shields.io/badge/lang-Portugu%C3%AAs%20(BR)-1a1a1a?style=flat-square&labelColor=0f0f0f" alt="Português (BR)"></a>
+  <a href="./docs/README.es.md"><img src="https://img.shields.io/badge/lang-Espa%C3%B1ol-1a1a1a?style=flat-square&labelColor=0f0f0f" alt="Español"></a>
+</p>
+
+<p>
   <a href="https://www.npmjs.com/package/skillops-cli"><img src="https://img.shields.io/badge/npm-v1.3.10-dafa9c?style=flat-square&logo=npm&logoColor=0f0f0f&labelColor=0f0f0f" alt="npm version"></a>
   <a href="https://github.com/OdevMatheus/SkillOps/actions/workflows/ai-ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/OdevMatheus/SkillOps/ai-ci.yml?branch=main&style=flat-square&logo=githubactions&logoColor=dafa9c&labelColor=0f0f0f&color=1a1a1a&label=CI" alt="CI"></a>
   <a href="https://github.com/OdevMatheus/SkillOps/actions/workflows/codeql.yml"><img src="https://img.shields.io/github/actions/workflow/status/OdevMatheus/SkillOps/codeql.yml?branch=main&style=flat-square&logo=github&logoColor=dafa9c&labelColor=0f0f0f&color=1a1a1a&label=CodeQL%20SAST" alt="CodeQL SAST"></a>
