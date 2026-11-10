@@ -9,7 +9,7 @@
 </p>
 
 <p>
-  <a href="https://www.npmjs.com/package/skillops-cli"><img src="https://img.shields.io/badge/npm-v1.3.10-dafa9c?style=flat-square&logo=npm&logoColor=0f0f0f&labelColor=0f0f0f" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/skillops-cli"><img src="https://img.shields.io/badge/npm-v1.5.1-dafa9c?style=flat-square&logo=npm&logoColor=0f0f0f&labelColor=0f0f0f" alt="npm version"></a>
   <a href="https://github.com/OdevMatheus/SkillOps/actions/workflows/ai-ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/OdevMatheus/SkillOps/ai-ci.yml?branch=main&style=flat-square&logo=githubactions&logoColor=dafa9c&labelColor=0f0f0f&color=1a1a1a&label=CI" alt="CI"></a>
   <a href="https://github.com/OdevMatheus/SkillOps/actions/workflows/codeql.yml"><img src="https://img.shields.io/github/actions/workflow/status/OdevMatheus/SkillOps/codeql.yml?branch=main&style=flat-square&logo=github&logoColor=dafa9c&labelColor=0f0f0f&color=1a1a1a&label=CodeQL%20SAST" alt="CodeQL SAST"></a>
   <a href="#supported-ai-ides--clis-28"><img src="https://img.shields.io/badge/AI%20IDEs%20%26%20CLIs-28-dafa9c?style=flat-square&labelColor=0f0f0f" alt="28 AI IDEs & CLIs"></a>
@@ -50,6 +50,8 @@ Install globally (`npm i -g skillops-cli`) or run directly with `npx skillops-cl
 | :--- | :--- |
 | `skillops add` | Open the interactive TUI (select target AI IDEs → select Skills & Subagents) |
 | `skillops add <name...> -t cursor,claude` | Non-interactive install into specific targets (`-t all` for all 28 tools) |
+| `skillops status` (`list`, `ls`) | Inspect installed Skills, Subagents, and SHA-256 health across AI harnesses |
+| `skillops update [name...]` (`sync`, `upgrade`) | Refresh installed modules to the latest catalog version while preserving local edits |
 | `skillops remove [name...]` | Interactively or directly uninstall managed artifacts and update `.skillops-lock.json` |
 
 > **Flags:** `--all` selects every item in the catalog, `--dry-run` previews target file paths without writing to disk, and `--force` overwrites locally modified files.
