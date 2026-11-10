@@ -20,4 +20,6 @@ export {
 	resolveSafeRepoTargetPath,
 	type StatusOptions,
 	stripCodexAgentsBlock,
+	type UpdateOptions,
+	updateInstalledSkills,
 } from "./adapters.js";

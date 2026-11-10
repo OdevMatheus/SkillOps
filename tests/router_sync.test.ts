@@ -27,6 +27,7 @@ import {
 	removeSkillOrSubagent,
 	renderMultiSelectFrame,
 	stripAnsi,
+	updateInstalledSkills,
 	visibleLength,
 } from "../src/index.js";
 
@@ -1451,6 +1452,124 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 			} finally {
 				stdoutSpy.mockRestore();
 			}
+		} finally {
+			fs.rmSync(tmpRepo, { recursive: true, force: true });
+			fs.rmSync(tmpCatalog, { recursive: true, force: true });
+		}
+	});
+
+	it("updates installed Skills and Subagents deterministically while preserving SHA-256 local drift unless --force is passed (Issue #202)", () => {
+		const tmpRepo = fs.mkdtempSync(
+			path.join(os.tmpdir(), "skillops-update-repo-"),
+		);
+		const tmpCatalog = fs.mkdtempSync(
+			path.join(os.tmpdir(), "skillops-update-cat-"),
+		);
+		try {
+			fs.cpSync(CATALOG_ROOT, tmpCatalog, { recursive: true });
+
+			addSkillOrSubagent(tmpRepo, tmpCatalog, "mcp-architect", {
+				targets: ["claude", "cursor"],
+			});
+			addSkillOrSubagent(tmpRepo, tmpCatalog, "context-scout", {
+				targets: ["claude", "cursor"],
+			});
+
+			// 1. Update catalog upstream for mcp-architect
+			const catalogSkillMd = path.join(
+				tmpCatalog,
+				"ai-engineering",
+				"mcp-architect",
+				"SKILL.md",
+			);
+			fs.appendFileSync(
+				catalogSkillMd,
+				"\n<!-- upstream v2 update -->\n",
+				"utf-8",
+			);
+
+			// 2. Introduce local drift on .cursor/rules/skillops-mcp-architect.mdc
+			const cursorMdc = path.join(
+				tmpRepo,
+				".cursor",
+				"rules",
+				"skillops-mcp-architect.mdc",
+			);
+			fs.appendFileSync(cursorMdc, "\n<!-- local user edit -->\n", "utf-8");
+
+			// 3. Delete .cursor/rules/skillops-agent-context-scout.mdc to simulate missing file
+			const cursorAgentMdc = path.join(
+				tmpRepo,
+				".cursor",
+				"rules",
+				"skillops-agent-context-scout.mdc",
+			);
+			fs.unlinkSync(cursorAgentMdc);
+
+			// 4. Dry-run update on claude target only (no drift on claude)
+			const dryReport = updateInstalledSkills(tmpRepo, tmpCatalog, {
+				targets: ["claude"],
+				dryRun: true,
+			});
+			expect(dryReport.passed).toBe(true);
+			expect(dryReport.dry_run).toBe(true);
+			expect(
+				dryReport.artifacts.some(
+					(a) =>
+						a.relative_path === ".claude/skills/mcp-architect/SKILL.md" &&
+						a.action === "planned",
+				),
+			).toBe(true);
+			expect(
+				fs.readFileSync(
+					path.join(tmpRepo, ".claude", "skills", "mcp-architect", "SKILL.md"),
+					"utf-8",
+				),
+			).not.toContain("<!-- upstream v2 update -->");
+
+			// 5. Real update across all targets without --force -> detects conflict on cursorMdc, updates claude SKILL.md, restores cursorAgentMdc
+			const conflictReport = updateInstalledSkills(tmpRepo, tmpCatalog);
+			expect(conflictReport.passed).toBe(false);
+			expect(conflictReport.drift_conflicts).toContain(
+				".cursor/rules/skillops-mcp-architect.mdc",
+			);
+			expect(
+				fs.readFileSync(
+					path.join(tmpRepo, ".claude", "skills", "mcp-architect", "SKILL.md"),
+					"utf-8",
+				),
+			).toContain("<!-- upstream v2 update -->");
+			expect(fs.readFileSync(cursorMdc, "utf-8")).toContain(
+				"<!-- local user edit -->",
+			);
+			expect(fs.existsSync(cursorAgentMdc)).toBe(true);
+
+			// 6. Real update with --force -> overwrites drifted file and updates .skillops-lock.json
+			const forcedReport = updateInstalledSkills(tmpRepo, tmpCatalog, {
+				force: true,
+			});
+			expect(forcedReport.passed).toBe(true);
+			expect(forcedReport.drift_conflicts).toHaveLength(0);
+			expect(fs.readFileSync(cursorMdc, "utf-8")).toContain(
+				"<!-- upstream v2 update -->",
+			);
+			expect(fs.readFileSync(cursorMdc, "utf-8")).not.toContain(
+				"<!-- local user edit -->",
+			);
+
+			// 7. Subsequent inspectProjectStatus is 100% healthy
+			const statusAfterForce = inspectProjectStatus(tmpRepo, tmpCatalog);
+			expect(statusAfterForce.passed).toBe(true);
+			expect(statusAfterForce.counts.drift_modified).toBe(0);
+			expect(statusAfterForce.counts.update_available).toBe(0);
+			expect(statusAfterForce.counts.missing_on_disk).toBe(0);
+
+			// 8. Requesting update for an uninstalled module throws a descriptive error
+			expect(() =>
+				updateInstalledSkills(tmpRepo, tmpCatalog, {
+					names: ["non-existent-module"],
+				}),
+			).toThrow(/No installed artifacts found for 'non-existent-module'/);
 		} finally {
 			fs.rmSync(tmpRepo, { recursive: true, force: true });
 			fs.rmSync(tmpCatalog, { recursive: true, force: true });

@@ -78,6 +78,13 @@ export interface StatusOptions {
 	readonly targets?: readonly RuntimeTarget[];
 }
 
+export interface UpdateOptions {
+	readonly targets?: readonly RuntimeTarget[];
+	readonly names?: readonly string[];
+	readonly dryRun?: boolean;
+	readonly force?: boolean;
+}
+
 export interface InstalledArtifactStatus {
 	readonly target: RuntimeTarget;
 	readonly itemName: string;
@@ -1805,6 +1812,241 @@ export function inspectProjectStatus(
 		counts,
 		passed: counts.drift_modified === 0 && counts.missing_on_disk === 0,
 	};
+}
+
+/**
+ * Deterministically update all (or specified) installed Skills and Subagents in a repository
+ * (or global `~` scope) to match the latest catalog versions across their active AI harnesses,
+ * while preserving locally edited files via SHA-256 drift detection unless `--force` is passed (Issue #202).
+ */
+export function updateInstalledSkills(
+	repoPath: string,
+	catalogDir: string,
+	options: UpdateOptions = {},
+): SyncReport {
+	const resolvedRepo = path.resolve(repoPath);
+	const resolvedCatalog = path.resolve(catalogDir);
+	const dryRun = options.dryRun ?? false;
+	const force = options.force ?? false;
+
+	const lockfilePath = path.join(resolvedRepo, ".skillops-lock.json");
+	const existingLock = loadExistingLockfile(lockfilePath);
+
+	const discovered = discoverInstalledArtifactsOnDisk(
+		resolvedRepo,
+		resolvedCatalog,
+		options.targets,
+	);
+
+	const requestedNames =
+		options.names && options.names.length > 0
+			? [...new Set(options.names)]
+			: null;
+
+	if (requestedNames) {
+		for (const reqName of requestedNames) {
+			const hasMatch = discovered.some((d) => d.itemName === reqName);
+			if (!hasMatch) {
+				throw new Error(
+					`No installed artifacts found for '${reqName}' in '${resolvedRepo.replace(/\\/g, "/")}'.`,
+				);
+			}
+		}
+	}
+
+	const filteredDiscovered = requestedNames
+		? discovered.filter((d) => requestedNames.includes(d.itemName))
+		: discovered;
+
+	if (filteredDiscovered.length === 0) {
+		const fallbackTargets: RuntimeTarget[] = options.targets?.length
+			? [...options.targets]
+			: existingLock?.targets.length
+				? [...existingLock.targets]
+				: [...CORE_RUNTIME_TARGETS];
+		return SyncReportSchema.parse({
+			repo_path: resolvedRepo.replace(/\\/g, "/"),
+			catalog_path: resolvedCatalog.replace(/\\/g, "/"),
+			targets: fallbackTargets,
+			dry_run: dryRun,
+			force,
+			artifacts: [],
+			skipped_existing: [],
+			drift_conflicts: [],
+			lockfile_path: lockfilePath.replace(/\\/g, "/"),
+			passed: true,
+		});
+	}
+
+	const installedTuples = new Map<
+		string,
+		{ itemName: string; kind: "skill" | "subagent"; target: RuntimeTarget }
+	>();
+	for (const d of filteredDiscovered) {
+		const key = `${d.kind}:${d.itemName}:${d.target}`;
+		if (!installedTuples.has(key)) {
+			installedTuples.set(key, {
+				itemName: d.itemName,
+				kind: d.kind,
+				target: d.target,
+			});
+		}
+	}
+
+	const catalogMaps = loadCatalogMaps(resolvedCatalog);
+	const newLockArtifacts: Record<string, SyncLockEntry> = {
+		...(existingLock?.artifacts ?? {}),
+	};
+	const artifacts: SyncedArtifact[] = [];
+	const driftConflicts: string[] = [];
+	const activeTargets = new Set<RuntimeTarget>();
+	const updatedSkills = new Set<string>(existingLock?.selected_skills ?? []);
+	const updatedSubagents = new Set<string>(
+		existingLock?.selected_subagents ?? [],
+	);
+
+	for (const tuple of installedTuples.values()) {
+		activeTargets.add(tuple.target);
+		let plannedFiles: PlannedFile[] = [];
+		if (tuple.kind === "skill") {
+			const parsedSkill = catalogMaps.skills.get(tuple.itemName);
+			if (!parsedSkill) {
+				continue;
+			}
+			updatedSkills.add(tuple.itemName);
+			plannedFiles = renderSkillFilesForRuntime(parsedSkill, tuple.target);
+		} else {
+			const parsedSubagent = catalogMaps.subagents.get(tuple.itemName);
+			if (!parsedSubagent) {
+				continue;
+			}
+			updatedSubagents.add(tuple.itemName);
+			plannedFiles = renderSubagentFilesForRuntime(
+				parsedSubagent,
+				tuple.target,
+			);
+		}
+
+		for (const pf of plannedFiles) {
+			const relPath = pf.relativePath.replace(/\\/g, "/");
+			const fullPath = resolveSafeRepoTargetPath(resolvedRepo, relPath);
+			const desiredSha = computeSha256(pf.content);
+			const fileExists =
+				fs.existsSync(fullPath) && fs.statSync(fullPath).isFile();
+			const lockEntry = existingLock?.artifacts[relPath];
+
+			if (fileExists) {
+				const currentDiskSha = computeSha256(fs.readFileSync(fullPath, "utf-8"));
+				if (lockEntry && currentDiskSha !== lockEntry.sha256 && !force) {
+					driftConflicts.push(relPath);
+					artifacts.push({
+						target: pf.target,
+						skill_name: pf.itemName,
+						relative_path: relPath,
+						sha256: currentDiskSha,
+						action: "conflict",
+					});
+					continue;
+				}
+
+				if (currentDiskSha === desiredSha && !force) {
+					artifacts.push({
+						target: pf.target,
+						skill_name: pf.itemName,
+						relative_path: relPath,
+						sha256: desiredSha,
+						action: "unchanged",
+					});
+					newLockArtifacts[relPath] = {
+						target: pf.target,
+						skill_name: pf.itemName,
+						relative_path: relPath,
+						sha256: desiredSha,
+					};
+					continue;
+				}
+
+				if (!dryRun) {
+					fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+					fs.writeFileSync(fullPath, pf.content, "utf-8");
+				}
+				artifacts.push({
+					target: pf.target,
+					skill_name: pf.itemName,
+					relative_path: relPath,
+					sha256: desiredSha,
+					action: dryRun ? "planned" : "updated",
+				});
+				newLockArtifacts[relPath] = {
+					target: pf.target,
+					skill_name: pf.itemName,
+					relative_path: relPath,
+					sha256: desiredSha,
+				};
+			} else {
+				if (!dryRun) {
+					fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+					fs.writeFileSync(fullPath, pf.content, "utf-8");
+				}
+				artifacts.push({
+					target: pf.target,
+					skill_name: pf.itemName,
+					relative_path: relPath,
+					sha256: desiredSha,
+					action: dryRun ? "planned" : "created",
+				});
+				newLockArtifacts[relPath] = {
+					target: pf.target,
+					skill_name: pf.itemName,
+					relative_path: relPath,
+					sha256: desiredSha,
+				};
+			}
+		}
+	}
+
+	if (!dryRun && driftConflicts.length === 0 && artifacts.length > 0) {
+		const mergedTargets = [
+			...new Set<RuntimeTarget>([
+				...(existingLock?.targets ?? []),
+				...activeTargets,
+			]),
+		];
+		const lockData: SyncLockfile = SyncLockfileSchema.parse({
+			schema_version: "1.0",
+			skillops_version: SKILLOPS_VERSION,
+			targets: mergedTargets,
+			selected_skills: [...updatedSkills],
+			selected_subagents: [...updatedSubagents],
+			total_l1_tokens: existingLock?.total_l1_tokens ?? 0,
+			artifacts: newLockArtifacts,
+		});
+		fs.writeFileSync(
+			lockfilePath,
+			`${JSON.stringify(lockData, null, 2)}\n`,
+			"utf-8",
+		);
+	}
+
+	const reportTargets =
+		activeTargets.size > 0
+			? [...activeTargets]
+			: options.targets?.length
+				? [...options.targets]
+				: [...CORE_RUNTIME_TARGETS];
+
+	return SyncReportSchema.parse({
+		repo_path: resolvedRepo.replace(/\\/g, "/"),
+		catalog_path: resolvedCatalog.replace(/\\/g, "/"),
+		targets: reportTargets,
+		dry_run: dryRun,
+		force,
+		artifacts,
+		skipped_existing: [],
+		drift_conflicts: driftConflicts,
+		lockfile_path: lockfilePath.replace(/\\/g, "/"),
+		passed: driftConflicts.length === 0,
+	});
 }
 
 function formatHealthPill(
