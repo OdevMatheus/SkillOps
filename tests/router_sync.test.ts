@@ -22,6 +22,7 @@ import {
 	discoverInstalledArtifactsOnDisk,
 	ExitCode,
 	formatSyncReport,
+	inspectProjectStatus,
 	removeSkillOrSubagent,
 	renderMultiSelectFrame,
 	stripAnsi,
@@ -1284,6 +1285,105 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 				process.env.SKILLOPS_GLOBAL_HOME = prevGlobalHome;
 			}
 			fs.rmSync(tmpHome, { recursive: true, force: true });
+		}
+	});
+
+	it("classifies all 5 artifact health states via inspectProjectStatus (Issue #200)", () => {
+		const tmpRepo = fs.mkdtempSync(
+			path.join(os.tmpdir(), "skillops-status-engine-"),
+		);
+		const tmpCatalog = fs.mkdtempSync(
+			path.join(os.tmpdir(), "skillops-status-catalog-"),
+		);
+		try {
+			fs.cpSync(CATALOG_ROOT, tmpCatalog, { recursive: true });
+
+			// 1. Install mcp-architect into cursor & claude, and context-scout into cursor
+			addSkillOrSubagent(tmpRepo, tmpCatalog, "mcp-architect", {
+				targets: ["cursor", "claude"],
+			});
+			addSkillOrSubagent(tmpRepo, tmpCatalog, "context-scout", {
+				targets: ["cursor"],
+			});
+
+			// Initial status: all installed files are up_to_date
+			const cleanStatus = inspectProjectStatus(tmpRepo, tmpCatalog);
+			expect(cleanStatus.lockfile_present).toBe(true);
+			expect(cleanStatus.passed).toBe(true);
+			expect(cleanStatus.installed_skills).toEqual(["mcp-architect"]);
+			expect(cleanStatus.installed_subagents).toEqual(["context-scout"]);
+			expect(cleanStatus.counts.up_to_date).toBeGreaterThanOrEqual(3);
+			expect(cleanStatus.counts.update_available).toBe(0);
+			expect(cleanStatus.counts.drift_modified).toBe(0);
+			expect(cleanStatus.counts.missing_on_disk).toBe(0);
+			expect(cleanStatus.counts.untracked_on_disk).toBe(0);
+
+			// 2. Simulate DRIFT_MODIFIED on .cursor/rules/skillops-mcp-architect.mdc
+			const cursorSkillFile = path.join(
+				tmpRepo,
+				".cursor",
+				"rules",
+				"skillops-mcp-architect.mdc",
+			);
+			fs.appendFileSync(cursorSkillFile, "\n<!-- local drift -->\n", "utf-8");
+
+			// 3. Simulate MISSING_ON_DISK by deleting .cursor/rules/skillops-agent-context-scout.mdc
+			const cursorAgentFile = path.join(
+				tmpRepo,
+				".cursor",
+				"rules",
+				"skillops-agent-context-scout.mdc",
+			);
+			fs.unlinkSync(cursorAgentFile);
+
+			// 4. Simulate UNTRACKED_ON_DISK by writing a subagent file in .gemini/agents/context-scout.md without lockfile entry
+			const geminiAgentsDir = path.join(tmpRepo, ".gemini", "agents");
+			fs.mkdirSync(geminiAgentsDir, { recursive: true });
+			fs.writeFileSync(
+				path.join(geminiAgentsDir, "context-scout.md"),
+				"# Untracked context-scout\n",
+				"utf-8",
+			);
+
+			// 5. Simulate UPDATE_AVAILABLE by updating the catalog's mcp-architect SKILL.md (while .claude/skills/mcp-architect/SKILL.md on disk still matches lockfile)
+			const catalogSkillMd = path.join(
+				tmpCatalog,
+				"ai-engineering",
+				"mcp-architect",
+				"SKILL.md",
+			);
+			fs.appendFileSync(
+				catalogSkillMd,
+				"\n<!-- new catalog upstream content -->\n",
+				"utf-8",
+			);
+
+			const mixedStatus = inspectProjectStatus(tmpRepo, tmpCatalog);
+			expect(mixedStatus.passed).toBe(false);
+			expect(mixedStatus.counts.drift_modified).toBe(1);
+			expect(mixedStatus.counts.missing_on_disk).toBe(1);
+			expect(mixedStatus.counts.untracked_on_disk).toBe(1);
+			expect(mixedStatus.counts.update_available).toBe(1);
+			expect(mixedStatus.counts.up_to_date).toBeGreaterThanOrEqual(1);
+
+			const byRelPath = new Map(
+				mixedStatus.artifacts.map((a) => [a.relativePath, a.state]),
+			);
+			expect(byRelPath.get(".cursor/rules/skillops-mcp-architect.mdc")).toBe(
+				"drift_modified",
+			);
+			expect(
+				byRelPath.get(".cursor/rules/skillops-agent-context-scout.mdc"),
+			).toBe("missing_on_disk");
+			expect(byRelPath.get(".gemini/agents/context-scout.md")).toBe(
+				"untracked_on_disk",
+			);
+			expect(byRelPath.get(".claude/skills/mcp-architect/SKILL.md")).toBe(
+				"update_available",
+			);
+		} finally {
+			fs.rmSync(tmpRepo, { recursive: true, force: true });
+			fs.rmSync(tmpCatalog, { recursive: true, force: true });
 		}
 	});
 });

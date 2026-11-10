@@ -67,6 +67,47 @@ export interface CleanOptions {
 	readonly force?: boolean;
 }
 
+export type ArtifactHealthState =
+	| "up_to_date"
+	| "update_available"
+	| "drift_modified"
+	| "missing_on_disk"
+	| "untracked_on_disk";
+
+export interface StatusOptions {
+	readonly targets?: readonly RuntimeTarget[];
+}
+
+export interface InstalledArtifactStatus {
+	readonly target: RuntimeTarget;
+	readonly itemName: string;
+	readonly kind: "skill" | "subagent";
+	readonly relativePath: string;
+	readonly state: ArtifactHealthState;
+	readonly lockfileSha256: string | null;
+	readonly diskSha256: string | null;
+	readonly catalogSha256: string | null;
+}
+
+export interface ProjectStatusReport {
+	readonly repo_path: string;
+	readonly catalog_path: string;
+	readonly lockfile_path: string;
+	readonly lockfile_present: boolean;
+	readonly targets: RuntimeTarget[];
+	readonly installed_skills: string[];
+	readonly installed_subagents: string[];
+	readonly artifacts: InstalledArtifactStatus[];
+	readonly counts: {
+		readonly up_to_date: number;
+		readonly update_available: number;
+		readonly drift_modified: number;
+		readonly missing_on_disk: number;
+		readonly untracked_on_disk: number;
+	};
+	readonly passed: boolean;
+}
+
 export interface DiscoveredInstalledArtifact {
 	readonly target: RuntimeTarget;
 	readonly itemName: string;
@@ -1599,6 +1640,171 @@ export function cleanSyncedArtifacts(
 		lockfile_path: lockfilePath.replace(/\\/g, "/"),
 		passed: driftConflicts.length === 0,
 	});
+}
+
+function loadCatalogMaps(resolvedCatalog: string): {
+	skills: Map<string, ParsedSkillDirectory>;
+	subagents: Map<string, ParsedSubagentFile>;
+} {
+	const skills = new Map<string, ParsedSkillDirectory>();
+	const subagents = new Map<string, ParsedSubagentFile>();
+	if (!fs.existsSync(resolvedCatalog)) {
+		return { skills, subagents };
+	}
+	for (const skillDir of discoverSkillDirectories(resolvedCatalog)) {
+		try {
+			const parsed = parseSkillDirectory(skillDir, { requireLayout: false });
+			skills.set(parsed.manifest.name, parsed);
+		} catch {
+			// Ignore invalid catalog skill during status/update scan
+		}
+	}
+	for (const saPath of discoverSubagentFiles(resolvedCatalog)) {
+		try {
+			const parsed = parseSubagentFile(saPath);
+			subagents.set(parsed.manifest.name, parsed);
+		} catch {
+			// Ignore invalid catalog subagent during status/update scan
+		}
+	}
+	return { skills, subagents };
+}
+
+/**
+ * Inspect installed Skills and Subagents in a repository (or global `~` scope),
+ * combining `.skillops-lock.json` and on-disk runtime directories to classify
+ * each artifact's health and SHA-256 drift state (Issue #200).
+ */
+export function inspectProjectStatus(
+	repoPath: string,
+	catalogDir: string,
+	options: StatusOptions = {},
+): ProjectStatusReport {
+	const resolvedRepo = path.resolve(repoPath);
+	const resolvedCatalog = path.resolve(catalogDir);
+	const lockfilePath = path.join(resolvedRepo, ".skillops-lock.json");
+	const existingLock = loadExistingLockfile(lockfilePath);
+
+	const discovered = discoverInstalledArtifactsOnDisk(
+		resolvedRepo,
+		resolvedCatalog,
+		options.targets,
+	);
+	const catalogMaps = loadCatalogMaps(resolvedCatalog);
+
+	const plannedShaCache = new Map<string, Map<string, string>>();
+	const getCatalogShaForFile = (
+		itemName: string,
+		kind: "skill" | "subagent",
+		target: RuntimeTarget,
+		relativePath: string,
+	): string | null => {
+		const cacheKey = `${kind}:${itemName}:${target}`;
+		let fileMap = plannedShaCache.get(cacheKey);
+		if (!fileMap) {
+			fileMap = new Map<string, string>();
+			if (kind === "skill") {
+				const parsedSkill = catalogMaps.skills.get(itemName);
+				if (parsedSkill) {
+					for (const pf of renderSkillFilesForRuntime(parsedSkill, target)) {
+						fileMap.set(
+							pf.relativePath.replace(/\\/g, "/"),
+							computeSha256(pf.content),
+						);
+					}
+				}
+			} else {
+				const parsedSubagent = catalogMaps.subagents.get(itemName);
+				if (parsedSubagent) {
+					for (const pf of renderSubagentFilesForRuntime(
+						parsedSubagent,
+						target,
+					)) {
+						fileMap.set(
+							pf.relativePath.replace(/\\/g, "/"),
+							computeSha256(pf.content),
+						);
+					}
+				}
+			}
+			plannedShaCache.set(cacheKey, fileMap);
+		}
+		return fileMap.get(relativePath.replace(/\\/g, "/")) ?? null;
+	};
+
+	const counts = {
+		up_to_date: 0,
+		update_available: 0,
+		drift_modified: 0,
+		missing_on_disk: 0,
+		untracked_on_disk: 0,
+	};
+	const installedSkills = new Set<string>();
+	const installedSubagents = new Set<string>();
+	const activeTargets = new Set<RuntimeTarget>();
+	const artifacts: InstalledArtifactStatus[] = [];
+
+	for (const d of discovered) {
+		const relPath = d.relativePath.replace(/\\/g, "/");
+		const fullPath = resolveSafeRepoTargetPath(resolvedRepo, relPath);
+		const fileExists =
+			fs.existsSync(fullPath) && fs.statSync(fullPath).isFile();
+		const diskSha256 = fileExists
+			? computeSha256(fs.readFileSync(fullPath, "utf-8"))
+			: null;
+		const lockfileSha256 = d.fromLockfile ? d.sha256 : null;
+		const catalogSha256 = getCatalogShaForFile(
+			d.itemName,
+			d.kind,
+			d.target,
+			relPath,
+		);
+
+		let state: ArtifactHealthState;
+		if (!fileExists) {
+			state = "missing_on_disk";
+		} else if (!d.fromLockfile) {
+			state = "untracked_on_disk";
+		} else if (diskSha256 !== lockfileSha256) {
+			state = "drift_modified";
+		} else if (catalogSha256 !== null && catalogSha256 !== diskSha256) {
+			state = "update_available";
+		} else {
+			state = "up_to_date";
+		}
+
+		counts[state] += 1;
+		activeTargets.add(d.target);
+		if (d.kind === "subagent") {
+			installedSubagents.add(d.itemName);
+		} else {
+			installedSkills.add(d.itemName);
+		}
+
+		artifacts.push({
+			target: d.target,
+			itemName: d.itemName,
+			kind: d.kind,
+			relativePath: relPath,
+			state,
+			lockfileSha256,
+			diskSha256,
+			catalogSha256,
+		});
+	}
+
+	return {
+		repo_path: resolvedRepo.replace(/\\/g, "/"),
+		catalog_path: resolvedCatalog.replace(/\\/g, "/"),
+		lockfile_path: lockfilePath.replace(/\\/g, "/"),
+		lockfile_present: existingLock !== null,
+		targets: [...activeTargets],
+		installed_skills: [...installedSkills],
+		installed_subagents: [...installedSubagents],
+		artifacts,
+		counts,
+		passed: counts.drift_modified === 0 && counts.missing_on_disk === 0,
+	};
 }
 
 function isGlobalHomePath(repoPath: string): boolean {

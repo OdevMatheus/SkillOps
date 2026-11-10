@@ -1,5 +1,6 @@
 export {
 	type AddOptions,
+	type ArtifactHealthState,
 	addSkillOrSubagent,
 	type CleanOptions,
 	cleanSyncedArtifacts,
@@ -9,9 +10,13 @@ export {
 	discoverInstalledArtifactsOnDisk,
 	findExistingItemPathInTarget,
 	formatSyncReport,
+	type InstalledArtifactStatus,
+	inspectProjectStatus,
+	type ProjectStatusReport,
 	type RemoveOptions,
 	removeSkillOrSubagent,
 	renderCodexAgentsIndex,
 	resolveSafeRepoTargetPath,
+	type StatusOptions,
 	stripCodexAgentsBlock,
 } from "./adapters.js";
