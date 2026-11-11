@@ -60,7 +60,7 @@ node --input-type=module -e 'import { auditCatalogSecurity } from "./dist/index.
 
 **Please do NOT open a public GitHub issue for security vulnerabilities.**
 
-If you discover a security vulnerability in **SkillOps**, please report it privately via [GitHub Private Vulnerability Reporting](https://github.com/OdevMatheus/SkillOps/security/advisories/new) with:
+If you discover a security vulnerability in **SkillOps**, please report it privately via [GitHub Private Vulnerability Reporting](https://github.com/skillops-toolkit/SkillOps/security/advisories/new) with:
 
 1. A clear description of the vulnerability.
 2. Steps to reproduce the issue.
