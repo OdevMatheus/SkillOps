@@ -26,7 +26,7 @@ To keep the **Skills & Subagents library** easy to grow while protecting the **C
 - **Python `>= 3.12`** (standard library only — used for Level 3 deterministic `scripts/*.py` bundled inside Skills)
 
 ```bash
-git clone https://github.com/OdevMatheus/SkillOps.git
+git clone https://github.com/skillops-toolkit/SkillOps.git
 cd SkillOps
 npm ci
 npm run build
