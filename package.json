@@ -1,6 +1,6 @@
 {
 	"name": "skillops-cli",
-	"version": "1.5.1",
+	"version": "1.5.2",
 	"description": "Install and manage AI coding Skills (SKILL.md) and Subagents (SUBAGENT.md) across 28 AI IDEs and CLIs (Cursor, Claude Code, Copilot, Antigravity, Windsurf, Codex, Gemini CLI & more).",
 	"type": "module",
 	"license": "MIT",

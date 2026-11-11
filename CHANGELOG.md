@@ -9,8 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.5.2] - 2026-11-11
+
 ### Fixed
-- **Catalog-Agnostic Test Assertions (`#205`):** Decoupled [`tests/npx_core.test.ts`](./tests/npx_core.test.ts) and [`tests/router_sync.test.ts`](./tests/router_sync.test.ts) from hardcoded `catalog/` item counts and positional `installedOpts` indices by deriving expected totals from `discoverSkillDirectories()` / `discoverSubagentFiles()`, asserting core entries via `expect.arrayContaining()`, and looking up installed options by `value` so **Track A** catalog contributions never break the core test suite.
+- **Catalog-Agnostic Test Assertions (`#205`, `#209`):** Decoupled [`tests/npx_core.test.ts`](./tests/npx_core.test.ts) and [`tests/router_sync.test.ts`](./tests/router_sync.test.ts) from hardcoded `catalog/` item counts and positional `installedOpts` indices by deriving expected totals from `discoverSkillDirectories()` / `discoverSubagentFiles()`, asserting core entries via `expect.arrayContaining()`, and looking up installed options by `value` so **Track A** catalog contributions never break the core test suite.
+
+### Changed
+- **Official GitHub Organization Migration (`@skillops-toolkit`):** Migrated repository URLs, CI/SAST badges, OpenGraph metadata, and governance configurations from `OdevMatheus/SkillOps` to [`skillops-toolkit/SkillOps`](https://github.com/skillops-toolkit/SkillOps).
+- **Toolchain & Security Dependency Upgrades (`#206`, `#207`, `#208`):** Upgraded `vitest` to `^5.1.0`, `tsup` / `esbuild`, and `github/codeql-action` to `v4`.
 
 ---
 
