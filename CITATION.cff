@@ -6,8 +6,8 @@ authors:
   - alias: "OdevMatheus"
     name: "OdevMatheus"
     website: "https://github.com/OdevMatheus"
-repository-code: "https://github.com/OdevMatheus/SkillOps"
-url: "https://github.com/OdevMatheus/SkillOps"
+repository-code: "https://github.com/skillops-toolkit/SkillOps"
+url: "https://github.com/skillops-toolkit/SkillOps"
 license: MIT
 version: "1.3.4"
 date-released: "2026-11-04"
