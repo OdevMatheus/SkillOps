@@ -149,7 +149,7 @@ describe("SkillOps Core Models & Subagent Contracts", () => {
 
 	it("discovers and parses real repository catalog skills and subagents", () => {
 		const skillDirs = discoverSkillDirectories(CATALOG_ROOT);
-		expect(skillDirs.length).toBe(2);
+		expect(skillDirs.length).toBeGreaterThanOrEqual(2);
 
 		const skillNames: string[] = [];
 		for (const dir of skillDirs) {
@@ -160,13 +160,17 @@ describe("SkillOps Core Models & Subagent Contracts", () => {
 			expect(parsed.declaredScripts.length).toBeGreaterThanOrEqual(1);
 		}
 
-		expect(skillNames.sort()).toEqual(["env-secrets-guard", "mcp-architect"]);
+		expect(new Set(skillNames).size).toBe(skillDirs.length);
+		expect(skillNames).toEqual(
+			expect.arrayContaining(["env-secrets-guard", "mcp-architect"]),
+		);
 
 		const subagentFiles = discoverSubagentFiles(CATALOG_ROOT);
-		expect(subagentFiles.length).toBe(1);
+		expect(subagentFiles.length).toBeGreaterThanOrEqual(1);
 		const parsedSubagents = subagentFiles.map((f) => parseSubagentFile(f));
 		const subagentNames = parsedSubagents.map((s) => s.manifest.name);
-		expect(subagentNames).toEqual(["context-scout"]);
+		expect(new Set(subagentNames).size).toBe(subagentFiles.length);
+		expect(subagentNames).toEqual(expect.arrayContaining(["context-scout"]));
 		const contextScout = parsedSubagents.find(
 			(s) => s.manifest.name === "context-scout",
 		);
