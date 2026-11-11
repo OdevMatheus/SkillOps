@@ -20,6 +20,8 @@ import {
 	createMultiSelectState,
 	detectExistingTargetsForItem,
 	discoverInstalledArtifactsOnDisk,
+	discoverSkillDirectories,
+	discoverSubagentFiles,
 	ExitCode,
 	formatProjectStatusReport,
 	formatSyncReport,
@@ -296,10 +298,25 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 		expect(targetOptions[2]?.value).toBe("copilot");
 		expect(targetOptions[3]?.value).toBe("antigravity");
 
+		const expectedSkillCount = discoverSkillDirectories(CATALOG_ROOT).length;
+		const expectedAgentCount = discoverSubagentFiles(CATALOG_ROOT).length;
+		const expectedTotalCount = expectedSkillCount + expectedAgentCount;
+
 		const catalogOptions = buildInteractiveCatalogOptions(CATALOG_ROOT);
-		expect(catalogOptions.length).toBe(3);
-		expect(catalogOptions.filter((o) => o.kind === "skill").length).toBe(2);
-		expect(catalogOptions.filter((o) => o.kind === "agent").length).toBe(1);
+		expect(catalogOptions.length).toBe(expectedTotalCount);
+		expect(catalogOptions.filter((o) => o.kind === "skill").length).toBe(
+			expectedSkillCount,
+		);
+		expect(catalogOptions.filter((o) => o.kind === "agent").length).toBe(
+			expectedAgentCount,
+		);
+		expect(catalogOptions.map((o) => o.value)).toEqual(
+			expect.arrayContaining([
+				"mcp-architect",
+				"env-secrets-guard",
+				"context-scout",
+			]),
+		);
 
 		const tmpRepo = fs.mkdtempSync(
 			path.join(os.tmpdir(), "skillops-cli-workflow-"),
@@ -328,6 +345,8 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 					"--all",
 					"-p",
 					tmpRepo,
+					"--catalog",
+					CATALOG_ROOT,
 					"-t",
 					"cursor,gemini",
 					"-f",
@@ -339,21 +358,31 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 				artifacts: unknown[];
 			};
 			expect(addAllJson.passed).toBe(true);
-			expect(addAllJson.artifacts.length).toBeGreaterThanOrEqual(2);
+			expect(addAllJson.artifacts.length).toBeGreaterThanOrEqual(
+				expectedTotalCount * 2,
+			);
 			outChunks.length = 0;
 
 			const installedOpts = buildInteractiveInstalledOptions(
 				tmpRepo,
 				CATALOG_ROOT,
 			);
-			expect(installedOpts.length).toBe(3);
-			expect(installedOpts[0]?.value).toBe("mcp-architect");
-			expect(installedOpts[0]?.kind).toBe("skill");
-			expect(installedOpts[0]?.hint).toContain("[cursor, gemini]");
-			expect(installedOpts[1]?.value).toBe("env-secrets-guard");
-			expect(installedOpts[1]?.kind).toBe("skill");
-			expect(installedOpts[2]?.value).toBe("context-scout");
-			expect(installedOpts[2]?.kind).toBe("agent");
+			expect(installedOpts.length).toBe(expectedTotalCount);
+			const installedByValue = new Map(
+				installedOpts.map((opt) => [opt.value, opt]),
+			);
+			expect(installedByValue.get("mcp-architect")?.kind).toBe("skill");
+			expect(installedByValue.get("mcp-architect")?.hint).toContain(
+				"[cursor, gemini]",
+			);
+			expect(installedByValue.get("env-secrets-guard")?.kind).toBe("skill");
+			expect(installedByValue.get("env-secrets-guard")?.hint).toContain(
+				"[cursor, gemini]",
+			);
+			expect(installedByValue.get("context-scout")?.kind).toBe("agent");
+			expect(installedByValue.get("context-scout")?.hint).toContain(
+				"[cursor, gemini]",
+			);
 
 			expect(
 				runCli([
@@ -643,11 +672,14 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 				tmpRepo,
 				CATALOG_ROOT,
 			);
-			expect(installedOptions.map((o) => o.value)).toEqual([
-				"env-secrets-guard",
-				"mcp-architect",
-				"context-scout",
-			]);
+			expect(installedOptions).toHaveLength(3);
+			expect(installedOptions.map((o) => o.value)).toEqual(
+				expect.arrayContaining([
+					"env-secrets-guard",
+					"mcp-architect",
+					"context-scout",
+				]),
+			);
 			expect(
 				installedOptions.find((o) => o.value === "mcp-architect")?.hint,
 			).toContain("[claude, cursor, copilot]");
@@ -1620,6 +1652,138 @@ describe("SkillOps Multi-Runtime Add & Remove Engine", () => {
 				]),
 			).toBe(ExitCode.SUCCESS);
 		} finally {
+			fs.rmSync(tmpRepo, { recursive: true, force: true });
+			fs.rmSync(tmpCatalog, { recursive: true, force: true });
+		}
+	});
+
+	it("scales catalog discovery, interactive options, and 'install --all' dynamically when new skills or subagents are added to catalog/ (Issue #205)", () => {
+		const tmpRepo = fs.mkdtempSync(
+			path.join(os.tmpdir(), "skillops-dynamic-catalog-repo-"),
+		);
+		const tmpCatalog = fs.mkdtempSync(
+			path.join(os.tmpdir(), "skillops-dynamic-catalog-root-"),
+		);
+		const stdoutSpy = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+
+		try {
+			fs.cpSync(CATALOG_ROOT, tmpCatalog, { recursive: true });
+			const baseSkillCount = discoverSkillDirectories(tmpCatalog).length;
+			const baseAgentCount = discoverSubagentFiles(tmpCatalog).length;
+
+			// Add a new skill ('alpha-audit-helper') and subagent ('alpha-review-scout') that sort alphabetically first
+			const extraSkillDir = path.join(
+				tmpCatalog,
+				"arch-quality",
+				"alpha-audit-helper",
+			);
+			fs.mkdirSync(path.join(extraSkillDir, "scripts"), { recursive: true });
+			fs.mkdirSync(path.join(extraSkillDir, "evals"), { recursive: true });
+			fs.writeFileSync(
+				path.join(extraSkillDir, "SKILL.md"),
+				[
+					"---",
+					'name: "alpha-audit-helper"',
+					'description: "Use when auditing repository conventions, validating deterministic build configurations, checking workspace module boundaries, or reviewing pull request readiness locally before pushing code changes. Do not trigger for frontend styling tweaks, prose copyediting, or unrelated cloud deployment provisioning tasks in external infrastructure environments."',
+					'version: "1.0.0"',
+					'track: "arch-quality"',
+					"tags:",
+					'  - "audit"',
+					"entrypoints:",
+					"  scripts:",
+					'    - path: "scripts/check_conventions.py"',
+					'      description: "Checks workspace conventions and deterministic build boundaries."',
+					"---",
+					"",
+					"# Alpha Audit Helper",
+					"",
+					"Run `python3 scripts/check_conventions.py --json` to verify workspace conventions.",
+					"",
+				].join("\n"),
+				"utf-8",
+			);
+			fs.writeFileSync(
+				path.join(extraSkillDir, "scripts", "check_conventions.py"),
+				'import json\nprint(json.dumps({"ok": True}))\n',
+				"utf-8",
+			);
+			fs.writeFileSync(
+				path.join(extraSkillDir, "evals", "evals.json"),
+				JSON.stringify({ skill_name: "alpha-audit-helper", evals: [] }),
+				"utf-8",
+			);
+
+			const extraAgentDir = path.join(
+				tmpCatalog,
+				"subagents",
+				"alpha-review-scout",
+			);
+			fs.mkdirSync(extraAgentDir, { recursive: true });
+			fs.writeFileSync(
+				path.join(extraAgentDir, "SUBAGENT.md"),
+				[
+					"---",
+					"name: alpha-review-scout",
+					"description: Use when scanning pull request diffs, locating cross-module symbol references, or summarizing structural regressions inside an isolated read-only child context window without polluting the parent agent conversation. Do not trigger for editing files or running destructive shell commands.",
+					"tools: [read, search]",
+					"user_invocable: true",
+					"context_isolation: true",
+					"max_output_tokens: 300",
+					"model_tier: fast",
+					"---",
+					"",
+					"You are an isolated read-only review scout.",
+					"",
+				].join("\n"),
+				"utf-8",
+			);
+
+			expect(discoverSkillDirectories(tmpCatalog).length).toBe(
+				baseSkillCount + 1,
+			);
+			expect(discoverSubagentFiles(tmpCatalog).length).toBe(baseAgentCount + 1);
+
+			const catalogOpts = buildInteractiveCatalogOptions(tmpCatalog);
+			expect(catalogOpts.length).toBe(baseSkillCount + baseAgentCount + 2);
+			expect(catalogOpts.map((o) => o.value)).toEqual(
+				expect.arrayContaining([
+					"alpha-audit-helper",
+					"alpha-review-scout",
+					"mcp-architect",
+					"env-secrets-guard",
+					"context-scout",
+				]),
+			);
+
+			expect(
+				runCli([
+					"node",
+					"skillops",
+					"install",
+					"--all",
+					"-p",
+					tmpRepo,
+					"--catalog",
+					tmpCatalog,
+					"-t",
+					"cursor",
+					"-f",
+					"json",
+				]),
+			).toBe(ExitCode.SUCCESS);
+
+			const installedOpts = buildInteractiveInstalledOptions(
+				tmpRepo,
+				tmpCatalog,
+			);
+			expect(installedOpts.length).toBe(baseSkillCount + baseAgentCount + 2);
+			const byValue = new Map(installedOpts.map((o) => [o.value, o]));
+			expect(byValue.get("alpha-audit-helper")?.kind).toBe("skill");
+			expect(byValue.get("alpha-review-scout")?.kind).toBe("agent");
+			expect(byValue.get("mcp-architect")?.kind).toBe("skill");
+			expect(byValue.get("context-scout")?.kind).toBe("agent");
+		} finally {
+			stdoutSpy.mockRestore();
 			fs.rmSync(tmpRepo, { recursive: true, force: true });
 			fs.rmSync(tmpCatalog, { recursive: true, force: true });
 		}

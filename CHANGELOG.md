@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Catalog-Agnostic Test Assertions (`#205`):** Decoupled [`tests/npx_core.test.ts`](./tests/npx_core.test.ts) and [`tests/router_sync.test.ts`](./tests/router_sync.test.ts) from hardcoded `catalog/` item counts and positional `installedOpts` indices by deriving expected totals from `discoverSkillDirectories()` / `discoverSubagentFiles()`, asserting core entries via `expect.arrayContaining()`, and looking up installed options by `value` so **Track A** catalog contributions never break the core test suite.
+
 ---
 
 ## [1.5.1] - 2026-11-10
