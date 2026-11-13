@@ -1,7 +1,7 @@
 # ADR-0004: Zero-API Deterministic TDD Skill Evaluation Engine & Stdio MCP (`npx skillops eval`, `npx skillops mcp`)
 
 ## Status
-Accepted (Updated for `npx skillops@latest` Node.js 20+ / TypeScript Architecture)
+Status: Superseded by ADR-0005 ([`0005-multi-ide-transpiler-and-security-auditor.md`](./0005-multi-ide-transpiler-and-security-auditor.md))
 
 ## Context
 Empirical research (*Agent Skills Can Be Harmful*, `arXiv:2608.11888`) demonstrates that unverified AI agent skills can degrade task pass rates while inflating token consumption. At the same time, open-source developer tools and CI pipelines must never depend on paid external LLM API keys (`OPENAI_API_KEY`) or persistent HTTP servers just to audit, route, sync, or evaluate skills.

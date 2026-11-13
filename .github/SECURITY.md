@@ -6,9 +6,8 @@ Only the latest release line of **SkillOps (`skillops-cli`)** receives active se
 
 | Version | Supported | Notes |
 | :--- | :---: | :--- |
-| **`1.3.x`** | ✅ | 28 AI IDEs & CLIs Transpiler, AST Security Scanner (`INV-SKILL-06`), Lip Gloss TUI, SHA-256 Lockfile & Active LTS |
-| **`1.2.x`** | ⚠️ | Critical security fixes only |
-| **`< 1.2.0`** | ❌ | End of life — upgrade via `npx skillops-cli@latest` |
+| **`1.5.x`** | ✅ | Supported — 28 AI IDEs & CLIs Transpiler, AST Security Scanner (`INV-SKILL-06`), Lip Gloss TUI, SHA-256 Lockfile & Active LTS |
+| **`< 1.5.0`** | ❌ | Unsupported — upgrade via `npx skillops-cli@latest` |
 
 ---
 
@@ -33,7 +32,7 @@ Every catalog Skill and script is audited on every PR and push by [`src/auditor/
 - **Strict Repository Boundary Containment (`resolveSafeRepoTargetPath`):** Every planned file write or removal is verified via `path.resolve` containment in [`src/sync/adapters.ts`](../src/sync/adapters.ts) so no path can escape the target repository or overwrite a symbolic link.
 
 ### Pillar 4 — Cryptographic NPM Provenance (`--provenance`)
-- Every official release of `skillops-cli` is built and published on GitHub-hosted runners via [`.github/workflows/release-publish.yml`](./workflows/release-publish.yml) using `npm publish --provenance`, generating a verifiable Sigstore attestation linking the npm tarball to the exact commit and workflow run.
+- Every official release of `skillops-cli` is built and published on GitHub-hosted runners via [`.github/workflows/npm-publish.yml`](./workflows/npm-publish.yml) using `npm publish --provenance`, generating a verifiable Sigstore attestation linking the npm tarball to the exact commit and workflow run.
 
 ### Pillar 5 — Local Inspection (`--dry-run`) & SHA-256 Lockfile (`.skillops-lock.json`)
 - **Pre-Install Inspection:** Run `npx skillops-cli add <name> --dry-run` to inspect every target path before a single byte is written to disk.

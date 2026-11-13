@@ -1,7 +1,7 @@
 # ADR-0003: Context-Aware Dynamic Router and Multi-Runtime Sync (`npx skillops route` & `npx skillops sync`)
 
 ## Status
-Accepted (Updated for `npx skillops@latest` Node.js 20+ / TypeScript Architecture)
+Status: Superseded by ADR-0005 ([`0005-multi-ide-transpiler-and-security-auditor.md`](./0005-multi-ide-transpiler-and-security-auditor.md))
 
 ## Context
 Loading an entire skill catalog into every repository causes **Implicit Routing Collapse** (`arXiv:2610.18522`) and wastes Level 1 system-prompt tokens. Furthermore, engineering teams operate across 5 heterogeneous AI coding harnesses (**Claude Code**, **Antigravity / Gemini CLI**, **Cursor**, **OpenAI Codex CLI**, and **GitHub Copilot**), each requiring distinct directory structures and frontmatter schemas for both Skills and Subagents.

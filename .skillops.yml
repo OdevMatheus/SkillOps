@@ -2,16 +2,6 @@
 # Validated by src/models.ts (SkillOpsConfigSchema) via `npx skillops-cli@latest`
 version: "1.0"
 catalog_dir: "catalog"
-token_economy:
-  startup_tax_budget: 2500
-  max_active_skills: 12
-  max_l1_tokens: 1500
-  max_similarity: 0.78
-detected_stack:
-  languages:
-    - "typescript"
-    - "python"
-  frameworks: []
 targets:
   - "claude"
   - "antigravity"

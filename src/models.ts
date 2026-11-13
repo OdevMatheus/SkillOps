@@ -19,6 +19,28 @@ const WORD_REGEX = /\S+/g;
 const PUNCT_CODE_REGEX = /[{}[\]()<>:;,.=`~@#$%^&*|\\/]/g;
 
 /**
+ * Deterministically strip trailing forward slashes in O(n) time without polynomial backtracking.
+ */
+export function trimTrailingSlashes(value: string): string {
+	let end = value.length;
+	while (end > 0 && value[end - 1] === "/") {
+		end -= 1;
+	}
+	return end === value.length ? value : value.slice(0, end);
+}
+
+/**
+ * Deterministically strip leading and trailing forward slashes in O(n) time.
+ */
+function trimSlashes(value: string): string {
+	let start = 0;
+	while (start < value.length && value[start] === "/") {
+		start += 1;
+	}
+	return trimTrailingSlashes(value.slice(start));
+}
+
+/**
  * Count whitespace-delimited words in text.
  */
 export function countWords(text: string): number {
@@ -71,6 +93,7 @@ export const ExitCode = {
 	COLLISION_ERROR: 2,
 	BUDGET_OR_CONTRACT_ERROR: 3,
 	EVAL_REGRESSION_ERROR: 4,
+	SECURITY_BOUNDARY_ERROR: 5,
 } as const;
 export type ExitCodeValue = (typeof ExitCode)[keyof typeof ExitCode];
 
@@ -559,11 +582,11 @@ export const RUNTIME_HARNESS_SPECS: Readonly<
 };
 
 /**
- * Deterministically detect which of the 20 AI coding agent harnesses have configuration
+ * Deterministically detect which of the 28 AI coding agent harnesses have configuration
  * directories or instruction files present in `repoPath`.
  */
 export function detectInstalledHarnesses(repoPath: string): RuntimeTarget[] {
-	const normalizedRoot = repoPath.replace(/\\/g, "/").replace(/\/+$/, "");
+	const normalizedRoot = trimTrailingSlashes(repoPath.replace(/\\/g, "/"));
 	const detected: RuntimeTarget[] = [];
 
 	for (const target of ALL_RUNTIME_TARGETS) {
@@ -649,12 +672,21 @@ export const RoutingSignalsSchema = z
 	.strict();
 export type RoutingSignals = z.infer<typeof RoutingSignalsSchema>;
 
+export const SkillDirectorySchema = z
+	.string()
+	.min(1)
+	.transform((val) => trimTrailingSlashes(val.replace(/\\/g, "/")))
+	.refine((val) => val.length > 0 && !val.includes("\0"), {
+		message: "Skill directory path must be a non-empty path without NUL bytes.",
+	});
+export type SkillDirectoryPath = z.infer<typeof SkillDirectorySchema>;
+
 export const ScriptEntrypointSchema = z
 	.object({
 		path: z
 			.string()
 			.min(1)
-			.transform((val) => val.replace(/\\/g, "/").replace(/^\/+|\/+$/g, ""))
+			.transform((val) => trimSlashes(val.replace(/\\/g, "/")))
 			.refine(
 				(val) =>
 					val.startsWith("scripts/") &&
@@ -903,15 +935,82 @@ export const SyncedArtifactSchema = z
 	.strict();
 export type SyncedArtifact = z.infer<typeof SyncedArtifactSchema>;
 
+const FORBIDDEN_LOCKFILE_SEGMENTS = new Set([
+	"__proto__",
+	"constructor",
+	"prototype",
+]);
+
+/**
+ * Validate that a lockfile relative artifact path or key cannot escape the repository
+ * or pollute Object.prototype via '__proto__', 'constructor', or 'prototype'.
+ */
+export function isSafeLockRelativePath(value: string): boolean {
+	if (
+		!value ||
+		value.startsWith("/") ||
+		value.startsWith("\\") ||
+		value.includes("\0") ||
+		value.includes("\\") ||
+		value.includes(":")
+	) {
+		return false;
+	}
+	const segments = value.split("/");
+	for (const segment of segments) {
+		if (
+			segment.length === 0 ||
+			segment === "." ||
+			segment === ".." ||
+			FORBIDDEN_LOCKFILE_SEGMENTS.has(segment)
+		) {
+			return false;
+		}
+	}
+	return true;
+}
+
+export const SafeLockRelativePathSchema = z
+	.string()
+	.min(1)
+	.refine(isSafeLockRelativePath, {
+		message:
+			"Lockfile artifact key/path must be a safe relative POSIX path without leading '/', '..', NUL bytes, or prototype-polluting segments ('__proto__', 'constructor', 'prototype').",
+	});
+
 export const SyncLockEntrySchema = z
 	.object({
 		target: RuntimeTargetSchema,
 		skill_name: z.string().min(1),
-		relative_path: z.string().min(1),
+		relative_path: SafeLockRelativePathSchema,
 		sha256: z.string().regex(/^[0-9a-f]{64}$/),
 	})
 	.strict();
 export type SyncLockEntry = z.infer<typeof SyncLockEntrySchema>;
+
+const PlainArtifactsRecordPrecheckSchema = z.custom<
+	Record<string, SyncLockEntry>
+>(
+	(val) => {
+		if (typeof val !== "object" || val === null || Array.isArray(val)) {
+			return false;
+		}
+		const proto = Object.getPrototypeOf(val);
+		if (proto !== Object.prototype && proto !== null) {
+			return false;
+		}
+		for (const key of Object.getOwnPropertyNames(val)) {
+			if (!isSafeLockRelativePath(key)) {
+				return false;
+			}
+		}
+		return true;
+	},
+	{
+		message:
+			"Lockfile 'artifacts' must be a plain key-value object without prototype-polluting keys ('__proto__', 'constructor', 'prototype'), leading '/', NUL bytes, or '..' segments.",
+	},
+);
 
 export const SyncLockfileSchema = z
 	.object({
@@ -921,7 +1020,9 @@ export const SyncLockfileSchema = z
 		selected_skills: z.array(z.string()).default([]),
 		selected_subagents: z.array(z.string()).default([]),
 		total_l1_tokens: z.number().int().min(0).default(0),
-		artifacts: z.record(z.string(), SyncLockEntrySchema).default({}),
+		artifacts: PlainArtifactsRecordPrecheckSchema.pipe(
+			z.record(SafeLockRelativePathSchema, SyncLockEntrySchema),
+		).default({}),
 	})
 	.strict();
 export type SyncLockfile = z.infer<typeof SyncLockfileSchema>;
@@ -1003,7 +1104,7 @@ export interface LoadedSkillOpsConfigResult {
 export function loadSkillOpsConfig(
 	repoPath: string,
 ): LoadedSkillOpsConfigResult {
-	const configPath = `${repoPath.replace(/\\/g, "/").replace(/\/+$/, "")}/.skillops.yml`;
+	const configPath = `${trimTrailingSlashes(repoPath.replace(/\\/g, "/"))}/.skillops.yml`;
 	if (!fs.existsSync(configPath) || !fs.statSync(configPath).isFile()) {
 		return {
 			config: null,
@@ -1033,3 +1134,111 @@ export function loadSkillOpsConfig(
 		};
 	}
 }
+
+// ---------------------------------------------------------------------------
+// 5. Companion Script Output, TDD Evaluation & Benchmark Contracts
+//    (SKILL_CONTRACT.md §5 & §6 — INV-SKILL-03 & INV-SKILL-05)
+// ---------------------------------------------------------------------------
+
+export const ScriptOutputStatusSchema = z.enum([
+	"ok",
+	"warn",
+	"findings_detected",
+	"error",
+]);
+export type ScriptOutputStatus = z.infer<typeof ScriptOutputStatusSchema>;
+
+export const ScriptOutputSchema = z
+	.object({
+		skill: z.string().regex(SKILL_NAME_REGEX),
+		script: z.string().min(1),
+		status: ScriptOutputStatusSchema,
+		target: z.string().min(1),
+		summary: z.union([z.record(z.string(), z.unknown()), z.string()]),
+		findings: z.array(z.record(z.string(), z.unknown())).default([]),
+		data: z.record(z.string(), z.unknown()).optional(),
+		metrics: z.record(z.string(), z.unknown()).optional(),
+	})
+	.strict();
+export type ScriptOutput = z.infer<typeof ScriptOutputSchema>;
+
+export const EvalAssertionTypeSchema = z.enum([
+	"tool_call_contains",
+	"regex_match",
+	"regex_not_match",
+	"json_field_equals",
+	"exit_code_zero",
+	"ast_contains",
+	"contains",
+	"not_contains",
+]);
+export type EvalAssertionType = z.infer<typeof EvalAssertionTypeSchema>;
+
+export const EvalAssertionSchema = z
+	.object({
+		id: z.string().min(1),
+		type: EvalAssertionTypeSchema,
+		target: z.string().min(1),
+		expected: z.unknown().optional(),
+		description: z.string().min(1),
+	})
+	.strict();
+export type EvalAssertion = z.infer<typeof EvalAssertionSchema>;
+
+export const EvalCaseSchema = z
+	.object({
+		id: z.string().min(1),
+		name: z.string().min(1),
+		prompt: z.string().min(1),
+		fixtures: z.array(z.string()).default([]),
+		assertions: z.array(EvalAssertionSchema).min(1),
+	})
+	.strict();
+export type EvalCase = z.infer<typeof EvalCaseSchema>;
+
+export const EvalSuiteSchema = z
+	.object({
+		skill_name: z.string().regex(SKILL_NAME_REGEX),
+		schema_version: z.string().min(1).default("1.0"),
+		evals: z.array(EvalCaseSchema).min(1),
+	})
+	.strict();
+export type EvalSuite = z.infer<typeof EvalSuiteSchema>;
+
+export const BenchmarkRunStatsSchema = z
+	.object({
+		pass_rate_mean: z.number().min(0).max(1),
+		pass_rate_stddev: z.number().min(0).default(0),
+		tokens_mean: z.number().min(0),
+		latency_ms_mean: z.number().min(0),
+	})
+	.strict();
+export type BenchmarkRunStats = z.infer<typeof BenchmarkRunStatsSchema>;
+
+export const BenchmarkVerdictSchema = z.enum([
+	"CERTIFIED_IMPROVEMENT",
+	"NEUTRAL",
+	"REJECTED_REGRESSION",
+]);
+export type BenchmarkVerdict = z.infer<typeof BenchmarkVerdictSchema>;
+
+export const BenchmarkDeltaSchema = z
+	.object({
+		pass_rate_gain: z.number().min(-1).max(1),
+		token_reduction_pct: z.number(),
+		verdict: BenchmarkVerdictSchema,
+	})
+	.strict();
+export type BenchmarkDelta = z.infer<typeof BenchmarkDeltaSchema>;
+
+export const BenchmarkReportSchema = z
+	.object({
+		skill_name: z.string().regex(SKILL_NAME_REGEX),
+		runner: z.string().min(1),
+		timestamp: z.string().datetime({ offset: true }),
+		with_skill: BenchmarkRunStatsSchema,
+		without_skill: BenchmarkRunStatsSchema,
+		delta: BenchmarkDeltaSchema,
+	})
+	.strict();
+export type BenchmarkReport = z.infer<typeof BenchmarkReportSchema>;

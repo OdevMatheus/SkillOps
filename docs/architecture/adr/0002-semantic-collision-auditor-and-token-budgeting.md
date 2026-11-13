@@ -1,7 +1,7 @@
 # ADR-0002: Semantic Routing Collision Auditor & Token Budget Governance (`arXiv:2610.18522`)
 
 ## Status
-Accepted (Updated for `npx skillops@latest` Node.js 20+ / TypeScript Architecture)
+Status: Superseded by ADR-0005 ([`0005-multi-ide-transpiler-and-security-auditor.md`](./0005-multi-ide-transpiler-and-security-auditor.md))
 
 ## Context
 As developers adopt AI coding agents, they frequently accumulate dozens of skills and rules in `.agent/skills/`, `.claude/skills/`, or `.cursor/rules/`. Recent research (*Lost in Implicit Routing*, `arXiv:2610.18522`) proved that when too many skills—or near-duplicate skill descriptions—are listed in the system prompt:
