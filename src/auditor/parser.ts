@@ -43,15 +43,68 @@ export interface ParseSkillOptions {
 	readonly requireLayout?: boolean;
 }
 
-function walkForFilesNamed(rootDir: string, targetFilename: string): string[] {
+function isStrictlyWithinCanonicalDir(
+	canonicalRoot: string,
+	candidateRealPath: string,
+): boolean {
+	const rel = path.relative(canonicalRoot, candidateRealPath);
+	return rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel);
+}
+
+function walkForFilesNamed(
+	rootDir: string,
+	targetFilename: string,
+	canonicalRoot?: string,
+): string[] {
 	if (!fs.existsSync(rootDir)) {
 		return [];
 	}
+
+	let resolvedCanonicalRoot = canonicalRoot;
+	if (resolvedCanonicalRoot === undefined) {
+		let rootLstat: fs.Stats;
+		try {
+			rootLstat = fs.lstatSync(rootDir);
+		} catch {
+			return [];
+		}
+		if (rootLstat.isSymbolicLink() || !rootLstat.isDirectory()) {
+			return [];
+		}
+		try {
+			resolvedCanonicalRoot = fs.realpathSync(rootDir);
+		} catch {
+			return [];
+		}
+	}
+
 	const results: string[] = [];
 	const entries = fs.readdirSync(rootDir, { withFileTypes: true });
 	for (const entry of entries) {
+		if (entry.isSymbolicLink()) {
+			continue;
+		}
 		const fullPath = path.join(rootDir, entry.name);
-		if (entry.isDirectory()) {
+		let entryLstat: fs.Stats;
+		try {
+			entryLstat = fs.lstatSync(fullPath);
+		} catch {
+			continue;
+		}
+		if (entryLstat.isSymbolicLink()) {
+			continue;
+		}
+		let realFullPath: string;
+		try {
+			realFullPath = fs.realpathSync(fullPath);
+		} catch {
+			continue;
+		}
+		if (!isStrictlyWithinCanonicalDir(resolvedCanonicalRoot, realFullPath)) {
+			continue;
+		}
+
+		if (entryLstat.isDirectory()) {
 			if (
 				entry.name.startsWith(".") ||
 				entry.name === "node_modules" ||
@@ -59,8 +112,10 @@ function walkForFilesNamed(rootDir: string, targetFilename: string): string[] {
 			) {
 				continue;
 			}
-			results.push(...walkForFilesNamed(fullPath, targetFilename));
-		} else if (entry.isFile() && entry.name === targetFilename) {
+			results.push(
+				...walkForFilesNamed(fullPath, targetFilename, resolvedCanonicalRoot),
+			);
+		} else if (entryLstat.isFile() && entry.name === targetFilename) {
 			results.push(fullPath);
 		}
 	}
@@ -125,6 +180,7 @@ function walkAllSkillFiles(
 
 /**
  * Recursively discover all skill directories under catalogDir containing SKILL.md.
+ * Symbolic links are never traversed and resolved paths must remain strictly inside catalogDir.
  */
 export function discoverSkillDirectories(catalogDir: string): string[] {
 	const skillMdFiles = walkForFilesNamed(catalogDir, "SKILL.md");
@@ -204,6 +260,9 @@ export function parseSkillDirectory(
 	const extraScripts: string[] = [];
 	if (fs.existsSync(scriptsDir) && fs.statSync(scriptsDir).isDirectory()) {
 		for (const entry of fs.readdirSync(scriptsDir, { withFileTypes: true })) {
+			if (entry.isSymbolicLink()) {
+				continue;
+			}
 			if (
 				entry.isFile() &&
 				(entry.name.endsWith(".py") ||
@@ -228,6 +287,9 @@ export function parseSkillDirectory(
 		for (const entry of fs.readdirSync(referencesDir, {
 			withFileTypes: true,
 		})) {
+			if (entry.isSymbolicLink()) {
+				continue;
+			}
 			if (entry.isFile() && entry.name.endsWith(".md")) {
 				referenceFiles.push(path.join(referencesDir, entry.name));
 			}
@@ -265,31 +327,110 @@ export function parseSkillDirectory(
 	};
 }
 
+function resolveSafeCandidateSubdir(
+	baseDir: string,
+	canonicalBase: string,
+	segments: readonly string[],
+): string | null {
+	let current = baseDir;
+	for (const seg of segments) {
+		current = path.join(current, seg);
+		if (!fs.existsSync(current)) {
+			return null;
+		}
+		let lstat: fs.Stats;
+		try {
+			lstat = fs.lstatSync(current);
+		} catch {
+			return null;
+		}
+		if (lstat.isSymbolicLink() || !lstat.isDirectory()) {
+			return null;
+		}
+		let realCurrent: string;
+		try {
+			realCurrent = fs.realpathSync(current);
+		} catch {
+			return null;
+		}
+		if (!isStrictlyWithinCanonicalDir(canonicalBase, realCurrent)) {
+			return null;
+		}
+	}
+	return current;
+}
+
 /**
  * Discover all Subagent Markdown definitions in catalog/subagents/ and .github/agents/*.agent.md.
+ * Symbolic links are never traversed and resolved paths must stay strictly inside repoOrCatalogRoot.
  */
 export function discoverSubagentFiles(repoOrCatalogRoot: string): string[] {
-	const results = new Set<string>();
+	if (!fs.existsSync(repoOrCatalogRoot)) {
+		return [];
+	}
+	let rootLstat: fs.Stats;
+	try {
+		rootLstat = fs.lstatSync(repoOrCatalogRoot);
+	} catch {
+		return [];
+	}
+	if (rootLstat.isSymbolicLink() || !rootLstat.isDirectory()) {
+		return [];
+	}
+	let canonicalRoot: string;
+	try {
+		canonicalRoot = fs.realpathSync(repoOrCatalogRoot);
+	} catch {
+		return [];
+	}
 
-	const candidates = [
-		path.join(repoOrCatalogRoot, "subagents"),
-		path.join(repoOrCatalogRoot, "catalog", "subagents"),
-		path.join(repoOrCatalogRoot, ".github", "agents"),
+	const results = new Set<string>();
+	const candidateSegments: readonly (readonly string[])[] = [
+		["subagents"],
+		["catalog", "subagents"],
+		[".github", "agents"],
 	];
 
-	for (const dir of candidates) {
-		if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
+	for (const segments of candidateSegments) {
+		const dir = resolveSafeCandidateSubdir(
+			repoOrCatalogRoot,
+			canonicalRoot,
+			segments,
+		);
+		if (!dir) {
 			continue;
 		}
 		const stack = [dir];
 		while (stack.length > 0) {
 			const current = stack.pop()!;
 			for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+				if (entry.isSymbolicLink()) {
+					continue;
+				}
 				const full = path.join(current, entry.name);
-				if (entry.isDirectory()) {
+				let entryLstat: fs.Stats;
+				try {
+					entryLstat = fs.lstatSync(full);
+				} catch {
+					continue;
+				}
+				if (entryLstat.isSymbolicLink()) {
+					continue;
+				}
+				let realFull: string;
+				try {
+					realFull = fs.realpathSync(full);
+				} catch {
+					continue;
+				}
+				if (!isStrictlyWithinCanonicalDir(canonicalRoot, realFull)) {
+					continue;
+				}
+
+				if (entryLstat.isDirectory()) {
 					stack.push(full);
 				} else if (
-					entry.isFile() &&
+					entryLstat.isFile() &&
 					(entry.name === "SUBAGENT.md" ||
 						entry.name === "AGENT.md" ||
 						entry.name.endsWith(".agent.md"))

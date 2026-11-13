@@ -9,6 +9,7 @@
 /.gitignore                       @OdevMatheus
 /.gitattributes                   @OdevMatheus
 /.skillops.yml                    @OdevMatheus
+/.skillops-security-allowlist.json @OdevMatheus
 /.github/CODEOWNERS               @OdevMatheus
 /.github/SECURITY.md              @OdevMatheus
 

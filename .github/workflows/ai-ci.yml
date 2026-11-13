@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Validate Subagents Frontmatter (catalog/subagents/**/SUBAGENT.md)
         run: |
@@ -61,14 +61,14 @@ jobs:
       - name: Audit Catalog Scripts, Trojan-Source Unicode & Boundary Guards
         run: |
           python3 - <<'PY'
-          import ast, pathlib, re, sys
+          import ast, hashlib, json, pathlib, re, sys
 
           FORBIDDEN_ROOT_IMPORTS = {
               "urllib2", "urllib3", "httplib", "socket", "socketserver",
               "requests", "httpx", "aiohttp", "ftplib", "smtplib",
               "telnetlib", "paramiko", "websocket", "websockets",
               "pickle", "cPickle", "marshal", "shelve", "ctypes", "cffi",
-              "pty", "commands",
+              "importlib", "builtins", "pty", "commands",
           }
           FORBIDDEN_SUBMODULES = {
               "urllib.request", "urllib.urlopen", "http.client", "xmlrpc.client",
@@ -84,7 +84,23 @@ jobs:
               ".pyd", ".msi", ".scr", ".com", ".jar", ".class", ".zip", ".tar",
               ".gz", ".tgz", ".7z", ".rar", ".bz2", ".xz",
           }
-          TROJAN_BIDI_RE = re.compile(r"[\u0000\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069\U000E0000-\U000E007F]")
+          SKIP_MEDIA_EXTS = {
+              ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".bmp",
+              ".pdf", ".woff", ".woff2", ".ttf", ".otf", ".eot",
+          }
+          TROJAN_BIDI_RE = re.compile(r"[\u0000\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF\U000E0000-\U000E007F]")
+
+          allowlist_path = pathlib.Path(".skillops-security-allowlist.json")
+          allowlist_entries = []
+          if allowlist_path.is_file():
+              allowlist_data = json.loads(allowlist_path.read_text(encoding="utf-8"))
+              allowlist_entries = allowlist_data.get("exceptions", [])
+
+          def is_allowlisted(rel_posix: str, digest: str) -> bool:
+              for entry in allowlist_entries:
+                  if entry.get("relative_path") == rel_posix and entry.get("sha256") == digest:
+                      return True
+              return False
 
           errors = []
           catalog_root = pathlib.Path("catalog")
@@ -100,29 +116,38 @@ jobs:
                   if low.endswith(".tar.gz") or item.suffix.lower() in FORBIDDEN_BINARY_EXTS:
                       errors.append(f"{item.as_posix()}:1: forbidden binary or archive file '{item.name}'")
                       continue
-                  if item.suffix.lower() in {".md", ".py", ".sh", ".mjs", ".js", ".ts", ".json", ".yaml", ".yml"}:
-                      txt = item.read_text(encoding="utf-8")
-                      if "skillops-security: allow-file" in txt:
+                  if item.suffix.lower() in SKIP_MEDIA_EXTS:
+                      continue
+                  raw_bytes = item.read_bytes()
+                  digest = hashlib.sha256(raw_bytes).hexdigest()
+                  if is_allowlisted(item.as_posix(), digest):
+                      continue
+                  try:
+                      txt = raw_bytes.decode("utf-8")
+                  except UnicodeDecodeError:
+                      continue
+                  if txt.startswith("\ufeff"):
+                      txt = txt[1:]
+                  for idx, line in enumerate(txt.splitlines(), 1):
+                      if len(line) > 4096:
+                          errors.append(f"{item.as_posix()}:{idx}: suspicious long line ({len(line)} > 4096)")
                           continue
-                      for idx, line in enumerate(txt.splitlines(), 1):
-                          m = TROJAN_BIDI_RE.search(line)
-                          if m:
-                              cp = f"U+{ord(m.group(0)):04X}"
-                              errors.append(f"{item.as_posix()}:{idx}: forbidden Trojan-Source / invisible control character {cp}")
+                      m = TROJAN_BIDI_RE.search(line)
+                      if m:
+                          cp = f"U+{ord(m.group(0)):04X}"
+                          errors.append(f"{item.as_posix()}:{idx}: forbidden Trojan-Source / invisible control character {cp}")
 
           for py_file in sorted(catalog_root.rglob("*.py")):
               if "__pycache__" in py_file.parts:
                   continue
-              source = py_file.read_text(encoding="utf-8")
-              if "skillops-security: allow-file" in source:
+              raw_bytes = py_file.read_bytes()
+              digest = hashlib.sha256(raw_bytes).hexdigest()
+              if is_allowlisted(py_file.as_posix(), digest):
                   continue
-              lines = source.splitlines()
+              source = raw_bytes.decode("utf-8")
               tree = ast.parse(source, filename=py_file.as_posix())
               for node in ast.walk(tree):
                   lineno = getattr(node, "lineno", 1)
-                  raw_line = lines[lineno - 1] if 1 <= lineno <= len(lines) else ""
-                  if "skillops-security: allow" in raw_line:
-                      continue
                   if isinstance(node, ast.Import):
                       for alias in node.names:
                           root = alias.name.split(".")[0]
@@ -144,8 +169,14 @@ jobs:
                       elif node.module in {"http", "xmlrpc"} and "client" in imported:
                           errors.append(f"{py_file.as_posix()}:{lineno}: forbidden network client '{node.module}.client'")
                   elif isinstance(node, ast.Call):
-                      if isinstance(node.func, ast.Name) and node.func.id in FORBIDDEN_CALLS:
-                          errors.append(f"{py_file.as_posix()}:{lineno}: forbidden dynamic call '{node.func.id}()'")
+                      if isinstance(node.func, ast.Name):
+                          fn_name = node.func.id
+                          if fn_name in FORBIDDEN_CALLS:
+                              errors.append(f"{py_file.as_posix()}:{lineno}: forbidden dynamic call '{fn_name}()'")
+                          elif fn_name == "compile" and (len(node.args) >= 3 or any(kw.arg == "mode" for kw in node.keywords)):
+                              errors.append(f"{py_file.as_posix()}:{lineno}: forbidden dynamic compilation 'compile()'")
+                          elif fn_name == "getattr" and node.args and isinstance(node.args[0], ast.Name) and node.args[0].id in {"__builtins__", "builtins"}:
+                              errors.append(f"{py_file.as_posix()}:{lineno}: forbidden builtins lookup 'getattr({node.args[0].id}, ...)'")
                       elif isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name) and node.func.value.id == "os" and node.func.attr in FORBIDDEN_OS_ATTRS:
                           errors.append(f"{py_file.as_posix()}:{lineno}: forbidden shell call 'os.{node.func.attr}()'")
                       for kw in node.keywords:
@@ -168,10 +199,10 @@ jobs:
         node-version: ["20", "22"]
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: "npm"

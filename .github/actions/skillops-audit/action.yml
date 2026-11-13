@@ -22,17 +22,20 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Set up Node.js ${{ inputs.node-version }}
-      uses: actions/setup-node@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
       with:
         node-version: ${{ inputs.node-version }}
 
     - name: Verify Multi-Runtime Transpilation (Dry-Run)
       shell: bash
+      env:
+        INPUT_CATALOG_PATH: ${{ inputs.catalog-path }}
+        INPUT_TARGETS: ${{ inputs.targets }}
       run: |
-        if [ -f "dist/cli.js" ]; then
-          SKILLOPS_CMD="node dist/cli.js"
+        set -euo pipefail
+        if [[ -f "./dist/cli.js" ]]; then
+          node ./dist/cli.js add --all --catalog "$INPUT_CATALOG_PATH" --targets "$INPUT_TARGETS" --dry-run
         else
-          SKILLOPS_CMD="npx --yes skillops-cli@latest"
+          npx --yes skillops-cli add --all --catalog "$INPUT_CATALOG_PATH" --targets "$INPUT_TARGETS" --dry-run
         fi
-        $SKILLOPS_CMD add --all --catalog "${{ inputs.catalog-path }}" --targets "${{ inputs.targets }}" --dry-run
