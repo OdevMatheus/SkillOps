@@ -821,13 +821,13 @@ export function renderCodexAgentsIndex(
 		"### Active Progressive Disclosure Skills",
 		...skills.map(
 			(s) =>
-				`- **\`${s.manifest.name}\`** (\`.agents/skills/${s.manifest.name}/SKILL.md\`): ${s.manifest.description}`,
+				`- **\`${s.manifest.name}\`** (\`.codex/skills/${s.manifest.name}/SKILL.md\`): ${s.manifest.description}`,
 		),
 		"",
 		"### Active Context-Isolated Subagents",
 		...subagents.map(
 			(sa) =>
-				`- **\`${sa.manifest.name}\`** (\`.codex/agents/${sa.manifest.name}.toml\`, max output \`${sa.manifest.max_output_tokens}\` tokens): ${sa.manifest.description}`,
+				`- **\`${sa.manifest.name}\`** (\`.codex/agents/${sa.manifest.name}.md\`, max output \`${sa.manifest.max_output_tokens}\` tokens): ${sa.manifest.description}`,
 		),
 		CODEX_MARKER_END,
 	];

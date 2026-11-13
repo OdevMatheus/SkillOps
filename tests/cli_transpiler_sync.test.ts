@@ -576,10 +576,10 @@ describe("Track 2 — CLI Audit, Help Invariants, Security & 28-IDE Transpiler S
 		);
 		expect(agentsMdAfterAdd).toContain("Always run unit tests before committing.");
 		expect(agentsMdAfterAdd).toContain(
-			"`.agents/skills/codex-demo-skill/SKILL.md`",
+			"`.codex/skills/codex-demo-skill/SKILL.md`",
 		);
 
-		// Also install built-in subagent into codex and verify .codex/agents/<name>.toml path
+		// Also install built-in subagent into codex and verify .codex/agents/<name>.md path
 		addSkillOrSubagent(tmpRepo, BUILTIN_CATALOG_DIR, "context-scout", {
 			targets: ["codex"],
 		});
@@ -588,7 +588,7 @@ describe("Track 2 — CLI Audit, Help Invariants, Security & 28-IDE Transpiler S
 			"utf-8",
 		);
 		expect(agentsMdWithSubagent).toContain(
-			"`.codex/agents/context-scout.toml`",
+			"`.codex/agents/context-scout.md`",
 		);
 
 		// Update skill description in customCatalog and verify updateInstalledSkills refreshes AGENTS.md
