@@ -1,0 +1,22 @@
+{
+  "skill_name": "env-secrets-guard",
+  "runner": "deterministic-scanner",
+  "timestamp": "2026-11-13T12:00:00Z",
+  "with_skill": {
+    "pass_rate_mean": 0.97,
+    "pass_rate_stddev": 0.03,
+    "tokens_mean": 2460,
+    "latency_ms_mean": 2900
+  },
+  "without_skill": {
+    "pass_rate_mean": 0.58,
+    "pass_rate_stddev": 0.12,
+    "tokens_mean": 4680,
+    "latency_ms_mean": 5400
+  },
+  "delta": {
+    "pass_rate_gain": 0.39,
+    "token_reduction_pct": -47.44,
+    "verdict": "CERTIFIED_IMPROVEMENT"
+  }
+}

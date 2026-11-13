@@ -1,0 +1,66 @@
+{
+  "skill_name": "context-budget-profiler",
+  "schema_version": "1.0",
+  "evals": [
+    {
+      "id": "eval-01-bloated-claude-md-split",
+      "name": "Profile a bloated 750-line CLAUDE.md and split reference tables into references/",
+      "prompt": "Our root `CLAUDE.md` has grown to 750 lines with SQL migration templates and API error catalogs, burning tokens on every prompt. Profile our context budget and refactor it using progressive disclosure.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-context-profiler",
+          "type": "tool_call_contains",
+          "target": "profile_context_budget.py",
+          "description": "Agent executed the deterministic context budget profiler script."
+        },
+        {
+          "id": "assert-extracted-references",
+          "type": "regex_match",
+          "target": "references/[a-z0-9\\-]+\\.md",
+          "description": "Heavy reference material was extracted into on-demand references/*.md files."
+        }
+      ]
+    },
+    {
+      "id": "eval-02-always-apply-cursor-rules",
+      "name": "Reduce startup token tax from alwaysApply Cursor rules",
+      "prompt": "Audit why Cursor and Claude Code load over 6,000 instruction tokens on startup in this repo and optimize `.cursor/rules/` and `AGENTS.md`.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-context-profiler",
+          "type": "tool_call_contains",
+          "target": "profile_context_budget.py",
+          "description": "Agent measured always-on vs L1 token load with profile_context_budget.py."
+        },
+        {
+          "id": "assert-scoped-rule-gating",
+          "type": "regex_match",
+          "target": "(alwaysApply:\\s*false|globs:|references/)",
+          "description": "Agent converted unneeded always-on rules to glob-scoped or on-demand references."
+        }
+      ]
+    },
+    {
+      "id": "eval-03-oversized-skill-manifest",
+      "name": "Trim an oversized SKILL.md manifest to satisfy progressive disclosure budgets",
+      "prompt": "Review `.claude/skills/internal-deploy/SKILL.md` (620 lines, 3,100 words) so it satisfies progressive disclosure limits without losing deployment runbook details.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-context-profiler",
+          "type": "tool_call_contains",
+          "target": "profile_context_budget.py",
+          "description": "Agent ran profile_context_budget.py before and after splitting."
+        },
+        {
+          "id": "assert-keeps-skill-under-budget",
+          "type": "regex_match",
+          "target": "references/",
+          "description": "Detailed runbook sections were offloaded to references/ while keeping SKILL.md concise."
+        }
+      ]
+    }
+  ]
+}

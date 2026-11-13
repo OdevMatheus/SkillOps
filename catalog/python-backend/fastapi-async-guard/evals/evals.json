@@ -1,0 +1,72 @@
+{
+  "skill_name": "fastapi-async-guard",
+  "schema_version": "1.0",
+  "evals": [
+    {
+      "id": "eval-01-async-blocking-calls",
+      "name": "Replace blocking requests.get and time.sleep inside async FastAPI handler",
+      "prompt": "Our `app/routers/webhooks.py` endpoint `async def trigger_sync()` freezes all other FastAPI requests while retrying an upstream webhook with `requests.post` and `time.sleep`. Audit and fix it.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-fastapi-async-auditor",
+          "type": "tool_call_contains",
+          "target": "audit_fastapi_async.py",
+          "description": "Agent executed the deterministic FastAPI async AST auditor."
+        },
+        {
+          "id": "assert-nonblocking-sleep",
+          "type": "regex_match",
+          "target": "await\\s+asyncio\\.sleep",
+          "description": "Replaced blocking time.sleep with await asyncio.sleep."
+        },
+        {
+          "id": "assert-async-http-client",
+          "type": "regex_match",
+          "target": "(httpx\\.AsyncClient|run_in_threadpool)",
+          "description": "Replaced synchronous requests call with httpx.AsyncClient or run_in_threadpool."
+        }
+      ]
+    },
+    {
+      "id": "eval-02-pydantic-mutable-defaults",
+      "name": "Eliminate mutable list and dict defaults in Pydantic v2 schemas",
+      "prompt": "Review `app/schemas/order.py` where `OrderCreate(BaseModel)` defines `items: list[str] = []` and `metadata: dict[str, str] = {}`, and make it follow strict Pydantic v2 conventions.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-fastapi-async-auditor",
+          "type": "tool_call_contains",
+          "target": "audit_fastapi_async.py",
+          "description": "Agent executed the deterministic FastAPI async AST auditor."
+        },
+        {
+          "id": "assert-uses-default-factory",
+          "type": "regex_match",
+          "target": "Field\\(default_factory=(list|dict)\\)",
+          "description": "Mutable field defaults use Field(default_factory=...)."
+        }
+      ]
+    },
+    {
+      "id": "eval-03-route-response-contract",
+      "name": "Enforce explicit response_model or typed return schema on FastAPI routes",
+      "prompt": "Audit `app/routers/accounts.py` where `@router.get('/accounts/{account_id}')` returns raw ORM objects without a return annotation or `response_model`, risking password hash exposure.",
+      "fixtures": [],
+      "assertions": [
+        {
+          "id": "assert-ran-fastapi-async-auditor",
+          "type": "tool_call_contains",
+          "target": "audit_fastapi_async.py",
+          "description": "Agent executed the deterministic FastAPI async AST auditor."
+        },
+        {
+          "id": "assert-explicit-response-contract",
+          "type": "regex_match",
+          "target": "(response_model\\s*=|->\\s*[A-Z][A-Za-z0-9_]*)",
+          "description": "Route handler specifies an explicit Pydantic response_model or return type schema."
+        }
+      ]
+    }
+  ]
+}

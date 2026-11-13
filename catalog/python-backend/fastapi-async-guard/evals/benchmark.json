@@ -1,0 +1,22 @@
+{
+  "skill_name": "fastapi-async-guard",
+  "runner": "deterministic-ast",
+  "timestamp": "2026-11-13T12:15:00Z",
+  "with_skill": {
+    "pass_rate_mean": 0.96,
+    "pass_rate_stddev": 0.04,
+    "tokens_mean": 2620,
+    "latency_ms_mean": 3050
+  },
+  "without_skill": {
+    "pass_rate_mean": 0.61,
+    "pass_rate_stddev": 0.13,
+    "tokens_mean": 4890,
+    "latency_ms_mean": 5700
+  },
+  "delta": {
+    "pass_rate_gain": 0.35,
+    "token_reduction_pct": -46.42,
+    "verdict": "CERTIFIED_IMPROVEMENT"
+  }
+}

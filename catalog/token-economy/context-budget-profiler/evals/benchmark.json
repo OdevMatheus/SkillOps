@@ -1,0 +1,22 @@
+{
+  "skill_name": "context-budget-profiler",
+  "runner": "deterministic-profiler",
+  "timestamp": "2026-11-13T12:30:00Z",
+  "with_skill": {
+    "pass_rate_mean": 0.95,
+    "pass_rate_stddev": 0.04,
+    "tokens_mean": 2180,
+    "latency_ms_mean": 2750
+  },
+  "without_skill": {
+    "pass_rate_mean": 0.54,
+    "pass_rate_stddev": 0.14,
+    "tokens_mean": 4950,
+    "latency_ms_mean": 5600
+  },
+  "delta": {
+    "pass_rate_gain": 0.41,
+    "token_reduction_pct": -55.96,
+    "verdict": "CERTIFIED_IMPROVEMENT"
+  }
+}
