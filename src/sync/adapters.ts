@@ -16,6 +16,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 import {
 	discoverSkillDirectories,
@@ -25,6 +26,10 @@ import {
 	parseSkillDirectory,
 	parseSubagentFile,
 } from "../auditor/parser.js";
+import {
+	auditSkillSecurity,
+	type SkillSecurityFinding,
+} from "../auditor/security.js";
 import {
 	ALL_RUNTIME_TARGETS,
 	CORE_RUNTIME_TARGETS,
@@ -124,7 +129,7 @@ export interface DiscoveredInstalledArtifact {
 	readonly fromLockfile: boolean;
 }
 
-interface PlannedFile {
+export interface PlannedFile {
 	readonly target: RuntimeTarget;
 	readonly itemName: string;
 	readonly relativePath: string;
@@ -235,19 +240,111 @@ export function detectExistingTargetsForItem(
 const CODEX_MARKER_START = "<!-- SKILLOPS:START -->";
 const CODEX_MARKER_END = "<!-- SKILLOPS:END -->";
 
+function trimSlashes(val: string): string {
+	let start = 0;
+	let end = val.length;
+	while (start < end && val.charCodeAt(start) === 47) {
+		start += 1;
+	}
+	while (end > start && val.charCodeAt(end - 1) === 47) {
+		end -= 1;
+	}
+	return val.slice(start, end);
+}
+
+function trimTrailingSlashes(val: string): string {
+	let end = val.length;
+	while (end > 1 && val.charCodeAt(end - 1) === 47) {
+		end -= 1;
+	}
+	return val.slice(0, end);
+}
+
+function resolveBuiltinCatalogDir(): string {
+	const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+	const oneUpCatalog = path.resolve(moduleDir, "..", "catalog");
+	if (fs.existsSync(oneUpCatalog) && fs.statSync(oneUpCatalog).isDirectory()) {
+		return oneUpCatalog;
+	}
+	return path.resolve(moduleDir, "..", "..", "catalog");
+}
+
+const PACKAGE_CATALOG_DIR = resolveBuiltinCatalogDir();
+
+function isErrorSecurityFinding(finding: SkillSecurityFinding): boolean {
+	const maybeSeverity = (finding as { readonly severity?: string }).severity;
+	return maybeSeverity === undefined || maybeSeverity === "error";
+}
+
+function assertCustomCatalogSkillSafe(
+	resolvedCatalog: string,
+	skill: ParsedSkillDirectory,
+): void {
+	if (path.resolve(resolvedCatalog) === path.resolve(PACKAGE_CATALOG_DIR)) {
+		return;
+	}
+	const secReport = auditSkillSecurity(skill.skillDir);
+	const errorFindings = secReport.findings.filter(isErrorSecurityFinding);
+	if (errorFindings.length > 0) {
+		throw new Error(
+			`Security violation in custom catalog skill '${skill.manifest.name}': ${errorFindings[0]!.message}`,
+		);
+	}
+}
+
 export function computeSha256(content: string): string {
 	return crypto.createHash("sha256").update(content, "utf-8").digest("hex");
 }
 
+const BARE_COMPANION_PATH_REGEX =
+	/(^|[\s`("'])((?:scripts|references|assets|evals)\/[A-Za-z0-9._/-]+)/gm;
+
 function rewriteBundledSkillPaths(
 	text: string,
 	parsed: ParsedSkillDirectory,
-	baseDir: string,
+	companionRootDir: string,
 ): string {
 	const name = parsed.manifest.name;
 	const track = parsed.manifest.track;
+	const normalizedRoot = trimSlashes(companionRootDir);
 	const catalogPrefix = `catalog/${track}/${name}/`;
-	return text.split(catalogPrefix).join(`${baseDir}/`);
+	const afterCatalog = text.split(catalogPrefix).join(`${normalizedRoot}/`);
+	return afterCatalog.replace(
+		BARE_COMPANION_PATH_REGEX,
+		(match, prefix: string, relCompanion: string) => {
+			if (relCompanion.startsWith(`${normalizedRoot}/`)) {
+				return match;
+			}
+			return `${prefix}${normalizedRoot}/${relCompanion}`;
+		},
+	);
+}
+
+function rewriteProgressiveSkillRawText(
+	rawText: string,
+	parsed: ParsedSkillDirectory,
+	companionRootDir: string,
+): string {
+	if (rawText.startsWith("---\n") || rawText.startsWith("---\r\n")) {
+		const firstNewline = rawText.indexOf("\n");
+		const closingLf = rawText.indexOf("\n---\n", firstNewline);
+		const closingCrLf = rawText.indexOf("\r\n---\r\n", firstNewline);
+		let splitIdx = -1;
+		if (
+			closingLf !== -1 &&
+			(closingCrLf === -1 || closingLf < closingCrLf)
+		) {
+			splitIdx = closingLf + "\n---\n".length;
+		} else if (closingCrLf !== -1) {
+			splitIdx = closingCrLf + "\r\n---\r\n".length;
+		}
+		if (splitIdx !== -1) {
+			const fmHeader = rawText.slice(0, splitIdx);
+			const bodyPart = rawText.slice(splitIdx);
+			return `${fmHeader}${rewriteBundledSkillPaths(bodyPart, parsed, companionRootDir)}`;
+		}
+	}
+	return rewriteBundledSkillPaths(rawText, parsed, companionRootDir);
 }
 
 function appendCompanionSkillFiles(
@@ -297,7 +394,7 @@ export function renderSkillFilesForRuntime(
 			target,
 			itemName: name,
 			relativePath: `${baseDir}/SKILL.md`,
-			content: rewriteBundledSkillPaths(parsed.rawText, parsed, baseDir),
+			content: rewriteProgressiveSkillRawText(parsed.rawText, parsed, baseDir),
 		});
 		appendCompanionSkillFiles(files, parsed, target, baseDir);
 		return files;
@@ -434,6 +531,84 @@ export function renderSkillFilesForRuntime(
 	return files;
 }
 
+const MUTATING_OR_SHELL_TOOL_NAMES = new Set([
+	"write",
+	"edit",
+	"multiedit",
+	"patch",
+	"create",
+	"delete",
+	"rm",
+	"bash",
+	"sh",
+	"shell",
+	"exec",
+	"terminal",
+	"command",
+	"run_command",
+	"execute",
+	"write_file",
+	"edit_file",
+]);
+
+function isMutatingOrShellTool(toolName: string): boolean {
+	const lower = toolName.trim().toLowerCase();
+	return (
+		MUTATING_OR_SHELL_TOOL_NAMES.has(lower) ||
+		lower.includes("write") ||
+		lower.includes("edit") ||
+		lower.includes("bash") ||
+		lower.includes("shell") ||
+		lower.includes("exec")
+	);
+}
+
+function buildSubagentToolConstraintsBlock(
+	manifest: ParsedSubagentFile["manifest"],
+): string {
+	const extManifest = manifest as unknown as {
+		readonly tools?: readonly string[];
+		readonly disallowed_tools?: readonly string[];
+		readonly disallowedTools?: readonly string[];
+	};
+	const allowedTools = extManifest.tools ?? [];
+	const disallowedTools =
+		extManifest.disallowed_tools ?? extManifest.disallowedTools ?? [];
+	if (allowedTools.length === 0 && disallowedTools.length === 0) {
+		return "";
+	}
+
+	const lines: string[] = ["## Tool & Sandbox Constraints", ""];
+	if (allowedTools.length > 0) {
+		lines.push(
+			`- **Allowed tools**: ${allowedTools.map((t) => `\`${t}\``).join(", ")}`,
+		);
+	}
+	if (disallowedTools.length > 0) {
+		lines.push(
+			`- **Disallowed tools**: ${disallowedTools.map((t) => `\`${t}\``).join(", ")}`,
+		);
+	}
+	const hasWriteOrBash = allowedTools.some(isMutatingOrShellTool);
+	if (allowedTools.length > 0 && !hasWriteOrBash) {
+		lines.push(
+			"- **Read-only rule**: File write/edit and shell/bash execution tools are excluded; operate strictly read-only.",
+		);
+	}
+	return lines.join("\n");
+}
+
+function appendSubagentToolConstraints(
+	promptBody: string,
+	manifest: ParsedSubagentFile["manifest"],
+): string {
+	if (promptBody.includes("## Tool & Sandbox Constraints")) {
+		return promptBody;
+	}
+	const block = buildSubagentToolConstraintsBlock(manifest);
+	return block ? `${promptBody}\n\n${block}` : promptBody;
+}
+
 export function renderSubagentFilesForRuntime(
 	subagent: ParsedSubagentFile,
 	target: RuntimeTarget,
@@ -441,160 +616,197 @@ export function renderSubagentFilesForRuntime(
 	const name = subagent.manifest.name;
 	const spec = RUNTIME_HARNESS_SPECS[target];
 	const promptBody = subagent.systemPromptBody.trim();
-	const fm = YAML.stringify({
+	const constrainedBody = appendSubagentToolConstraints(
+		promptBody,
+		subagent.manifest,
+	);
+	const extManifest = subagent.manifest as unknown as {
+		readonly disallowed_tools?: readonly string[];
+		readonly disallowedTools?: readonly string[];
+	};
+	const disallowedTools =
+		extManifest.disallowed_tools ?? extManifest.disallowedTools;
+	const fmObj: Record<string, unknown> = {
 		name: subagent.manifest.name,
 		description: subagent.manifest.description,
 		model: "inherit",
 		model_tier: subagent.manifest.model_tier,
 		tools: subagent.manifest.tools,
+		...(disallowedTools && disallowedTools.length > 0
+			? { disallowed_tools: disallowedTools }
+			: {}),
 		max_output_tokens: subagent.manifest.max_output_tokens,
-	}).trim();
+	};
+	const fm = YAML.stringify(fmObj).trim();
 	const normalizedDoc = `---\n${fm}\n---\n\n${promptBody}\n`;
+	const constrainedNormalizedDoc = `---\n${fm}\n---\n\n${constrainedBody}\n`;
 
-	if (
-		target === "claude" ||
-		target === "antigravity" ||
-		target === "gemini" ||
-		target === "codex" ||
-		target === "amp" ||
-		target === "goose" ||
-		target === "opencode" ||
-		target === "qwen" ||
-		target === "warp" ||
-		target === "crush"
-	) {
-		return [
-			{
-				target,
-				itemName: name,
-				relativePath: `${spec.subagentsDir}/${name}.md`,
-				content: normalizedDoc,
-			},
-		];
+	switch (target) {
+		case "claude":
+		case "antigravity":
+		case "codex":
+		case "opencode":
+			return [
+				{
+					target,
+					itemName: name,
+					relativePath: `${spec.subagentsDir}/${name}.md`,
+					content: normalizedDoc,
+				},
+			];
+
+		case "gemini":
+		case "amp":
+		case "goose":
+		case "qwen":
+		case "warp":
+		case "crush":
+			return [
+				{
+					target,
+					itemName: name,
+					relativePath: `${spec.subagentsDir}/${name}.md`,
+					content: constrainedNormalizedDoc,
+				},
+			];
+
+		case "factory": {
+			const droidFm = YAML.stringify({
+				name,
+				description: subagent.manifest.description,
+				model: "inherit",
+				tools: subagent.manifest.tools,
+			}).trim();
+			return [
+				{
+					target,
+					itemName: name,
+					relativePath: `.factory/droids/skillops-agent-${name}.md`,
+					content: `---\n${droidFm}\n---\n\n${constrainedBody}\n`,
+				},
+			];
+		}
+
+		case "vibe": {
+			const escapedDesc = JSON.stringify(subagent.manifest.description);
+			const escapedPrompt = JSON.stringify(constrainedBody);
+			const tomlDoc = [
+				`name = "${name}"`,
+				`description = ${escapedDesc}`,
+				`system_prompt = ${escapedPrompt}`,
+				"",
+			].join("\n");
+			return [
+				{
+					target,
+					itemName: name,
+					relativePath: `.vibe/agents/skillops-agent-${name}.toml`,
+					content: tomlDoc,
+				},
+			];
+		}
+
+		case "copilot":
+			return [
+				{
+					target,
+					itemName: name,
+					relativePath: `.github/agents/${name}.agent.md`,
+					content: normalizedDoc,
+				},
+			];
+
+		case "cursor": {
+			const mdcFm = YAML.stringify({
+				description: `[Subagent: ${name}] ${subagent.manifest.description}`,
+				alwaysApply: false,
+			}).trim();
+			return [
+				{
+					target,
+					itemName: name,
+					relativePath: `.cursor/rules/skillops-agent-${name}.mdc`,
+					content: `---\n${mdcFm}\n---\n\n${constrainedBody}\n`,
+				},
+			];
+		}
+
+		case "continue": {
+			const contFm = YAML.stringify({
+				name,
+				description: subagent.manifest.description,
+				invokable: true,
+			}).trim();
+			return [
+				{
+					target,
+					itemName: name,
+					relativePath: `.continue/prompts/skillops-agent-${name}.prompt`,
+					content: `---\n${contFm}\n---\n\n${constrainedBody}\n`,
+				},
+			];
+		}
+
+		case "openhands": {
+			const ohFm = YAML.stringify({
+				name: `agent-${name}`,
+				type: "knowledge",
+				version: "1.0.0",
+				agent: "CodeActAgent",
+				triggers: [name, ...subagent.manifest.tags],
+			}).trim();
+			return [
+				{
+					target,
+					itemName: name,
+					relativePath: `.openhands/microagents/skillops-agent-${name}.md`,
+					content: `---\n${ohFm}\n---\n\n${constrainedBody}\n`,
+				},
+			];
+		}
+
+		case "amazonq": {
+			const qPayload = {
+				name,
+				description: subagent.manifest.description,
+				prompt: constrainedBody,
+				tools: subagent.manifest.tools,
+				...(disallowedTools && disallowedTools.length > 0
+					? { disallowed_tools: disallowedTools }
+					: {}),
+				max_output_tokens: subagent.manifest.max_output_tokens,
+			};
+			return [
+				{
+					target,
+					itemName: name,
+					relativePath: `.amazonq/cli-agents/skillops-agent-${name}.json`,
+					content: `${JSON.stringify(qPayload, null, 2)}\n`,
+				},
+			];
+		}
+
+		case "windsurf":
+		case "kiro":
+		case "cline":
+		case "roocode":
+		case "kilocode":
+		case "zed":
+		case "aider":
+		case "trae":
+		case "junie":
+		case "augment":
+		case "idx":
+			// Preserve frontmatter tools/disallowedTools and Tool & Sandbox Constraints in Markdown body
+			return [
+				{
+					target,
+					itemName: name,
+					relativePath: `${spec.subagentsDir}/skillops-agent-${name}.md`,
+					content: constrainedNormalizedDoc,
+				},
+			];
 	}
-
-	if (target === "factory") {
-		const droidFm = YAML.stringify({
-			name,
-			description: subagent.manifest.description,
-			model: "inherit",
-		}).trim();
-		return [
-			{
-				target,
-				itemName: name,
-				relativePath: `.factory/droids/skillops-agent-${name}.md`,
-				content: `---\n${droidFm}\n---\n\n${promptBody}\n`,
-			},
-		];
-	}
-
-	if (target === "vibe") {
-		const escapedDesc = JSON.stringify(subagent.manifest.description);
-		const escapedPrompt = JSON.stringify(promptBody);
-		const tomlDoc = [
-			`name = "${name}"`,
-			`description = ${escapedDesc}`,
-			`system_prompt = ${escapedPrompt}`,
-			"",
-		].join("\n");
-		return [
-			{
-				target,
-				itemName: name,
-				relativePath: `.vibe/agents/skillops-agent-${name}.toml`,
-				content: tomlDoc,
-			},
-		];
-	}
-
-	if (target === "copilot") {
-		return [
-			{
-				target,
-				itemName: name,
-				relativePath: `.github/agents/${name}.agent.md`,
-				content: normalizedDoc,
-			},
-		];
-	}
-
-	if (target === "cursor") {
-		const mdcFm = YAML.stringify({
-			description: `[Subagent: ${name}] ${subagent.manifest.description}`,
-			alwaysApply: false,
-		}).trim();
-		return [
-			{
-				target,
-				itemName: name,
-				relativePath: `.cursor/rules/skillops-agent-${name}.mdc`,
-				content: `---\n${mdcFm}\n---\n\n${promptBody}\n`,
-			},
-		];
-	}
-
-	if (target === "continue") {
-		const contFm = YAML.stringify({
-			name,
-			description: subagent.manifest.description,
-			invokable: true,
-		}).trim();
-		return [
-			{
-				target,
-				itemName: name,
-				relativePath: `.continue/prompts/skillops-agent-${name}.prompt`,
-				content: `---\n${contFm}\n---\n\n${promptBody}\n`,
-			},
-		];
-	}
-
-	if (target === "openhands") {
-		const ohFm = YAML.stringify({
-			name: `agent-${name}`,
-			type: "knowledge",
-			version: "1.0.0",
-			agent: "CodeActAgent",
-			triggers: [name, ...subagent.manifest.tags],
-		}).trim();
-		return [
-			{
-				target,
-				itemName: name,
-				relativePath: `.openhands/microagents/skillops-agent-${name}.md`,
-				content: `---\n${ohFm}\n---\n\n${promptBody}\n`,
-			},
-		];
-	}
-
-	if (target === "amazonq") {
-		const qPayload = {
-			name,
-			description: subagent.manifest.description,
-			prompt: promptBody,
-			tools: subagent.manifest.tools,
-			max_output_tokens: subagent.manifest.max_output_tokens,
-		};
-		return [
-			{
-				target,
-				itemName: name,
-				relativePath: `.amazonq/cli-agents/skillops-agent-${name}.json`,
-				content: `${JSON.stringify(qPayload, null, 2)}\n`,
-			},
-		];
-	}
-
-	// Remaining harnesses: windsurf, cline, roocode, kilocode, zed, aider, kiro, trae, junie
-	return [
-		{
-			target,
-			itemName: name,
-			relativePath: `${spec.subagentsDir}/skillops-agent-${name}.md`,
-			content: normalizedDoc,
-		},
-	];
 }
 
 export function renderCodexAgentsIndex(
@@ -609,13 +821,13 @@ export function renderCodexAgentsIndex(
 		"### Active Progressive Disclosure Skills",
 		...skills.map(
 			(s) =>
-				`- **\`${s.manifest.name}\`** (\`.codex/skills/${s.manifest.name}/SKILL.md\`): ${s.manifest.description}`,
+				`- **\`${s.manifest.name}\`** (\`.agents/skills/${s.manifest.name}/SKILL.md\`): ${s.manifest.description}`,
 		),
 		"",
 		"### Active Context-Isolated Subagents",
 		...subagents.map(
 			(sa) =>
-				`- **\`${sa.manifest.name}\`** (\`.codex/agents/${sa.manifest.name}.md\`, max output \`${sa.manifest.max_output_tokens}\` tokens): ${sa.manifest.description}`,
+				`- **\`${sa.manifest.name}\`** (\`.codex/agents/${sa.manifest.name}.toml\`, max output \`${sa.manifest.max_output_tokens}\` tokens): ${sa.manifest.description}`,
 		),
 		CODEX_MARKER_END,
 	];
@@ -638,13 +850,83 @@ export function renderCodexAgentsIndex(
 	return `${existingContent.trimEnd()}\n\n${managedBlock}\n`;
 }
 
+const FORBIDDEN_PROTOTYPE_KEYS = new Set([
+	"__proto__",
+	"constructor",
+	"prototype",
+]);
+
+function hasPrototypeKeySegment(key: string): boolean {
+	if (FORBIDDEN_PROTOTYPE_KEYS.has(key)) {
+		return true;
+	}
+	const parts = key.replace(/\\/g, "/").split("/");
+	return parts.some((part) => FORBIDDEN_PROTOTYPE_KEYS.has(part));
+}
+
+function createNullProtoArtifactsMap(
+	source?: Record<string, SyncLockEntry>,
+): Record<string, SyncLockEntry> {
+	const map = Object.create(null) as Record<string, SyncLockEntry>;
+	if (!source) {
+		return map;
+	}
+	for (const key of Object.getOwnPropertyNames(source)) {
+		if (hasPrototypeKeySegment(key)) {
+			throw new Error(
+				`Security violation: Forbidden prototype key '${key}' in .skillops-lock.json.`,
+			);
+		}
+		const val = source[key];
+		if (val) {
+			map[key] = val;
+		}
+	}
+	return map;
+}
+
+function getLockArtifact(
+	artifacts: Record<string, SyncLockEntry> | undefined,
+	relPath: string,
+): SyncLockEntry | undefined {
+	if (!artifacts || hasPrototypeKeySegment(relPath)) {
+		return undefined;
+	}
+	return Object.hasOwn(artifacts, relPath) ? artifacts[relPath] : undefined;
+}
+
 function loadExistingLockfile(lockfilePath: string): SyncLockfile | null {
 	if (!fs.existsSync(lockfilePath) || !fs.statSync(lockfilePath).isFile()) {
 		return null;
 	}
+	let raw: unknown;
 	try {
-		const raw = JSON.parse(fs.readFileSync(lockfilePath, "utf-8")) as unknown;
-		return SyncLockfileSchema.parse(raw);
+		raw = JSON.parse(fs.readFileSync(lockfilePath, "utf-8")) as unknown;
+	} catch {
+		return null;
+	}
+	if (
+		raw &&
+		typeof raw === "object" &&
+		"artifacts" in raw &&
+		raw.artifacts &&
+		typeof raw.artifacts === "object" &&
+		!Array.isArray(raw.artifacts)
+	) {
+		for (const key of Object.getOwnPropertyNames(raw.artifacts)) {
+			if (hasPrototypeKeySegment(key)) {
+				throw new Error(
+					`Security violation: Forbidden prototype key '${key}' in lockfile '${lockfilePath.replace(/\\/g, "/")}'.`,
+				);
+			}
+		}
+	}
+	try {
+		const parsed = SyncLockfileSchema.parse(raw);
+		return {
+			...parsed,
+			artifacts: createNullProtoArtifactsMap(parsed.artifacts),
+		};
 	} catch {
 		return null;
 	}
@@ -981,35 +1263,133 @@ export function discoverInstalledArtifactsOnDisk(
 
 /**
  * Resolve a repository-relative path and enforce strict containment inside `resolvedRepo`,
- * rejecting null bytes, absolute paths, `..` traversal, and symbolic link targets.
+ * rejecting control characters, NTFS stream colons, absolute paths, `..` traversal,
+ * and symbolic link / junction ancestors.
  */
 export function resolveSafeRepoTargetPath(
 	resolvedRepo: string,
 	relativePath: string,
 ): string {
 	const cleanRoot = path.resolve(resolvedRepo);
+	const canonicalRepo = fs.existsSync(cleanRoot)
+		? fs.realpathSync(cleanRoot)
+		: null;
+	const boundaryLabel = cleanRoot.replace(/\\/g, "/");
+	const rejectEscape = (): never => {
+		throw new Error(
+			`Security violation: Planned artifact path '${relativePath}' escapes target repository boundary '${boundaryLabel}'.`,
+		);
+	};
 	if (
 		!relativePath ||
-		relativePath.includes("\0") ||
+		relativePath.startsWith("/") ||
+		relativePath.startsWith("\\") ||
 		path.isAbsolute(relativePath)
 	) {
-		throw new Error(
-			`Security violation: Planned artifact path '${relativePath}' escapes target repository boundary '${cleanRoot.replace(/\\/g, "/")}'.`,
-		);
+		return rejectEscape();
+	}
+	for (let i = 0; i < relativePath.length; i++) {
+		const code = relativePath.charCodeAt(i);
+		if (code < 32 || code === 127 || code === 58) {
+			return rejectEscape();
+		}
 	}
 	const fullPath = path.resolve(cleanRoot, relativePath);
 	const relToRepo = path.relative(cleanRoot, fullPath);
-	if (!relToRepo || relToRepo.startsWith("..") || path.isAbsolute(relToRepo)) {
-		throw new Error(
-			`Security violation: Planned artifact path '${relativePath}' escapes target repository boundary '${cleanRoot.replace(/\\/g, "/")}'.`,
-		);
+	if (
+		!relToRepo ||
+		relToRepo === "." ||
+		relToRepo.startsWith("..") ||
+		path.isAbsolute(relToRepo)
+	) {
+		return rejectEscape();
 	}
-	if (fs.existsSync(fullPath) && fs.lstatSync(fullPath).isSymbolicLink()) {
-		throw new Error(
-			`Security violation: Refusing to write or remove symbolic link at '${relativePath}'.`,
-		);
+
+	let currentSeg = cleanRoot;
+	let deepestExistingAncestor = cleanRoot;
+	for (const seg of relToRepo.split(path.sep)) {
+		if (!seg || seg === ".") {
+			continue;
+		}
+		currentSeg = path.join(currentSeg, seg);
+		let stat: fs.Stats;
+		try {
+			stat = fs.lstatSync(currentSeg);
+		} catch {
+			break;
+		}
+		if (stat.isSymbolicLink()) {
+			throw new Error(
+				`Security violation: Symbolic link '${relativePath}' escapes target repository boundary '${boundaryLabel}'.`,
+			);
+		}
+		deepestExistingAncestor = currentSeg;
 	}
+
+	if (canonicalRepo !== null) {
+		const canonicalAncestor = fs.existsSync(deepestExistingAncestor)
+			? fs.realpathSync(deepestExistingAncestor)
+			: canonicalRepo;
+		const canonicalRel = path.relative(canonicalRepo, canonicalAncestor);
+		if (canonicalRel.startsWith("..") || path.isAbsolute(canonicalRel)) {
+			return rejectEscape();
+		}
+	}
+
 	return fullPath;
+}
+
+function collectInstalledCodexCatalogItems(
+	resolvedRepo: string,
+	resolvedCatalog: string,
+	extraSkill?: ParsedSkillDirectory | null,
+	extraSubagent?: ParsedSubagentFile | null,
+): {
+	skills: ParsedSkillDirectory[];
+	subagents: ParsedSubagentFile[];
+} {
+	const catalogMaps = loadCatalogMaps(resolvedCatalog);
+	const builtinMaps =
+		path.resolve(resolvedCatalog) !== path.resolve(PACKAGE_CATALOG_DIR)
+			? loadCatalogMaps(PACKAGE_CATALOG_DIR)
+			: null;
+	const discoveredCodex = discoverInstalledArtifactsOnDisk(
+		resolvedRepo,
+		resolvedCatalog,
+		["codex"],
+	);
+	const skillByName = new Map<string, ParsedSkillDirectory>();
+	const subagentByName = new Map<string, ParsedSubagentFile>();
+	for (const entry of discoveredCodex) {
+		if (entry.kind === "skill") {
+			const parsed =
+				catalogMaps.skills.get(entry.itemName) ??
+				builtinMaps?.skills.get(entry.itemName);
+			if (parsed) {
+				skillByName.set(parsed.manifest.name, parsed);
+			}
+		} else {
+			const parsed =
+				catalogMaps.subagents.get(entry.itemName) ??
+				builtinMaps?.subagents.get(entry.itemName);
+			if (parsed) {
+				subagentByName.set(parsed.manifest.name, parsed);
+			}
+		}
+	}
+	if (extraSkill) {
+		skillByName.set(extraSkill.manifest.name, extraSkill);
+	}
+	if (extraSubagent) {
+		subagentByName.set(extraSubagent.manifest.name, extraSubagent);
+	}
+	const skills = [...skillByName.keys()]
+		.sort()
+		.map((k) => skillByName.get(k)!);
+	const subagents = [...subagentByName.keys()]
+		.sort()
+		.map((k) => subagentByName.get(k)!);
+	return { skills, subagents };
 }
 
 function applyPlannedFiles(
@@ -1024,14 +1404,17 @@ function applyPlannedFiles(
 		skippedTargetItems?: readonly SkippedTargetItem[];
 		addedSkillName?: string;
 		addedSubagentName?: string;
+		codexAgentsIndexContent?: string;
 	},
 ): SyncReport {
 	const lockfilePath = path.join(resolvedRepo, ".skillops-lock.json");
 	const existingLock = loadExistingLockfile(lockfilePath);
 	const newLockArtifacts: Record<string, SyncLockEntry> =
-		options.preserveUnlistedLockEntries
-			? { ...(existingLock?.artifacts ?? {}) }
-			: {};
+		createNullProtoArtifactsMap(
+			options.preserveUnlistedLockEntries
+				? existingLock?.artifacts
+				: undefined,
+		);
 
 	const artifacts: SyncedArtifact[] = [];
 	const skippedExisting: string[] = [];
@@ -1046,7 +1429,10 @@ function applyPlannedFiles(
 			sha256: skipped.sha256,
 			action: "skipped",
 		});
-		const previousEntry = existingLock?.artifacts[skipped.relativePath];
+		const previousEntry = getLockArtifact(
+			existingLock?.artifacts,
+			skipped.relativePath,
+		);
 		if (previousEntry) {
 			newLockArtifacts[skipped.relativePath] = previousEntry;
 		}
@@ -1070,7 +1456,10 @@ function applyPlannedFiles(
 					sha256: currentDiskSha,
 					action: "skipped",
 				});
-				const previousEntry = existingLock?.artifacts[pf.relativePath];
+				const previousEntry = getLockArtifact(
+					existingLock?.artifacts,
+					pf.relativePath,
+				);
 				if (previousEntry) {
 					newLockArtifacts[pf.relativePath] = previousEntry;
 				}
@@ -1113,6 +1502,34 @@ function applyPlannedFiles(
 				sha256: desiredSha,
 			};
 		}
+	}
+
+	if (options.codexAgentsIndexContent !== undefined) {
+		const safeAgentsMd = resolveSafeRepoTargetPath(resolvedRepo, "AGENTS.md");
+		const diskText =
+			fs.existsSync(safeAgentsMd) && fs.statSync(safeAgentsMd).isFile()
+				? fs.readFileSync(safeAgentsMd, "utf-8")
+				: "";
+		const currentDiskSha = computeSha256(diskText);
+		const desiredSha = computeSha256(options.codexAgentsIndexContent);
+		if (desiredSha !== currentDiskSha) {
+			if (!options.dryRun) {
+				fs.writeFileSync(safeAgentsMd, options.codexAgentsIndexContent, "utf-8");
+			}
+			artifacts.push({
+				target: "codex",
+				skill_name: "codex-agents-index",
+				relative_path: "AGENTS.md",
+				sha256: desiredSha,
+				action: options.dryRun ? "planned" : "updated",
+			});
+		}
+		newLockArtifacts["AGENTS.md"] = {
+			target: "codex",
+			skill_name: "codex-agents-index",
+			relative_path: "AGENTS.md",
+			sha256: desiredSha,
+		};
 	}
 
 	const hasWrittenArtifacts = artifacts.some(
@@ -1233,6 +1650,10 @@ export function addSkillOrSubagent(
 		);
 	}
 
+	if (matchedSkill) {
+		assertCustomCatalogSkillSafe(resolvedCatalog, matchedSkill);
+	}
+
 	const plannedFiles: PlannedFile[] = [];
 	const skippedTargetItems: SkippedTargetItem[] = [];
 	const itemKind: "skill" | "subagent" = matchedSkill ? "skill" : "subagent";
@@ -1269,6 +1690,28 @@ export function addSkillOrSubagent(
 		plannedFiles.push(...targetPlanned);
 	}
 
+	let codexAgentsIndexContent: string | undefined;
+	if (
+		targets.includes("codex") &&
+		fs.existsSync(path.join(resolvedRepo, "AGENTS.md"))
+	) {
+		const safeAgentsMd = resolveSafeRepoTargetPath(resolvedRepo, "AGENTS.md");
+		if (fs.statSync(safeAgentsMd).isFile()) {
+			const existingAgentsMd = fs.readFileSync(safeAgentsMd, "utf-8");
+			const codexItems = collectInstalledCodexCatalogItems(
+				resolvedRepo,
+				resolvedCatalog,
+				matchedSkill,
+				matchedSubagent,
+			);
+			codexAgentsIndexContent = renderCodexAgentsIndex(
+				existingAgentsMd,
+				codexItems.skills,
+				codexItems.subagents,
+			);
+		}
+	}
+
 	return applyPlannedFiles(
 		resolvedRepo,
 		resolvedCatalog,
@@ -1281,6 +1724,7 @@ export function addSkillOrSubagent(
 			skippedTargetItems,
 			addedSkillName: matchedSkill?.manifest.name,
 			addedSubagentName: matchedSubagent?.manifest.name,
+			codexAgentsIndexContent,
 		},
 	);
 }
@@ -1399,9 +1843,8 @@ export function removeSkillOrSubagent(
 		);
 	}
 
-	const newLockArtifacts: Record<string, SyncLockEntry> = {
-		...(existingLock?.artifacts ?? {}),
-	};
+	const newLockArtifacts: Record<string, SyncLockEntry> =
+		createNullProtoArtifactsMap(existingLock?.artifacts);
 	const artifacts: SyncedArtifact[] = [];
 	const driftConflicts: string[] = [];
 
@@ -1545,9 +1988,9 @@ export function cleanSyncedArtifacts(
 	const driftConflicts: string[] = [];
 
 	// Handle codex AGENTS.md block if tracked in lockfile
-	const codexIndexEntry = existingLock?.artifacts["AGENTS.md"];
+	const codexIndexEntry = getLockArtifact(existingLock?.artifacts, "AGENTS.md");
 	if (codexIndexEntry && codexIndexEntry.skill_name === "codex-agents-index") {
-		const fullAgentsMd = path.join(resolvedRepo, "AGENTS.md");
+		const fullAgentsMd = resolveSafeRepoTargetPath(resolvedRepo, "AGENTS.md");
 		if (fs.existsSync(fullAgentsMd) && fs.statSync(fullAgentsMd).isFile()) {
 			const diskText = fs.readFileSync(fullAgentsMd, "utf-8");
 			const currentDiskSha = computeSha256(diskText);
@@ -1814,6 +2257,73 @@ export function inspectProjectStatus(
 	};
 }
 
+function buildEmptyUpdateReport(
+	resolvedRepo: string,
+	resolvedCatalog: string,
+	lockfilePath: string,
+	targets: readonly RuntimeTarget[],
+	dryRun: boolean,
+	force: boolean,
+): SyncReport {
+	return SyncReportSchema.parse({
+		repo_path: resolvedRepo.replace(/\\/g, "/"),
+		catalog_path: resolvedCatalog.replace(/\\/g, "/"),
+		targets: [...targets],
+		dry_run: dryRun,
+		force,
+		artifacts: [],
+		skipped_existing: [],
+		drift_conflicts: [],
+		lockfile_path: lockfilePath.replace(/\\/g, "/"),
+		passed: true,
+	});
+}
+
+interface InstalledUpdateTuple {
+	readonly itemName: string;
+	readonly kind: "skill" | "subagent";
+	readonly target: RuntimeTarget;
+}
+
+function resolveInstalledUpdateTuples(
+	resolvedRepo: string,
+	resolvedCatalog: string,
+	options: UpdateOptions,
+): InstalledUpdateTuple[] {
+	const discovered = discoverInstalledArtifactsOnDisk(
+		resolvedRepo,
+		resolvedCatalog,
+		options.targets,
+	);
+	const requestedNames = options.names?.length
+		? [...new Set(options.names)]
+		: null;
+	if (requestedNames) {
+		for (const reqName of requestedNames) {
+			if (!discovered.some((d) => d.itemName === reqName)) {
+				throw new Error(
+					`No installed artifacts found for '${reqName}' in '${resolvedRepo.replace(/\\/g, "/")}'.`,
+				);
+			}
+		}
+	}
+	const filtered = requestedNames
+		? discovered.filter((d) => requestedNames.includes(d.itemName))
+		: discovered;
+	const tuples = new Map<string, InstalledUpdateTuple>();
+	for (const d of filtered) {
+		const key = `${d.kind}:${d.itemName}:${d.target}`;
+		if (!tuples.has(key)) {
+			tuples.set(key, {
+				itemName: d.itemName,
+				kind: d.kind,
+				target: d.target,
+			});
+		}
+	}
+	return [...tuples.values()];
+}
+
 /**
  * Deterministically update all (or specified) installed Skills and Subagents in a repository
  * (or global `~` scope) to match the latest catalog versions across their active AI harnesses,
@@ -1828,75 +2338,32 @@ export function updateInstalledSkills(
 	const resolvedCatalog = path.resolve(catalogDir);
 	const dryRun = options.dryRun ?? false;
 	const force = options.force ?? false;
-
 	const lockfilePath = path.join(resolvedRepo, ".skillops-lock.json");
 	const existingLock = loadExistingLockfile(lockfilePath);
-
-	const discovered = discoverInstalledArtifactsOnDisk(
+	const installedTuples = resolveInstalledUpdateTuples(
 		resolvedRepo,
 		resolvedCatalog,
-		options.targets,
+		options,
 	);
-
-	const requestedNames =
-		options.names && options.names.length > 0
-			? [...new Set(options.names)]
-			: null;
-
-	if (requestedNames) {
-		for (const reqName of requestedNames) {
-			const hasMatch = discovered.some((d) => d.itemName === reqName);
-			if (!hasMatch) {
-				throw new Error(
-					`No installed artifacts found for '${reqName}' in '${resolvedRepo.replace(/\\/g, "/")}'.`,
-				);
-			}
-		}
-	}
-
-	const filteredDiscovered = requestedNames
-		? discovered.filter((d) => requestedNames.includes(d.itemName))
-		: discovered;
-
-	if (filteredDiscovered.length === 0) {
-		const fallbackTargets: RuntimeTarget[] = options.targets?.length
-			? [...options.targets]
+	if (installedTuples.length === 0) {
+		const fallbackTargets = options.targets?.length
+			? options.targets
 			: existingLock?.targets.length
-				? [...existingLock.targets]
-				: [...CORE_RUNTIME_TARGETS];
-		return SyncReportSchema.parse({
-			repo_path: resolvedRepo.replace(/\\/g, "/"),
-			catalog_path: resolvedCatalog.replace(/\\/g, "/"),
-			targets: fallbackTargets,
-			dry_run: dryRun,
+				? existingLock.targets
+				: CORE_RUNTIME_TARGETS;
+		return buildEmptyUpdateReport(
+			resolvedRepo,
+			resolvedCatalog,
+			lockfilePath,
+			fallbackTargets,
+			dryRun,
 			force,
-			artifacts: [],
-			skipped_existing: [],
-			drift_conflicts: [],
-			lockfile_path: lockfilePath.replace(/\\/g, "/"),
-			passed: true,
-		});
-	}
-
-	const installedTuples = new Map<
-		string,
-		{ itemName: string; kind: "skill" | "subagent"; target: RuntimeTarget }
-	>();
-	for (const d of filteredDiscovered) {
-		const key = `${d.kind}:${d.itemName}:${d.target}`;
-		if (!installedTuples.has(key)) {
-			installedTuples.set(key, {
-				itemName: d.itemName,
-				kind: d.kind,
-				target: d.target,
-			});
-		}
+		);
 	}
 
 	const catalogMaps = loadCatalogMaps(resolvedCatalog);
-	const newLockArtifacts: Record<string, SyncLockEntry> = {
-		...(existingLock?.artifacts ?? {}),
-	};
+	const newLockArtifacts: Record<string, SyncLockEntry> =
+		createNullProtoArtifactsMap(existingLock?.artifacts);
 	const artifacts: SyncedArtifact[] = [];
 	const driftConflicts: string[] = [];
 	const activeTargets = new Set<RuntimeTarget>();
@@ -1905,7 +2372,7 @@ export function updateInstalledSkills(
 		existingLock?.selected_subagents ?? [],
 	);
 
-	for (const tuple of installedTuples.values()) {
+	for (const tuple of installedTuples) {
 		activeTargets.add(tuple.target);
 		let plannedFiles: PlannedFile[] = [];
 		if (tuple.kind === "skill") {
@@ -1913,6 +2380,7 @@ export function updateInstalledSkills(
 			if (!parsedSkill) {
 				continue;
 			}
+			assertCustomCatalogSkillSafe(resolvedCatalog, parsedSkill);
 			updatedSkills.add(tuple.itemName);
 			plannedFiles = renderSkillFilesForRuntime(parsedSkill, tuple.target);
 		} else {
@@ -1927,13 +2395,69 @@ export function updateInstalledSkills(
 			);
 		}
 
+		// Prune stale companion files tracked in lockfile that were removed from catalog
+		if (existingLock) {
+			const plannedRelSet = new Set(
+				plannedFiles.map((pf) => pf.relativePath.replace(/\\/g, "/")),
+			);
+			for (const [oldKey, oldEntry] of Object.entries(existingLock.artifacts)) {
+				const normOldRel = oldKey.replace(/\\/g, "/");
+				if (
+					oldEntry.skill_name !== tuple.itemName ||
+					oldEntry.target !== tuple.target ||
+					plannedRelSet.has(normOldRel)
+				) {
+					continue;
+				}
+				const safeOldPath = resolveSafeRepoTargetPath(resolvedRepo, normOldRel);
+				const oldExists =
+					fs.existsSync(safeOldPath) && fs.statSync(safeOldPath).isFile();
+				if (oldExists) {
+					const oldDiskSha = computeSha256(
+						fs.readFileSync(safeOldPath, "utf-8"),
+					);
+					if (oldDiskSha !== oldEntry.sha256 && !force) {
+						driftConflicts.push(normOldRel);
+						artifacts.push({
+							target: tuple.target,
+							skill_name: tuple.itemName,
+							relative_path: normOldRel,
+							sha256: oldDiskSha,
+							action: "conflict",
+						});
+						newLockArtifacts[oldKey] = oldEntry;
+						continue;
+					}
+					if (!dryRun) {
+						fs.unlinkSync(safeOldPath);
+						removeEmptyDirsRecursively(
+							path.join(
+								resolvedRepo,
+								RUNTIME_HARNESS_SPECS[tuple.target].skillsDir,
+								tuple.itemName,
+							),
+						);
+						pruneEmptyParentDirs(safeOldPath, resolvedRepo);
+					}
+					artifacts.push({
+						target: tuple.target,
+						skill_name: tuple.itemName,
+						relative_path: normOldRel,
+						sha256: oldEntry.sha256,
+						action: dryRun ? "planned" : "removed",
+					});
+				}
+				delete newLockArtifacts[oldKey];
+			}
+		}
+
 		for (const pf of plannedFiles) {
 			const relPath = pf.relativePath.replace(/\\/g, "/");
 			const fullPath = resolveSafeRepoTargetPath(resolvedRepo, relPath);
 			const desiredSha = computeSha256(pf.content);
 			const fileExists =
 				fs.existsSync(fullPath) && fs.statSync(fullPath).isFile();
-			const lockEntry = existingLock?.artifacts[relPath];
+			const lockEntry = getLockArtifact(existingLock?.artifacts, relPath);
 
 			if (fileExists) {
 				const currentDiskSha = computeSha256(fs.readFileSync(fullPath, "utf-8"));
@@ -2002,6 +2526,46 @@ export function updateInstalledSkills(
 					sha256: desiredSha,
 				};
 			}
+		}
+	}
+
+	if (
+		(activeTargets.has("codex") || options.targets?.includes("codex")) &&
+		fs.existsSync(path.join(resolvedRepo, "AGENTS.md"))
+	) {
+		const safeAgentsMd = resolveSafeRepoTargetPath(resolvedRepo, "AGENTS.md");
+		if (fs.statSync(safeAgentsMd).isFile()) {
+			const existingAgentsMd = fs.readFileSync(safeAgentsMd, "utf-8");
+			const codexItems = collectInstalledCodexCatalogItems(
+				resolvedRepo,
+				resolvedCatalog,
+			);
+			const updatedAgentsMd = renderCodexAgentsIndex(
+				existingAgentsMd,
+				codexItems.skills,
+				codexItems.subagents,
+			);
+			const desiredAgentsSha = computeSha256(updatedAgentsMd);
+			const diskAgentsSha = computeSha256(existingAgentsMd);
+			activeTargets.add("codex");
+			if (desiredAgentsSha !== diskAgentsSha) {
+				if (!dryRun) {
+					fs.writeFileSync(safeAgentsMd, updatedAgentsMd, "utf-8");
+				}
+				artifacts.push({
+					target: "codex",
+					skill_name: "codex-agents-index",
+					relative_path: "AGENTS.md",
+					sha256: desiredAgentsSha,
+					action: dryRun ? "planned" : "updated",
+				});
+			}
+			newLockArtifacts["AGENTS.md"] = {
+				target: "codex",
+				skill_name: "codex-agents-index",
+				relative_path: "AGENTS.md",
+				sha256: desiredAgentsSha,
+			};
 		}
 	}
 
@@ -2288,16 +2852,14 @@ export function formatProjectStatusReport(
 
 function isGlobalHomePath(repoPath: string): boolean {
 	try {
-		const normalizedRepo = path
-			.resolve(repoPath)
-			.replace(/\\/g, "/")
-			.replace(/\/+$/, "");
+		const normalizedRepo = trimTrailingSlashes(
+			path.resolve(repoPath).replace(/\\/g, "/"),
+		);
 		const envHome = process.env.SKILLOPS_GLOBAL_HOME?.trim();
 		const homeDir = envHome ? path.resolve(envHome) : os.homedir();
-		const normalizedHome = path
-			.resolve(homeDir)
-			.replace(/\\/g, "/")
-			.replace(/\/+$/, "");
+		const normalizedHome = trimTrailingSlashes(
+			path.resolve(homeDir).replace(/\\/g, "/"),
+		);
 		return normalizedRepo === normalizedHome;
 	} catch {
 		return false;

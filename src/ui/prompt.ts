@@ -728,7 +728,9 @@ export async function runMultiSelectPrompt(
 	return new Promise<string[] | null>((resolve) => {
 		const stdin = process.stdin;
 		const wasRaw = stdin.isRaw;
-		stdin.setRawMode(true);
+		if (typeof stdin.setRawMode === "function") {
+			stdin.setRawMode(true);
+		}
 		stdin.resume();
 		stdin.setEncoding("utf-8");
 
@@ -736,13 +738,28 @@ export async function runMultiSelectPrompt(
 		process.stdout.write("\x1b[?25l");
 		render();
 
-		const cleanup = () => {
+		let cleanedUp = false;
+		const cleanup = (forceCooked = false) => {
+			if (cleanedUp) {
+				return;
+			}
+			cleanedUp = true;
 			stdin.removeListener("data", onData);
-			if (stdin.isTTY) {
-				stdin.setRawMode(Boolean(wasRaw));
+			process.removeListener("SIGINT", onSignal);
+			process.removeListener("SIGTERM", onSignal);
+			if (stdin.isTTY && typeof stdin.setRawMode === "function") {
+				stdin.setRawMode(forceCooked ? false : Boolean(wasRaw));
 			}
 			stdin.pause();
 			process.stdout.write("\x1b[?25h");
+		};
+
+		const onSignal = () => {
+			if (renderedLineCount > 0) {
+				process.stdout.write(`\x1b[${renderedLineCount}A\x1b[J`);
+			}
+			cleanup(true);
+			resolve(null);
 		};
 
 		const onData = (chunk: string | Buffer) => {
@@ -772,6 +789,8 @@ export async function runMultiSelectPrompt(
 			render();
 		};
 
+		process.once("SIGINT", onSignal);
+		process.once("SIGTERM", onSignal);
 		stdin.on("data", onData);
 	});
 }

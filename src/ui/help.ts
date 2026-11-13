@@ -46,7 +46,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 				description: "Target user home directory (~) instead of current project",
 			},
 			{
-				flags: "-t, --target <list|auto|all>",
+				flags: "-t, --target, --agents <list|auto|all>",
 				description: "Target AI harnesses (cursor,claude,copilot,all...)",
 			},
 			{
@@ -72,7 +72,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 				description: "Interactive 2-step TUI selector",
 			},
 			{
-				command: "skillops add mcp-architect -t cursor",
+				command: "skillops add mcp-architect --agents cursor",
 				description: "Install into Cursor IDE",
 			},
 		],
@@ -92,7 +92,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 				description: "Target user home directory (~) instead of current project",
 			},
 			{
-				flags: "-t, --target <list>",
+				flags: "-t, --target, --agents <list>",
 				description: "Restrict removal to specific AI harnesses",
 			},
 			{
@@ -138,7 +138,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 				description: "Inspect user home directory (~) instead of current project",
 			},
 			{
-				flags: "-t, --target <list>",
+				flags: "-t, --target, --agents <list>",
 				description: "Restrict status report to specific AI harnesses",
 			},
 			{
@@ -172,7 +172,7 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 				description: "Update user home directory (~) instead of current project",
 			},
 			{
-				flags: "-t, --target <list>",
+				flags: "-t, --target, --agents <list>",
 				description: "Restrict update to specific AI harnesses",
 			},
 			{
@@ -197,6 +197,37 @@ export const COMMAND_HELP_SPECS: readonly CommandHelpSpec[] = [
 			{
 				command: "skillops update mcp-architect --force",
 				description: "Force-refresh mcp-architect overwriting local edits",
+			},
+		],
+	},
+	{
+		name: "audit",
+		aliases: ["doctor"],
+		summary:
+			"Validate catalog manifests, Level 3 layout, security & transpilation",
+		usage: "npx skillops-cli audit [options]",
+		options: [
+			{
+				flags: "--catalog <dir>",
+				description: "Catalog directory to audit (default: project or built-in)",
+			},
+			{
+				flags: "--strict",
+				description: "Require Level 3 scripts and evals/evals.json layout",
+			},
+			{
+				flags: "--json, -f, --format <fmt>",
+				description: "Output format: table, json, or md (default: table)",
+			},
+		],
+		examples: [
+			{
+				command: "skillops audit --strict",
+				description: "Run strict layout, security & 28-IDE transpiler audit",
+			},
+			{
+				command: "skillops audit --json",
+				description: "Export machine-readable audit report as JSON",
 			},
 		],
 	},
@@ -256,6 +287,11 @@ export function renderGlobalHelp(
 			color: CHARM_PALETTE.hotPink,
 			desc: "Remove Skills or Agents (interactive if no name given)",
 		},
+		{
+			cmd: "audit",
+			color: CHARM_PALETTE.indigo,
+			desc: "Validate catalog contracts, layout & static security",
+		},
 	];
 
 	const cmdRows = coreCmds
@@ -265,7 +301,7 @@ export function renderGlobalHelp(
 		)
 		.join("\n");
 
-	const usageLine = `${bar}  ${fgHex(CHARM_PALETTE.lavender, style.bold("Usage:", c), c)} ${style.bold(style.green("skillops", c), c)} ${fgHex(CHARM_PALETTE.cyan, "<add|status|update|remove>", c)} ${style.dim("[options]", c)}`;
+	const usageLine = `${bar}  ${fgHex(CHARM_PALETTE.lavender, style.bold("Usage:", c), c)} ${style.bold(style.green("skillops", c), c)} ${fgHex(CHARM_PALETTE.cyan, "<add|status|update|remove|audit>", c)} ${style.dim("[options]", c)}`;
 
 	return [
 		banner,
@@ -273,14 +309,13 @@ export function renderGlobalHelp(
 		renderSectionHeader("Commands", c),
 		cmdRows,
 		renderSectionHeader("Options", c),
-		`${bar}  ${padVisible(style.bold(style.cyan("-t, --target <ide>", c), c), 22, "left")}${fgHex(CHARM_PALETTE.lavender, "AI IDE (cursor, claude, copilot, antigravity...)", c)}`,
-		`${bar}  ${padVisible(style.bold(style.cyan("-p, --project <dir>", c), c), 22, "left")}${fgHex(CHARM_PALETTE.lavender, "Project folder (default: current directory)", c)}`,
-		`${bar}  ${padVisible(style.bold(style.cyan("-g, --global", c), c), 22, "left")}${fgHex(CHARM_PALETTE.lavender, "Install or remove globally in user home (~)", c)}`,
-		`${bar}  ${padVisible(style.bold(style.cyan("--all", c), c), 22, "left")}${fgHex(CHARM_PALETTE.lavender, "Install or remove all Skills & Agents", c)}`,
+		`${bar}  ${padVisible(style.bold(style.cyan("-t, --target, --agents", c), c), 24, "left")}${fgHex(CHARM_PALETTE.lavender, "AI IDE (cursor, claude, copilot, antigravity...)", c)}`,
+		`${bar}  ${padVisible(style.bold(style.cyan("-p, --project <dir>", c), c), 24, "left")}${fgHex(CHARM_PALETTE.lavender, "Project folder (default: current directory)", c)}`,
+		`${bar}  ${padVisible(style.bold(style.cyan("-g, --global", c), c), 24, "left")}${fgHex(CHARM_PALETTE.lavender, "Install or remove globally in user home (~)", c)}`,
+		`${bar}  ${padVisible(style.bold(style.cyan("--all", c), c), 24, "left")}${fgHex(CHARM_PALETTE.lavender, "Install or remove all Skills & Agents", c)}`,
 		renderSectionHeader("Examples", c),
-		`${bar}  ${fgHex(CHARM_PALETTE.hotPink, "$", c)} ${style.bold(style.green("skillops add", c), c)}                                  ${style.dim("—", c)} ${fgHex(CHARM_PALETTE.lavender, "Interactive install", c)}`,
-		`${bar}  ${fgHex(CHARM_PALETTE.hotPink, "$", c)} ${style.bold(style.green("skillops remove", c), c)}                               ${style.dim("—", c)} ${fgHex(CHARM_PALETTE.lavender, "Interactive removal", c)}`,
-		bar,
+		`${bar}  ${fgHex(CHARM_PALETTE.hotPink, "$", c)} ${style.bold(style.green("skillops add --agents cursor", c), c)}                  ${style.dim("—", c)} ${fgHex(CHARM_PALETTE.lavender, "Install into Cursor IDE", c)}`,
+		`${bar}  ${fgHex(CHARM_PALETTE.hotPink, "$", c)} ${style.bold(style.green("skillops audit --strict", c), c)}                       ${style.dim("—", c)} ${fgHex(CHARM_PALETTE.lavender, "Validate catalog safety", c)}`,
 		`${style.dim("╰─", c)} ${fgHex(CHARM_PALETTE.lavender, "Run", c)} ${style.bold(style.cyan("skillops <cmd> -h", c), c)} ${fgHex(CHARM_PALETTE.lavender, "for command options.", c)}`,
 	].join("\n");
 }

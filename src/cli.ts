@@ -7,10 +7,15 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
+	auditCatalogSecurity,
 	discoverSkillDirectories,
 	discoverSubagentFiles,
+	type ParsedSkillDirectory,
+	type ParsedSubagentFile,
+	type ParseSkillOptions,
 	parseSkillDirectory,
 	parseSubagentFile,
+	type SkillSecurityFinding,
 } from "./auditor/index.js";
 import {
 	ALL_RUNTIME_TARGETS,
@@ -24,6 +29,10 @@ import {
 	type SkillOpsConfig,
 } from "./models.js";
 import {
+	renderSkillFilesForRuntime,
+	renderSubagentFilesForRuntime,
+} from "./sync/adapters.js";
+import {
 	addSkillOrSubagent,
 	cleanSyncedArtifacts,
 	detectExistingTargetsForItem,
@@ -35,13 +44,22 @@ import {
 	updateInstalledSkills,
 } from "./sync/index.js";
 import {
+	CHARM_PALETTE,
+	DEFAULT_VALID_COMMANDS,
+	fgHex,
 	findCommandHelpSpec,
+	formatBadge,
 	type MultiSelectOption,
+	padVisible,
 	renderCancelledStep,
 	renderCommandHelp,
 	renderCompletedStep,
 	renderGlobalHelp,
+	renderHeaderBanner,
+	renderNextSteps,
+	renderSectionHeader,
 	runMultiSelectPrompt,
+	style,
 	suggestCommand,
 } from "./ui/index.js";
 
@@ -58,7 +76,18 @@ function getAllFlagValues(
 	const values: string[] = [];
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
-		if (!arg || !flagSet.has(arg)) {
+		if (!arg) {
+			continue;
+		}
+		const eqIdx = arg.indexOf("=");
+		if (eqIdx > 0 && flagSet.has(arg.slice(0, eqIdx))) {
+			const inlineVal = arg.slice(eqIdx + 1);
+			if (inlineVal) {
+				values.push(inlineVal);
+			}
+			continue;
+		}
+		if (!flagSet.has(arg)) {
 			continue;
 		}
 		const val = args[i + 1];
@@ -87,6 +116,8 @@ function getPositionalArgs(args: readonly string[]): string[] {
 		"--harnesses",
 		"--target",
 		"-t",
+		"--agents",
+		"--agent",
 		"--catalog",
 		"--format",
 		"-f",
@@ -106,6 +137,22 @@ function getPositionalArgs(args: readonly string[]): string[] {
 		positionals.push(arg);
 	}
 	return positionals;
+}
+
+function resolveOutputFormat(
+	args: readonly string[],
+): "table" | "json" | "markdown" {
+	if (args.includes("--json")) {
+		return "json";
+	}
+	const rawFormat = getFlagValue(args, "--format", "-f") ?? "table";
+	if (rawFormat === "json") {
+		return "json";
+	}
+	if (rawFormat === "markdown" || rawFormat === "md") {
+		return "markdown";
+	}
+	return "table";
 }
 
 export function isGlobalFlag(args: readonly string[]): boolean {
@@ -139,6 +186,8 @@ function resolveTargetsArg(args: readonly string[]): string | undefined {
 		"--harnesses",
 		"--target",
 		"-t",
+		"--agents",
+		"--agent",
 	);
 	if (explicitValues.length > 0) {
 		return explicitValues.join(",");
@@ -147,6 +196,138 @@ function resolveTargetsArg(args: readonly string[]): string | undefined {
 		return "auto";
 	}
 	return undefined;
+}
+
+export function parseCatalogSkills(
+	catalogDir: string,
+	options: ParseSkillOptions = {},
+): ParsedSkillDirectory[] {
+	return discoverSkillDirectories(catalogDir).map((skillDir) =>
+		parseSkillDirectory(skillDir, options),
+	);
+}
+
+export function parseCatalogSubagents(
+	catalogDir: string,
+): ParsedSubagentFile[] {
+	return discoverSubagentFiles(catalogDir).map((saPath) =>
+		parseSubagentFile(saPath),
+	);
+}
+
+export interface CatalogAuditReport {
+	readonly catalog_path: string;
+	readonly strict: boolean;
+	readonly passed: boolean;
+	readonly skills_count: number;
+	readonly subagents_count: number;
+	readonly targets_checked: number;
+	readonly rendered_artifacts_count: number;
+	readonly contract_errors: string[];
+	readonly security_findings: SkillSecurityFinding[];
+}
+
+function isErrorSecurityFinding(finding: SkillSecurityFinding): boolean {
+	const maybeSeverity = (finding as { readonly severity?: string }).severity;
+	return maybeSeverity === undefined || maybeSeverity === "error";
+}
+
+function formatCatalogAuditReport(
+	report: CatalogAuditReport,
+	format: "table" | "json" | "markdown" = "table",
+	colorEnabled?: boolean,
+): string {
+	if (format === "json") {
+		return `${JSON.stringify(report, null, 2)}\n`;
+	}
+	if (format === "markdown") {
+		return [
+			"## SkillOps Catalog & Security Audit Report",
+			"",
+			`- **Catalog**: \`${report.catalog_path}\``,
+			`- **Strict Layout**: \`${report.strict}\``,
+			`- **Skills Parsed**: \`${report.skills_count}\``,
+			`- **Subagents Parsed**: \`${report.subagents_count}\``,
+			`- **Runtime Targets Verified**: \`${report.targets_checked}\``,
+			`- **Dry-Run Artifacts Rendered**: \`${report.rendered_artifacts_count}\``,
+			`- **Contract Errors**: \`${report.contract_errors.length}\``,
+			`- **Security Findings**: \`${report.security_findings.length}\``,
+			`- **Status**: **${report.passed ? "PASS" : "FAIL"}**`,
+			"",
+			...report.contract_errors.map((err) => `- [CONTRACT] ${err}`),
+			...report.security_findings.map(
+				(f) => `- [SECURITY:${f.rule}] \`${f.file}:${f.line}\` — ${f.message}`,
+			),
+			"",
+		].join("\n");
+	}
+
+	const c = colorEnabled;
+	const bar = style.dim("│", c);
+	const banner = renderHeaderBanner("Catalog, Security & Transpiler Audit", {
+		colorEnabled: c,
+	});
+	const statusBadge = report.passed
+		? formatBadge("pass", "PASS", c)
+		: formatBadge("fail", "FAIL", c);
+	const statusLine = `${bar}  ${padVisible(fgHex(CHARM_PALETTE.lavender, style.bold("Status:", c), c), 12, "left")}${statusBadge} ${style.dim("·", c)} ${fgHex(CHARM_PALETTE.white, `${report.skills_count} skill(s), ${report.subagents_count} agent(s)`, c)}`;
+	const targetsLine = `${bar}  ${padVisible(fgHex(CHARM_PALETTE.lavender, style.bold("Transpiler:", c), c), 12, "left")}${fgHex(CHARM_PALETTE.cyan, `${report.targets_checked} IDEs`, c)} ${style.dim(`(${report.rendered_artifacts_count} dry-run files)`, c)}`;
+	const securityLine = `${bar}  ${padVisible(fgHex(CHARM_PALETTE.lavender, style.bold("Security:", c), c), 12, "left")}${report.security_findings.length === 0 ? fgHex(CHARM_PALETTE.mint, "0 findings", c) : fgHex(CHARM_PALETTE.coral, `${report.security_findings.length} finding(s)`, c)}`;
+
+	const detailLines: string[] = [];
+	if (report.contract_errors.length > 0) {
+		detailLines.push(
+			renderSectionHeader(
+				`Contract & Layout Errors (${report.contract_errors.length})`,
+				c,
+			),
+		);
+		for (const err of report.contract_errors.slice(0, 8)) {
+			const shortErr = err.length > 68 ? `${err.slice(0, 67)}…` : err;
+			detailLines.push(`${bar}  ${fgHex(CHARM_PALETTE.amber, shortErr, c)}`);
+		}
+	}
+	if (report.security_findings.length > 0) {
+		detailLines.push(
+			renderSectionHeader(
+				`Security Findings (${report.security_findings.length})`,
+				c,
+			),
+		);
+		for (const finding of report.security_findings.slice(0, 8)) {
+			const summary = `${finding.file}:${finding.line} (${finding.rule})`;
+			const shortSummary =
+				summary.length > 68 ? `${summary.slice(0, 67)}…` : summary;
+			detailLines.push(
+				`${bar}  ${fgHex(CHARM_PALETTE.coral, shortSummary, c)}`,
+			);
+		}
+	}
+
+	const nextSteps = renderNextSteps(
+		[
+			{
+				command: "npx skillops-cli add",
+				description: "Install verified Skills or Subagents",
+			},
+			{
+				command: "npx skillops-cli status",
+				description: "Inspect installed workspace health",
+			},
+		],
+		c,
+	);
+
+	return [
+		banner,
+		statusLine,
+		targetsLine,
+		securityLine,
+		...detailLines,
+		nextSteps,
+	]
+		.filter(Boolean)
+		.join("\n");
 }
 
 function resolveCatalogDir(
@@ -525,9 +706,7 @@ export function runCli(argv: readonly string[]): number {
 		}
 		const dryRun = args.includes("--dry-run");
 		const force = args.includes("--force");
-		const rawFormat = getFlagValue(args, "--format", "-f") ?? "table";
-		const format: "table" | "json" | "markdown" =
-			rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
+		const format = resolveOutputFormat(args);
 
 		const importAll = args.includes("--all");
 		const itemsToAdd =
@@ -593,9 +772,7 @@ export function runCli(argv: readonly string[]): number {
 		const rawTargetsArg = resolveTargetsArg(args);
 		const dryRun = args.includes("--dry-run");
 		const force = args.includes("--force");
-		const rawFormat = getFlagValue(args, "--format", "-f") ?? "table";
-		const format: "table" | "json" | "markdown" =
-			rawFormat === "json" || rawFormat === "markdown" ? rawFormat : "table";
+		const format = resolveOutputFormat(args);
 
 		try {
 			const targets = rawTargetsArg
@@ -671,13 +848,7 @@ export function runCli(argv: readonly string[]): number {
 		}
 		const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
 		const rawTargetsArg = resolveTargetsArg(args);
-		const rawFormat = getFlagValue(args, "--format", "-f") ?? "table";
-		const format: "table" | "json" | "markdown" =
-			rawFormat === "json"
-				? "json"
-				: rawFormat === "markdown" || rawFormat === "md"
-					? "markdown"
-					: "table";
+		const format = resolveOutputFormat(args);
 
 		try {
 			const targets = rawTargetsArg
@@ -707,13 +878,7 @@ export function runCli(argv: readonly string[]): number {
 		const rawTargetsArg = resolveTargetsArg(args);
 		const dryRun = args.includes("--dry-run");
 		const force = args.includes("--force");
-		const rawFormat = getFlagValue(args, "--format", "-f") ?? "table";
-		const format: "table" | "json" | "markdown" =
-			rawFormat === "json"
-				? "json"
-				: rawFormat === "markdown" || rawFormat === "md"
-					? "markdown"
-					: "table";
+		const format = resolveOutputFormat(args);
 
 		try {
 			const targets = rawTargetsArg
@@ -734,7 +899,153 @@ export function runCli(argv: readonly string[]): number {
 		}
 	}
 
-	const suggestion = suggestCommand(command);
+	switch (command) {
+		case "audit":
+		case "doctor": {
+			const repoPath = resolveTargetRepoPath(args);
+			const cfgRes = loadSkillOpsConfig(repoPath);
+			if (cfgRes.error) {
+				process.stderr.write(
+					`Invalid .skillops.yml at ${cfgRes.configPath}: ${cfgRes.error}\n`,
+				);
+				return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+			}
+			const catalogDir = resolveCatalogDir(args, repoPath, cfgRes.config);
+			const strict = args.includes("--strict");
+			const format = resolveOutputFormat(args);
+			const normalizedCatalog = path.resolve(catalogDir).replace(/\\/g, "/");
+
+			if (
+				!fs.existsSync(catalogDir) ||
+				!fs.statSync(catalogDir).isDirectory()
+			) {
+				const missingMsg = `Catalog directory not found at '${normalizedCatalog}'.`;
+				const missingReport: CatalogAuditReport = {
+					catalog_path: normalizedCatalog,
+					strict,
+					passed: false,
+					skills_count: 0,
+					subagents_count: 0,
+					targets_checked: ALL_RUNTIME_TARGETS.length,
+					rendered_artifacts_count: 0,
+					contract_errors: [missingMsg],
+					security_findings: [],
+				};
+				process.stdout.write(formatCatalogAuditReport(missingReport, format));
+				return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+			}
+
+			const contractErrors: string[] = [];
+			let hasParserSecurityError = false;
+			let skills: ParsedSkillDirectory[] = [];
+			try {
+				skills = parseCatalogSkills(catalogDir, { requireLayout: strict });
+			} catch {
+				for (const skillDir of discoverSkillDirectories(catalogDir)) {
+					try {
+						skills.push(
+							parseSkillDirectory(skillDir, { requireLayout: strict }),
+						);
+					} catch (skillErr) {
+						const msg =
+							skillErr instanceof Error ? skillErr.message : String(skillErr);
+						if (msg.startsWith("Security violation:")) {
+							hasParserSecurityError = true;
+						}
+						contractErrors.push(msg);
+					}
+				}
+			}
+
+			let subagents: ParsedSubagentFile[] = [];
+			try {
+				subagents = parseCatalogSubagents(catalogDir);
+			} catch {
+				for (const saPath of discoverSubagentFiles(catalogDir)) {
+					try {
+						subagents.push(parseSubagentFile(saPath));
+					} catch (saErr) {
+						const msg = saErr instanceof Error ? saErr.message : String(saErr);
+						if (msg.startsWith("Security violation:")) {
+							hasParserSecurityError = true;
+						}
+						contractErrors.push(msg);
+					}
+				}
+			}
+
+			const secReport = auditCatalogSecurity(catalogDir);
+			const errorSecurityFindings = secReport.findings.filter(
+				isErrorSecurityFinding,
+			);
+
+			let renderedArtifactsCount = 0;
+			for (const skill of skills) {
+				for (const target of ALL_RUNTIME_TARGETS) {
+					try {
+						const planned = renderSkillFilesForRuntime(skill, target);
+						renderedArtifactsCount += planned.length;
+					} catch (renderErr) {
+						const msg =
+							renderErr instanceof Error
+								? renderErr.message
+								: String(renderErr);
+						contractErrors.push(
+							`Failed rendering skill '${skill.manifest.name}' for '${target}': ${msg}`,
+						);
+					}
+				}
+			}
+			for (const subagent of subagents) {
+				for (const target of ALL_RUNTIME_TARGETS) {
+					try {
+						const planned = renderSubagentFilesForRuntime(subagent, target);
+						renderedArtifactsCount += planned.length;
+					} catch (renderErr) {
+						const msg =
+							renderErr instanceof Error
+								? renderErr.message
+								: String(renderErr);
+						contractErrors.push(
+							`Failed rendering subagent '${subagent.manifest.name}' for '${target}': ${msg}`,
+						);
+					}
+				}
+			}
+
+			const hasSecurityFailure =
+				errorSecurityFindings.length > 0 || hasParserSecurityError;
+			const passed = !hasSecurityFailure && contractErrors.length === 0;
+
+			const auditReport: CatalogAuditReport = {
+				catalog_path: normalizedCatalog,
+				strict,
+				passed,
+				skills_count: skills.length,
+				subagents_count: subagents.length,
+				targets_checked: ALL_RUNTIME_TARGETS.length,
+				rendered_artifacts_count: renderedArtifactsCount,
+				contract_errors: contractErrors,
+				security_findings: secReport.findings,
+			};
+
+			process.stdout.write(formatCatalogAuditReport(auditReport, format));
+
+			if (hasSecurityFailure) {
+				return ExitCode.ERROR;
+			}
+			if (contractErrors.length > 0) {
+				return ExitCode.BUDGET_OR_CONTRACT_ERROR;
+			}
+			return ExitCode.SUCCESS;
+		}
+	}
+
+	const suggestion = suggestCommand(command, [
+		...DEFAULT_VALID_COMMANDS,
+		"audit",
+		"doctor",
+	]);
 	const hint = suggestion ? ` Did you mean '${suggestion}'?` : "";
 	process.stderr.write(
 		`Unknown command '${command}'.${hint} Run 'npx skillops-cli --help'.\n`,
